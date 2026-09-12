@@ -64,7 +64,18 @@ async function runJob(job) {
     for (const f of job.files) {
       const buf = await s3Body(f.rawKey);
       const r = await normalize(buf, f.originalName, { outDir, fileId: f.fileId });
-      const items = r.ok && r.kind === "zip" ? flatten([r]) : [r];
+      const isZip = r.ok && r.kind === "zip";
+      const items = isZip ? flatten([r]) : [r];
+      if (isZip) {
+        // 壓縮檔本身沒有內容可分類：標成容器，子檔各自建紀錄（否則 updateFile 會產生沒有 originalName 的孤兒）
+        await ddb.updateFile(caseId, r.fileId, { status: "container", kind: "zip", childIds: items.map((c) => c.fileId), warnings: r.warnings ?? [] });
+        await emit(job, "container", { fileId: r.fileId, childIds: items.map((c) => c.fileId) });
+        for (const c of items) {
+          const rawKey = c.srcPath ? await s3.putRaw(caseId, c.fileId, c.originalName, await fs.readFile(c.srcPath)) : undefined;
+          await ddb.putFile({ fileId: c.fileId, caseId, originalName: c.originalName, sha256: c.sha256, bytes: c.bytes,
+            rawKey, status: "queued", jobId, parentFileId: r.fileId, createdAt: iso(), updatedAt: iso() });
+        }
+      }
       for (const n of items) {
         if (n.ok) {
           const stored = await s3.putNormalized(caseId, n.fileId, n);

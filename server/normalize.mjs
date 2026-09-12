@@ -76,7 +76,13 @@ export async function normalize(buffer, originalName, { outDir, fileId } = {}) {
       base.warnings.push(`extension "${ext}" does not match content "${ft.ext}"`);
 
     if (mime === "application/pdf") return ok(await fromPdf(buffer, base, dir));
-    if (mime && IMAGE_MIME.has(mime)) return ok(await fromImage(buffer, base, dir));
+    if (mime && IMAGE_MIME.has(mime)) {
+      try { return ok(await fromImage(buffer, base, dir)); }
+      catch (e) {
+        if (e.code !== "HEIC_DECODE_FAILED") throw e;
+        base.warnings.push(e.message); return ok(base);      // 降級：不中斷整批
+      }
+    }
     if (mime && VIDEO_MIME.has(mime)) {
       if (!(await hasTool("ffprobe")) || !(await hasTool("ffmpeg"))) { base.warnings.push("ffmpeg/ffprobe 未安裝，影片未解析"); return ok(base); }
       return ok(await fromVideo(buffer, base, dir, ext || ft.ext));
@@ -156,12 +162,22 @@ async function fromImage(buffer, base, dir) {
   return base;
 }
 
+// HEIC/HEIF：sharp 預建版沒有 HEVC 解碼器。依序試 sips（mac）→ heif-convert → ffmpeg（Linux 上通常只有它）
 async function heicToJpeg(buffer, dir) {
   const src = path.join(dir, "source.heic"), dst = path.join(dir, "source.jpg");
   await fs.writeFile(src, buffer);
-  if (process.platform === "darwin") await run("sips", ["-s", "format", "jpeg", src, "--out", dst]);
-  else await run("heif-convert", [src, dst]);
-  return fs.readFile(dst);
+  const attempts = [
+    ["sips", ["-s", "format", "jpeg", src, "--out", dst]],
+    ["heif-convert", [src, dst]],
+    ["ffmpeg", ["-v", "error", "-y", "-i", src, dst]],
+  ];
+  const errs = [];
+  for (const [bin, args] of attempts) {
+    if (!(await hasTool(bin))) { errs.push(`${bin}: 未安裝`); continue; }
+    try { await run(bin, args); return await fs.readFile(dst); }
+    catch (e) { errs.push(`${bin}: ${e.message.split("\n")[0]}`); }
+  }
+  throw new NormalizeError("HEIC_DECODE_FAILED", `無法解碼 HEIC（${errs.join("；")}）`);
 }
 
 // 只抓 DateTimeOriginal，避免引入 exif 套件
@@ -259,6 +275,8 @@ async function fromZip(buffer, base, dir) {
     if (/(^|\/)(__MACOSX|\.DS_Store)/.test(f)) continue;
     const rel = path.relative(out, f);
     const child = await normalize(await fs.readFile(f), `${base.originalName}/${rel}`, { outDir: dir });
+    child.srcPath = f;                 // server 會把它上傳成該子檔的原檔
+    child.parentFileId = base.fileId;
     base.children.push(child);
   }
   return base;
