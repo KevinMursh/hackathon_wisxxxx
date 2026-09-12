@@ -119,7 +119,7 @@ async function startDemo(i, messy) {
 function renderLibCard() {}
 
 $("#libBtn").addEventListener("click", openLibrary);
-$("#backBtn").addEventListener("click", () => { persist(); $("#analysisNote").style.display = "none"; $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; }); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
+$("#backBtn").addEventListener("click", () => { persist(); $("#analysisNote").style.display = "none"; $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; }); show("s-pick"); Router.set("/"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
 renderLibCard();
 
 /* =========================================================
@@ -211,14 +211,14 @@ function runCase(c, restore) {
   }
   S.doc = null; S.zoom = 1; S.docMode = {};
   $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = "";
-  if (restore || c.analysis) { if (restore) { render(); show("s-work"); } return; }
+  if (restore || c.analysis) { if (restore) { render(); show("s-work"); Router.set(`/case/${S.libId || c.caseId || c.id}`); } return; }
   const steps = [["文件辨識（Claude 判定）", `${c.docs.length} 個檔案 → ${c.docs.filter((d) => d.include !== false).length} 份納入・${c.docs.filter((d) => d.dup).length} 份重複・${c.docs.filter((d) => d.unknown).length} 份無法辨識`, Math.min(2600, 700 + c.docs.length * 110), "classify"], ["欄位擷取（三方對照）", `${c.fields.length} 個欄位，${c.fields.filter((f) => f.conflict).length} 處衝突`, 700], ["爭點比對（訴願書 vs 答辯書 vs 卷證）", `識別 ${c.issues.length} 個爭點`, 760], ["法規檢索與引用查核", `推薦 ${c.laws.length} 筆；查核答辯書引用 ${c.citations.length} 則${c.citations.some((x) => x.status === "amended") ? "，1 則已修正" : ""}`, 840], ["AI 判定與草稿生成", `判定：${judgePlan(c).verdict}（${judgePlan(c).art}）`, 900]];
   $("#runSub").textContent = c.live ? c.name : `${c.name}　・　案號 ${c.no}${c.uploadNote ? "　・　" + c.uploadNote : ""}`;
   $("#stepList").innerHTML = steps.map((s, i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${s[0]}</div><div class="out" id="so${i}"></div>${s[3] ? `<div class="classify" id="cls${i}" style="flex-direction:column;gap:3px">${c.docs.map((d) => `<span style="display:flex;gap:8px;align-items:center;${d.include === false ? "opacity:.55" : ""}"><span class="num" style="color:var(--ink-3);min-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(d.origName || d.title)}</span><span>→</span><b style="white-space:nowrap">${d.tag}</b><span class="srct ${d.src}" style="flex:none">${d.src}</span><span style="color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(d.summary || "")}</span></span>`).join("")}</div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
   $("#runBar").style.width = "0"; show("s-run");
   let t = 0;
   steps.forEach((s, i) => { setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.add("active"); $("#runBar").style.width = ((i + 1) / steps.length * 100) + "%"; if (s[3]) $$("#cls" + i + " > span").forEach((sp, k) => setTimeout(() => sp.classList.add("in"), 80 + k * (1000 / Math.max(1, c.docs.length)))); }, t); t += s[2]; setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.remove("active"); el.classList.add("done"); $("#so" + i).textContent = s[1]; $("#sm" + i).textContent = s[2] + " ms"; }, t); });
-  setTimeout(() => { render(); show("s-work"); persist(); }, t + 500);
+  setTimeout(() => { render(); show("s-work"); persist(); Router.set(`/case/${S.libId}`); }, t + 500);
 }
 
 /* =========================================================
@@ -234,7 +234,7 @@ const LIVE_STEPS = [
 ];
 
 function runLive(caseId, job, meta = {}) {
-  S.liveCase = { caseId, jobId: job.jobId, total: job.files.length };
+  S.liveCase = { caseId, jobId: job.jobId, total: job.files.length }; Router.set(`/run/${caseId}`);
   $("#chip").classList.add("on"); $("#chipName").textContent = meta.name || "新上傳案件";
   $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = "";
   $("#runSub").textContent = `${meta.title || `${job.files.length} 個檔案`}　・　${caseId}${meta.messy ? "　・　亂檔名（檔名不參與判定）" : ""}`;
@@ -334,10 +334,11 @@ const STEP_OUT = {
   s5: (o) => `相似案例 ${(o.sims || []).length} 件`,
   s6: (o) => `判定：${o.judge?.verdict || ""}（${o.judge?.art || ""}）`,
 };
-async function runAnalysis(caseId) {
+async function runAnalysis(caseId, { post = true } = {}) {
   $("#runTitle").textContent = "正在分析卷宗";
   for (let i = 1; i < LIVE_STEPS.length; i++) { $("#st" + i).style.opacity = ""; $("#so" + i).textContent = ""; }
-  await Api.analyze(caseId);
+  if (post) await Api.analyze(caseId);
+  Router.set(`/run/${caseId}`);
   $("#st1").classList.add("active"); $("#so1").textContent = "欄位擷取中…";
   return new Promise((resolve, reject) => {
     const started = {};
@@ -414,7 +415,7 @@ async function enterWork(caseId, analysis) {
   $("#analysisNote").style.display = "none";
   $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; });
   runCase(c, false);          // 走與示範案相同的 render 路徑（S.served/S.recv/立場/草稿版本）
-  render(); show("s-work"); persist();
+  render(); show("s-work"); persist(); Router.set(`/case/${caseId}`);
 }
 
 /* =========================================================
@@ -475,7 +476,7 @@ function updateChips() {
   $$(".tab")[2].classList.toggle("warn", S.c.citations.some((x) => x.status !== "ok"));
 }
 function recompute() { renderExtract(); renderIssues(); renderDraft(); updateChips(); persist(); }
-$$(".tab").forEach((b) => b.addEventListener("click", () => { $$(".tab").forEach((x) => x.classList.toggle("on", x === b)); $$(".tabpage").forEach((p, i) => p.classList.toggle("on", i === +b.dataset.t)); $("#panel").scrollTop = 0; if (S.c) asstSuggest(); }));
+$$(".tab").forEach((b) => b.addEventListener("click", () => { $$(".tab").forEach((x) => x.classList.toggle("on", x === b)); $$(".tabpage").forEach((p, i) => p.classList.toggle("on", i === +b.dataset.t)); $("#panel").scrollTop = 0; if (S.c) { asstSuggest(); Router.set(`/case/${S.libId || S.c.caseId || S.c.id}/${+b.dataset.t + 1}`); } }));
 
 /* ---------- 分欄拖曳、展開卷宗 ---------- */
 (function () {
@@ -879,7 +880,7 @@ $("#courtSend").addEventListener("click", () => { const res = $("#courtRes").val
 
 /* ---------- 案件庫 ---------- */
 function openLibrary() {
-  persist(); show("s-lib");
+  persist(); show("s-lib"); Router.set("/lib");
   const subj = [...new Set(LIB.map((r) => r.subj))], arts = [...new Set(LIB.map((r) => r.art))];
   $("#fSubj").innerHTML = '<option value="">案由：全部</option>' + subj.map((s) => `<option>${esc(s)}</option>`).join(""); $("#fArt").innerHTML = '<option value="">條款：全部</option>' + arts.map((s) => `<option>${esc(s)}</option>`).join("");
   renderLib(); $("#backBtn").style.display = "";
@@ -900,7 +901,7 @@ function lawCounts() { const recent = LAWLIB.filter((l) => { const t = isoT(l.da
 function renderLawCard() { const k = lawCounts(), stale = LAWLIB.filter((l) => /資料集 PDF 為/.test(l.src || "")).length; $("#lawCard").innerHTML = `<span><b>法規庫</b>　法規 <b class="num">${k.laws}</b> 部・函釋 <b class="num">${k.rul}</b> 則</span><span>上次同步全國法規資料庫 <b class="num">${esc(k.sync)}</b></span>${stale ? `<span class="warn">${stale} 部資料集版本落後</span>` : ""}<span class="go">開啟法規庫 →</span>`; }
 $("#lawCard").addEventListener("click", openLawLib); $("#lawBtn").addEventListener("click", openLawLib);
 let LAWTAB = "law";
-function openLawLib() { persist(); show("s-law"); $("#backBtn").style.display = ""; renderLaw(); }
+function openLawLib() { persist(); show("s-law"); Router.set("/law"); $("#backBtn").style.display = ""; renderLaw(); }
 function renderLaw() {
   const k = lawCounts(); $("#lawStat").textContent = `法規 ${k.laws}・函釋 ${k.rul}`; $("#syncStat").textContent = `上次同步：${k.sync}`;
   $("#syncBtn").onclick = () => { const b = $("#syncBtn"); b.disabled = true; b.textContent = "同步中…"; $("#syncLog").innerHTML = "連線 law.moj.gov.tw 開放資料（示意）…"; setTimeout(() => { const ts = today() + " " + now().slice(0, 5); localStorage.setItem("ssz.lawsync", ts); b.disabled = false; b.textContent = "同步全國法規資料庫"; $("#syncLog").innerHTML = `✓ ${ts} 同步完成（law.moj.gov.tw 法律檔 6 MB＋命令檔 25 MB）・比對 ${LAWLIB.length} 部：<b style="color:var(--seal)">2 部資料集版本落後</b>——廢棄物清理法 106-06-14 → 官方 115-07-15（117-07-15 施行）、民法 110-01-20 → 115-08-17；其餘一致。<span class="note">此結果來自 experiments/pipeline/lawsync.py 實際同步（2026-09-12）；前端僅回放。</span>`; renderLaw(); renderLawCard(); }, 1400); };
@@ -1125,3 +1126,49 @@ function diffHtml(a, b) {
   while (i < n && j < m) { if (a[i] === b[j]) { push("=", a[i]); i++; j++; } else if (dp[(i + 1) * (m + 1) + j] >= dp[i * (m + 1) + j + 1]) { push("-", a[i]); i++; } else { push("+", b[j]); j++; } }
   while (i < n) push("-", a[i++]); while (j < m) push("+", b[j++]); flush(); return out;
 }
+
+
+/* =========================================================
+   網址路由（hash）：#/ 首頁　#/lib 案件庫　#/law 法規庫　#/run/{caseId} 分析中　#/case/{id}[/{tab 1–5}]
+   id 可為：案件庫 libId、示範案 id（A/B/C）、真上傳 caseId。程式內切換用 replaceState，不觸發 hashchange。
+   ========================================================= */
+const Router = {
+  set(path) { const h = "#" + path; if (location.hash !== h) history.replaceState(null, "", h); },
+  parse() { const m = /^#\/?([a-z]*)\/?([^/]*)\/?(\d)?/.exec(location.hash || "#/"); return { view: m?.[1] || "", id: m?.[2] ? decodeURIComponent(m[2]) : "", tab: m?.[3] ? +m[3] : 0 }; },
+  async go() {
+    const r = Router.parse();
+    if (r.view === "lib") return openLibrary();
+    if (r.view === "law") return openLawLib();
+    if ((r.view === "case" || r.view === "run") && r.id) {
+      const cur = S.c && (S.libId === r.id || S.c.caseId === r.id || S.c.id === r.id);
+      if (!cur) {
+        const rec = LIB.find((x) => x.libId === r.id);
+        const mock = CASES.find((x) => x.id === r.id);
+        if (rec) openRecord(rec);
+        else if (mock) runCase(structuredClone(mock), false);
+        else await resumeLive(r.id);
+      }
+      if (r.tab && $$(".tab")[r.tab - 1] && !$$(".tab")[r.tab - 1].disabled) $$(".tab")[r.tab - 1].click();
+      return;
+    }
+    if ($("#s-pick") && !$("#s-pick").classList.contains("on") && r.view === "") $("#backBtn").click();
+  },
+};
+/** 直接開 #/case/{caseId}：有分析結果就進工作畫面；分析中就接上進度；只有歸戶結果就先分析 */
+async function resumeLive(caseId) {
+  let doc = null;
+  try { doc = await Api.analysis(caseId); } catch (e) { if (e.status !== 404) return asstSay(`讀取案件失敗：${e.message}`); }
+  if (doc && doc.status.state === "done") return enterWork(caseId, doc);
+  let payload;
+  try { payload = await Api.listFiles(caseId); } catch (e) { $("#runSub").textContent = ""; show("s-pick"); Router.set("/"); alert(`找不到案件 ${caseId}`); return; }
+  $("#chip").classList.add("on"); $("#chipName").textContent = payload.files.find((f) => f.segments?.[0]?.party_hint)?.segments[0].party_hint || "上傳案件"; $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = "";
+  $("#runSub").textContent = `${payload.files.length} 個檔案　・　${caseId}`;
+  $("#stepList").innerHTML = LIVE_STEPS.map(([name], i) => `<div class="step ${i === 0 ? "done" : ""}" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${name}</div><div class="out" id="so${i}">${i === 0 ? `${payload.files.length} 份已辨識` : ""}</div></div><div class="ms" id="sm${i}"></div></div>`).join("");
+  $("#runBar").style.width = "20%"; show("s-run");
+  const pending = payload.files.some((f) => f.status === "queued" || f.status === "processing");
+  if (pending) { $("#runTitle").textContent = "文件辨識進行中"; $("#so0").textContent = "辨識尚未完成，請稍後重新整理"; return; }
+  try { await runAnalysis(caseId, { post: !(doc && doc.status.state === "running") }); }
+  catch (e) { $("#runTitle").textContent = "分析失敗"; $("#so1").innerHTML = `<span style="color:var(--seal)">${esc(e.code || "ERROR")}：${esc(e.message || "")}</span>`; }
+}
+window.addEventListener("hashchange", () => Router.go());
+Router.go();
