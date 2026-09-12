@@ -22,7 +22,7 @@ const TYPES = ["訴願書", "訴願委任書", "補充理由書", "答辯書", "
 /* ---------- 全域狀態 ---------- */
 const S = { c: null, live: false, libId: null, status: "承辦中", served: null, recv: null, stances: {}, plan: null, paras: [], versions: [], audit: [], objections: [], doc: null, zoom: 1, final: null, court: null, finalDiff: null, labels: [] };
 let LIB = [];
-try { LIB = JSON.parse(localStorage.getItem("ssz.lib") || "[]"); } catch (e) { LIB = []; }
+try { LIB = JSON.parse(localStorage.getItem("ssz.lib") || "[]").filter((r) => r && r.libId); } catch (e) { LIB = []; }   // 過濾舊版留下的 libId=null 殘留列
 function saveLib() { try { localStorage.setItem("ssz.lib", JSON.stringify(LIB)); } catch (e) { /* 容量不足時略過 */ } }
 
 /* ---------- 主題 ---------- */
@@ -441,6 +441,7 @@ const statusLabel = () => S.status === "已結案" && S.court ? `已結案・法
 
 /* ---------- 持久化（案件庫） ---------- */
 function persist() {
+  if (!S.libId || !S.c) return;   // 尚未配到案件編號（分析中、路由還原中）不落地，避免產生 libId=null 的殘留列
   if (!S.c) return;
   const c = S.c;
   if (c.analysisPending) {      // 真上傳案件：只有卷宗是真的，判定／草稿尚未接線，不要去算
@@ -811,7 +812,8 @@ function renderDraft() {
     ${reply}
     <div class="paper ${ro ? "ro" : ""}" id="draftBody"><div class="pt">${esc(d.head)}</div><div class="ps">${esc(d.sub)}${ro ? "　・唯讀" : ""}</div>${body}<div class="tail">（訴願審議委員會委員名單、教示條款及發文日期由公文系統自動帶入）</div></div>
     <p class="foot-note" style="max-width:820px;margin:16px auto 0">草稿僅供承辦人參考，一切法律見解與事實認定仍以承辦人及訴願審議委員會之判斷為準。黃底標示處必須由承辦人補實後始得送審。</p>`;
-  $("#moreBtn").addEventListener("click", (e) => { e.stopPropagation(); $("#moreMenu").classList.toggle("on"); }); document.addEventListener("click", () => $("#moreMenu")?.classList.remove("on"), { once: true });
+  $("#moreBtn").addEventListener("click", (e) => { e.stopPropagation(); $("#moreMenu").classList.toggle("on"); }); document.addEventListener("click", (e) => { if (!e.target.closest("#moreBtn")) $("#moreMenu")?.classList.remove("on"); });
+  $$("#moreMenu button").forEach((b) => b.addEventListener("click", () => $("#moreMenu").classList.remove("on")));
   if (!ro) $$("#draftBody .para").forEach((el) => { el.addEventListener("input", () => { const q = S.paras.find((x) => x.id === el.dataset.pid); const clone = el.cloneNode(true); clone.querySelector(".tools")?.remove(); q.text = clone.innerHTML; q.src = "human"; el.dataset.src = "human"; el.dirty = true; }); el.addEventListener("blur", () => { if (!el.dirty) return; el.dirty = false; const q = S.paras.find((x) => x.id === el.dataset.pid); S.audit.push({ ts: now(), who: "hu", para: paraLabel(q), action: "人工直接編輯" }); S.versions.push({ ts: now(), label: `人工編輯 ${paraLabel(q)}`, by: "承辦人", snap: S.paras.map((x) => ({ ...x })) }); persist(); }); });
   $("#copyAll").addEventListener("click", async () => { const clone = $("#draftBody").cloneNode(true); $$(".tools", clone).forEach((t) => t.remove()); const ok = await copyText(clone.innerText); toast(ok ? `已複製全文（${clone.innerText.length} 字）至剪貼簿` : "複製失敗：瀏覽器不允許存取剪貼簿", ok ? "ok" : "err"); });
   $("#exportOdf").addEventListener("click", () => { try { const d = draftFor(S.plan), cp = currentPlan(); const paras = S.paras.map((q) => ({ kind: q.kind === "meta" ? "p" : q.kind, text: q.kind === "meta" ? fillDates(q.text) : q.text })); const name = `訴願決定書草稿_${S.c.no}_${today()}.odt`; ODF.download(ODF.makeOdt({ head: d.head, sub: `案號 ${S.c.no}　${cp.verdict}　（草稿・待承辦人審核）`, paras, meta: { caseNo: S.c.no, exportedAt: today() } }), name); toast(`已輸出 ODF：${name}（LibreOffice／Word 可開；委員名單與教示條款由公文系統帶入）`, "ok", 5000); } catch (e) { toast(`ODF 輸出失敗：${e.message}`, "err"); } });
