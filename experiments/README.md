@@ -17,6 +17,9 @@ cd experiments
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 export AWS_PROFILE=ntpc-hackathon AWS_REGION=us-west-2
 .venv/bin/python -m pipeline.common case02        # smoke：列出文件、打一次 Bedrock
+.venv/bin/pip install -r requirements-dev.txt && .venv/bin/python -m pytest tests -q     # 助手：單元＋對話＋API 測試，零 LLM
+LIVE=1 .venv/bin/python -m pytest tests/test_assistant_live.py -q                        # 真打 Bedrock 3 句
+.venv/bin/python -m pipeline.assistant case02 "爭點 1 改採訴願人，影片看不出離手"           # 單句試 chat
 ```
 
 ## 寫一步的樣子
