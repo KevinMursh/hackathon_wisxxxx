@@ -207,7 +207,7 @@ function runCase(c, restore) {
     S.served = c.period.served; S.recv = c.period.recv; S.stances = {}; c.issues.forEach((i) => { S.stances[i.id] = i.stance || "open"; });
     S.status = "承辦中"; S.plan = null; S.paras = []; S.versions = []; S.audit = []; S.objections = []; S.final = null; S.court = null; S.finalDiff = null; S.sel = null;
     const existing = LIB.find((r) => r.baseId === c.id && r.status === "承辦中" && !c.live);
-    S.libId = existing ? existing.libId : `${c.id}-${Date.now().toString(36)}`;
+    S.libId = c.live ? c.caseId : existing ? existing.libId : `${c.id}-${Date.now().toString(36)}`;   // 真上傳案：網址與案件庫都用後端 caseId
   }
   S.doc = null; S.zoom = 1; S.docMode = {};
   $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = "";
