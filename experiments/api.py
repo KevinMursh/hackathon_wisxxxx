@@ -30,6 +30,14 @@ _ddb = boto3.resource("dynamodb", region_name=REGION).Table(TABLE) if USE_DDB el
 app = FastAPI(title="訴願智審臺 分析階段 API", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+
+@app.exception_handler(HTTPException)
+async def _flat_http_error(_req, exc):
+    """錯誤格式與歸戶 API 一致：頂層 {code, message, retryable}，不是 FastAPI 預設的 {detail: {...}}。"""
+    from fastapi.responses import JSONResponse
+    d = exc.detail if isinstance(exc.detail, dict) else {"code": f"HTTP_{exc.status_code}", "message": str(exc.detail), "retryable": False}
+    return JSONResponse(status_code=exc.status_code, content=d)
+
 STEPS = ["s2", "s3", "s4", "s5", "s6"]
 _jobs: dict[str, dict] = {}          # jobId → {caseId, kind, state, events[], subscribers[]}
 _analyses: dict[str, dict] = {}      # caseId → analysis 文件（同 GET 回應）
