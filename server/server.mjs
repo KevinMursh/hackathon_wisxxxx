@@ -20,6 +20,26 @@ const MAX_FILE = 100 * 1024 * 1024;
 const MAX_BATCH = 500 * 1024 * 1024;
 
 const app = express();
+
+/* CORS：前端與 API 同源時用不到，但隊友在本機跑前端打這台時需要。
+   存取控制靠 Security Group（IP 白名單），能連到這裡的本來就有完整權限，
+   因此預設放行所有來源；要收緊就設 CORS_ORIGIN=http://a,http://b */
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+const allowList = CORS_ORIGIN === "*" ? null : CORS_ORIGIN.split(",").map((s) => s.trim());
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (!allowList || allowList.includes(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", allowList ? origin : "*");
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Last-Event-ID");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Type");
+  res.setHeader("Access-Control-Max-Age", "86400");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use(express.json({ limit: "1mb" }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE, fieldSize: MAX_FILE } });
 

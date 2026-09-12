@@ -1,8 +1,11 @@
 # 文件歸戶 API 接口文檔
 
-> 版本：v0.1（2026-09-12）　狀態：契約定稿，`server/server.mjs` 依此實作中
-> Base URL：`https://<host>/api`　　Content-Type：JSON（上傳為 multipart/form-data）
-> 認證：黑客松 demo 不做登入；EC2 安全群組限制來源 IP。正式版加 Cognito／IAM。
+> 版本：v0.2（2026-09-12）　狀態：**已上線並驗收通過**
+> Base URL：`http://100.20.156.38/api`（us-west-2 EC2；與前端同源，前端亦由此服務）
+> Content-Type：JSON（上傳為 multipart/form-data）
+> **認證：無。** 存取控制只有 Security Group 的 IP 白名單——能連到就有完整權限。正式版需加 Cognito／IAM。
+> **CORS：預設放行所有來源**（`Access-Control-Allow-Origin: *`），可用 `CORS_ORIGIN=http://a,http://b` 收緊。
+> 允許方法 `GET,POST,PATCH,OPTIONS`，允許標頭 `Content-Type,Last-Event-ID`。
 
 ## 0. 一眼看懂
 
@@ -33,7 +36,9 @@ GET  /health                        ← 憑證與外部工具自檢
 | `kind` | enum | `pdf-text` `pdf-scan` `image` `video` `office` `text` `unsupported` |
 | `pages` | int\|null | 影片為 null |
 | `duration` | number\|null | 影片秒數 |
-| `status` | enum | `queued` `processing` `done` `error` `duplicate` `excluded` |
+| `status` | enum | `queued` `done` `error` `duplicate` `excluded` `container`（zip 母檔，本身不分類） |
+| `parentFileId` | string\|null | zip 子檔指向母檔 |
+| `childIds` | string[]\|null | `container` 才有 |
 | `error` | Error\|null | `status=error` 時 |
 | `duplicateOf` | string\|null | `status=duplicate` 時指向先到的 fileId |
 | `segments` | Segment[] | 分類結果；單一文件一筆，合併卷宗多筆 |
@@ -85,6 +90,7 @@ GET  /health                        ← 憑證與外部工具自檢
 | `UNSUPPORTED_FORMAT` | — | 該檔不送模型，`doc_type=其他`；不是錯誤，`status=done` |
 | `NORMALIZE_FAILED` | — | 工具抽不出內容（壞檔、截斷）；該檔 `status=error`，其餘繼續 |
 | `TOO_MANY_PAGES` | — | 掃描 PDF > 200 頁 |
+| `HEIC_DECODE_FAILED` | — | 內部代碼；實際會降級為 `unsupported` + warning，不回錯 |
 | `MISSING_IN_RESPONSE` | — | 模型漏回且單檔補跑仍漏 |
 | `SCHEMA_INVALID` | — | 模型回非法 JSON |
 | `BEDROCK_THROTTLED` | 503 | 重試 3 次仍節流；整箱失敗 |
@@ -135,15 +141,20 @@ data: {"fileId":"a3f9…","ok":true,"segments":[{…Segment…}],"ms":41230}
 event: result
 data: {"fileId":"0c1d…","ok":false,"error":{"code":"NORMALIZE_FAILED","message":"pdfinfo reports 0 pages"}}
 
+event: container
+data: {"fileId":"ab6d513f5058","childIds":["4a807d69aa44","9fa1a4cde1d1"]}
+
 event: done
-data: {"jobId":"job_…","total":18,"ok":16,"error":1,"duplicate":1,"boxes":2,"ms":93120}
+data: {"jobId":"job_…","total":27,"ok":26,"error":1,"duplicate":3,"ms":85047}
 
 event: fatal
 data: {"code":"BEDROCK_UNAVAILABLE","message":"…"}
 ```
 
 - `normalized` 每檔一筆，正規化完立刻推（前端可先顯示頁數／格式）
-- `result` **逐箱**推：一箱處理完，箱內每檔各推一筆；case02 = 2 箱 2 波
+- `container`：上傳的是 zip 時推一筆，列出展開後的子檔 id；母檔本身不送模型
+- `result` **逐箱**推：一箱處理完，箱內每檔各推一筆；27 檔 = 3 箱 3 波
+- zip 子檔若與案件內既有檔案內容相同（sha256 同），推 `{ok:true, duplicate:true, duplicateOf}` 且不送模型
 - 連線中斷重連：帶 `Last-Event-ID`，補推漏掉的事件
 - `fatal` 後不再有事件，job `status=failed`
 
@@ -209,6 +220,11 @@ Response `200`：更新後的 File。
 
 S3 bucket 全 private，前端一律拿 presigned URL；`Content-Disposition` 帶 `suggestedName`，下載即得標準檔名，S3 key 不改。
 
+## 3.1 重複檔的 fileId
+
+`fileId` 取自 sha256 前 12 碼，所以同內容不同檔名會撞號。重複者一律另給 id，**不覆蓋正本**：
+同批或跨批上傳重複 → `{sha12}-d{n}`；zip 子檔與既有檔重複 → `{sha12}-z{n}`。兩者 `duplicateOf` 都指向正本。
+
 ## 4. 限制
 
 - Bedrock ≤ 1 RPS：所有箱序列處理；同時多個 job 排隊（單一 worker）
@@ -216,3 +232,4 @@ S3 bucket 全 private，前端一律拿 presigned URL；`Content-Disposition` �
 - 單檔 ≤ 100 MB，整批 ≤ 500 MB；掃描 PDF ≤ 200 頁
 - 影片只抽 3 幀判類型，不分析內容
 - 合併卷宗回多段但**不拆檔**（下游用 `fromPage/toPage` 定位）
+- 實測：27 檔（含 20 頁合併卷宗、zip、heic、office）約 85 秒 3 箱；純 case02 18 檔約 62 秒 2 箱
