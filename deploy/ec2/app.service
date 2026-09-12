@@ -1,0 +1,14 @@
+[Unit]
+Description=ntpc-law3 FastAPI
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/app/src/backend
+Environment=AWS_REGION=us-west-2
+Environment=FRONTEND_DIR=/opt/app/src/frontend
+ExecStart=/opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 80 --proxy-headers
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
