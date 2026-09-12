@@ -1,7 +1,7 @@
 # 分析階段 API 契約（步驟 2–5：欄位／爭點／法規／相似案例／草稿）
 
-> 日期：2026-09-12　狀態：**契約定案，後端接線中**（由分析階段負責人接；前端可先用樣本開發）
-> 樣本：`docs/api-samples/case02.analysis.json`、`case03.analysis.json`、`lawlib.json`、`lawsync.json`——全部是 pipeline 真實跑出來的，不是手寫 mock
+> 日期：2026-09-12　狀態：**後端已實作並本機驗證**（`experiments/api.py`，7 個端點全通；雲上部署見 `deploy/analysis/README.md`）
+> 樣本：`docs/api-samples/case02.analysis.json`、`case03.analysis.json`（**就是 `GET /analysis` 的完整回應**：`status` + `output` + `objections`；case02 含 2 則無法採納的異議，case03 含 1 則採納→`drafts.v2`）、`lawlib.json`、`lawsync.json`——全部是 API 真實跑出來的，不是手寫 mock
 > 上游：`docs/API-文件歸戶.md`（步驟一，已上線）
 
 ---
@@ -86,6 +86,16 @@
 "lawlib": { "laws":[{ "n","kind","date","src","arts","cases","official","effective","status":"changed"|"same"|null,"currentArts" }],
             "rulings":[{ "n","topic","date","law","src" }], "judgments":[…同], "sync":{ "checkedAt","source","checked","changed","same","added" } }
 "unverifiedQuotes": []                                                      // 引句回查失敗清單，正常為空
+```
+
+異議後（頂層 `objections[]` 與 `output` 的變化）：
+```jsonc
+"objections": [{ "issueId":"I2", "issueTitle", "originalFinding":"採機關", "reason":"承辦人填的", "cites":[fileId…], "by",
+                 "result":"採納"|"部分採納"|"無法採納", "revised_finding":"採訴願人"|null,
+                 "reply":"給承辦人的 3–5 句回覆", "evidence":[{file, quote}…], "draft_changes":[…], "at", "jobId" }]
+"output.judge.afterObjection": { "issueId":"I2", "finding":"採訴願人", "version":"v2" }   // 採納時才有
+"output.issues[i].afterObjection": "採訴願人"                                            // 採納時才有
+"output.drafts.v2": { …同 A 的形狀…, "sub":"（異議後重產 v2・待承辦人審核）", "objectionId" }  // 採納／部分採納時多一版；refs 前綴 o1q…
 ```
 
 ## 4. 前端接線清單（步驟 2–5）

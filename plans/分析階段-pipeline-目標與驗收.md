@@ -99,7 +99,7 @@ v6 加的「法規庫」畫面（法規／函釋、修正日期、三時點、�
 | P8 | s6 草稿 | 主文與款次＝標準答案（case02：駁回、§79 I）；純文字含主文／事實／理由／據上論結／教示；草稿內所有條號查核非 `unknown_law`；理由段涵蓋標準答案 7 點中 ≥ 6 |
 | P9 | case03 不改任何東西 | 主文＝撤銷、§81 I；爭點含行政罰法 §27 裁處權時效；草稿無 case02 字眼 |
 | P10 | 異議 | 對爭點 2 填「照片模糊」→ 無法採納＋指向影像放大標註與影片幀；對爭點 3 填「未個別審酌」→ 回覆有理由且引裁罰係數表 |
-| P11 | API | `POST analyze` → SSE 五個 step 事件順序正確 → `GET analysis` 形狀通過前端 `data.js` 同名欄位 |
+| P11 ✅本機／☐雲上 | API | `POST analyze` → SSE 五個 step 事件順序正確 → `GET analysis` 形狀通過前端 `data.js` 同名欄位 |
 | P12 | 雲上 | 同一組 curl 在 `http://100.20.156.38/api/…` 跑過；journal 有每次呼叫的 ms／tokens |
 | P14 | 法規庫 | `lawlib.laws` 12 部日期／條數與前端 LAWLIB 一致；函釋 12、判解 19 |
 | P15 | 同步 | `sync_laws` 回 12 部比對結果；廢清法標 changed（官方 115-07-15）；裁罰準則 added；`lawsync.json` 可餵前端 syncLog |
