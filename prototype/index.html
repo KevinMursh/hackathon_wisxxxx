@@ -149,7 +149,9 @@
   .doc-pane { border-right:1px solid var(--line); background:var(--surface); height:100%; display:flex; flex-direction:column; min-height:0; min-width:0; position:relative; }
   .pane-head { border-bottom:1px solid var(--line); padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none; flex-wrap:wrap; }
   .doc-tools { display:flex; gap:6px; align-items:center; } .doc-tools button, .doc-tools a { padding:3px 8px; font-size:11px; }
-  .doclist { flex:none; max-height:34%; overflow-y:auto; border-bottom:1px solid var(--line); font-size:12.5px; }
+  .doclist { flex:none; max-height:34%; overflow-y:auto; border-bottom:1px solid var(--line); font-size:12.5px; transition:max-height .2s; }
+  .doc-pane.nodoc .doclist { max-height:none; flex:1 1 auto; border-bottom:none; }   /* 未選取文件：清單吃滿左欄，多看幾份 */
+  .doc-pane.nodoc .doc-view { flex:none; }
   .doclist.collapsed { max-height:none; }
   .doclist .grp { display:flex; align-items:center; gap:8px; padding:6px 12px; background:var(--surface-2); border-bottom:1px solid var(--line); cursor:pointer; font-size:11.5px; color:var(--ink-2); position:sticky; top:0; }
   .doclist .grp .n { margin-left:auto; font-family:var(--mono); color:var(--ink-3); } .doclist .grp .tri { font-size:9px; width:10px; }

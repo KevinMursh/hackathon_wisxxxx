@@ -643,13 +643,13 @@ function openLiveDoc(d, view, tools, head) {
 
 /* 再點同一份文件 → 取消選取：清空檢視區 */
 function closeDoc() {
-  S.doc = null; $("#tagPop").classList.remove("on"); $$("#docList .item").forEach((b) => b.classList.remove("on"));
+  S.doc = null; $("#tagPop").classList.remove("on"); $$("#docList .item").forEach((b) => b.classList.remove("on")); $("#docPane").classList.add("nodoc");
   $("#curDocName").textContent = "未選取文件"; $("#docTools").innerHTML = "";
-  $("#docView").innerHTML = `<div class="doc-empty"><span>未選取文件</span><span class="note">點選左側清單中的文件即可檢視；再點一次可取消選取</span></div>`;
+  $("#docView").innerHTML = `<div class="doc-empty" style="min-height:0;padding:10px"><span class="note">未選取文件——點選清單中的文件即可檢視；再點一次可取消選取</span></div>`;
 }
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
-  S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on");
+  S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on"); $("#docPane").classList.remove("nodoc");
   $$("#docList .item").forEach((b) => { const on = b.dataset.doc === id; b.classList.toggle("on", on); if (on) { const g = b.closest(".items").previousElementSibling; if (g.classList.contains("closed")) { g.classList.remove("closed"); g.querySelector(".tri").textContent = "▾"; } b.scrollIntoView({ block: "nearest" }); } });
   $("#curDocName").textContent = d.stdName || d.title;
   const view = $("#docView"), tools = $("#docTools"); tools.innerHTML = "";
