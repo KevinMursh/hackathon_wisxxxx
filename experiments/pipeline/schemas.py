@@ -92,6 +92,9 @@ class SimNote(BaseModel):
     why_similar: str = Field(description="與本案相似或可對照之處一句")
     score: int = Field(description="相似度 0–100")
     chips: list[str] = Field(description="2–3 個標籤，每個 ≤ 6 字")
+    borrow_from: str | None = Field(description="該案可借用的理由段編號，例「理由六」；無則 null")
+    borrow_for: str | None = Field(description="借給本案哪個爭點 id（I1、I2…）；無則 null")
+    borrow_what: str | None = Field(description="借用什麼：句式／論證結構／判準，一句 ≤ 25 字；反面對照寫「反面：…」")
 
 
 class Sims(BaseModel):

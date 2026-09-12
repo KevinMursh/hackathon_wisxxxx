@@ -6,7 +6,7 @@
 import json, re, sys, time
 from datetime import date, timedelta
 
-from . import casedb, lawdb, to_frontend
+from . import casedb, lawdb, lawlib, to_frontend
 from .anchors import locate
 from .common import RUNS, call_json, prompt, stream_text
 from .ingest import Doc, by_name, for_step, load_local, load_remote, prompt_block
@@ -157,6 +157,8 @@ def run(case: str, start="s2", images=True, api: str | None = None):
     # s6
     if "s6" in todo:
         ex = "\n\n".join(f"=== 格式範例 {x['id']} ===\n{casedb.text_of(x, 5000)}" for x in sims[:2])
+        borrow = [{"id": n["id"], "from": n["borrow_from"], "for": n["borrow_for"], "what": n["borrow_what"]} for n in sim_notes.get("notes", []) if n.get("borrow_from")]
+        ex = "相似案例可借用段落（論理架構）：\n" + json.dumps(borrow, ensure_ascii=False) + "\n\n" + ex
         user = ("本案卷宗：\n" + prompt_block(docs, 6000) + "\n\n本案欄位：\n" + json.dumps({k: v for k, v in fields.items() if k != "compare"}, ensure_ascii=False) +
                 "\n\n程序檢核：\n" + json.dumps(period, ensure_ascii=False) + "\n\n本案爭點：\n" + json.dumps(issues, ensure_ascii=False) +
                 "\n\n推薦法條、函釋、判解（含原文）：\n" + json.dumps(verified, ensure_ascii=False) + "\n\n" + ex + "\n\n請撰擬本案訴願決定書草稿。")
@@ -169,7 +171,8 @@ def run(case: str, start="s2", images=True, api: str | None = None):
     draft_cites = lawdb.check_citations(db, draft, source="草稿"); _save(case, "s6_citations", draft_cites)
     log(f"[s6] {len(draft)} 字；引用 {len(draft_cites)} 則，unknown {sum(c['status']=='unknown_law' for c in draft_cites)}")
 
-    fe = to_frontend.build(docs, fields, period, issues, verified, cites, laws, sims, sim_notes, draft, draft_cites)
+    lib = lawlib.build()
+    fe = to_frontend.build(docs, fields, period, issues, verified, cites, laws, sims, sim_notes, draft, draft_cites, lib)
     _save(case, "frontend", fe)
     log(f"[fe] refs {len(fe['refs'])}（text {sum(v[1]=='text' for v in fe['refs'].values())}／doc {sum(v[1]=='doc' for v in fe['refs'].values())}／time {sum(v[1]=='time' for v in fe['refs'].values())}）；未定位引句 {len(fe['unverifiedQuotes'])}；判定 {fe['judge']['verdict']} {fe['judge']['art']} risk={fe['judge']['risk']}；總耗時 {time.monotonic()-t0:.0f}s")
 

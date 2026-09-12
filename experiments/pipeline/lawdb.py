@@ -30,20 +30,50 @@ def _parse(pdf: Path) -> tuple[str, str, dict]:
     return (name.group(1) if name else pdf.stem), (amended.group(1) if amended else ""), arts
 
 
+CURRENT_DIR = CACHE.parent / "kb_corpus/laws"
+_CUR = re.compile(r"^第\s*(\S+?)\s*條\s*$")
+
+
+def _parse_current(p: Path) -> tuple[str, str, dict]:
+    """kb/sync_laws.py 產出的現行版：『法規名稱：…／修正日期：民國 YYY-MM-DD／第 N 條\n條文』"""
+    txt = p.read_text(encoding="utf-8")
+    name = re.search(r"法規名稱：\s*(\S+)", txt).group(1)
+    amended = re.search(r"修正日期：民國\s*(\S+?)（", txt)
+    arts, cur, buf = {}, None, []
+    for line in txt.splitlines():
+        m = _CUR.match(line)
+        if m:
+            if cur:
+                arts[cur] = "\n".join(buf).strip()
+            cur, buf = m.group(1), []
+        elif cur:
+            buf.append(line)
+    if cur:
+        arts[cur] = "\n".join(buf).strip()
+    return name, (amended.group(1) if amended else ""), arts
+
+
 def load() -> dict:
+    """資料集版本為主（行為時法）；同步下來的現行版以「{法規}（現行）」另存，資料集沒有的子法直接以本名加入。"""
     if CACHE.exists():
-        return json.loads(CACHE.read_text(encoding="utf-8"))
-    db = {}
-    for pdf in sorted(LAW_DIR.glob("*.pdf")):
-        name, amended, arts = _parse(pdf)
-        db[name] = {"amended": amended, "articles": arts}
-    CACHE.write_text(json.dumps(db, ensure_ascii=False), encoding="utf-8")
+        db = json.loads(CACHE.read_text(encoding="utf-8"))
+    else:
+        db = {}
+        for pdf in sorted(LAW_DIR.glob("*.pdf")):
+            name, amended, arts = _parse(pdf)
+            db[name] = {"amended": amended, "articles": arts, "source": "命題方提供"}
+        CACHE.write_text(json.dumps(db, ensure_ascii=False), encoding="utf-8")
+    for p in sorted(CURRENT_DIR.glob("*（現行 *）.txt")) if CURRENT_DIR.exists() else []:
+        name, amended, arts = _parse_current(p)
+        key = name if name not in db else f"{name}（現行）"
+        y, mo, d = (amended.split("-") + ["", ""])[:3]
+        db[key] = {"amended": f"民國 {y} 年 {mo} 月 {d} 日", "articles": arts, "source": "全國法規資料庫同步"}
     return db
 
 
 def lookup(db: dict, law: str, art: str) -> dict:
     """回 {status, text}；status: ok / no_article / unknown_law"""
-    hit = next((k for k in db if k == law or law.endswith(k) or k.endswith(law)), None)
+    hit = next((k for k in db if k == law or law.endswith(k) or (k.endswith(law) and "（現行）" not in k)), None)
     if not hit:
         return {"status": "unknown_law", "text": ""}
     t = db[hit]["articles"].get(art)
