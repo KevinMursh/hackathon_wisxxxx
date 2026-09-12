@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 source deploy/config.sh
 
-tar --exclude='node_modules' --exclude='.cache' --exclude='env.production' \
+COPYFILE_DISABLE=1 tar --no-xattrs --exclude='node_modules' --exclude='.cache' \
     --exclude='.DS_Store' --exclude='__pycache__' \
     -czf /tmp/app-node.tar.gz server prototype deploy
 SIZE=$(du -h /tmp/app-node.tar.gz | cut -f1)

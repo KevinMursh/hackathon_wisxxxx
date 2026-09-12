@@ -31,7 +31,7 @@ ssm() {   # $1=說明 $2=逾時秒 $3=指令
 }
 
 echo "1/4 打包並上傳"
-tar --exclude='node_modules' --exclude='.cache' --exclude='env.production' \
+COPYFILE_DISABLE=1 tar --no-xattrs --exclude='node_modules' --exclude='.cache' \
     --exclude='.DS_Store' --exclude='__pycache__' \
     -czf /tmp/app-node.tar.gz server prototype deploy
 aws s3 cp /tmp/app-node.tar.gz "s3://${BUCKET}/app-node.tar.gz"
@@ -42,10 +42,8 @@ ssm "解壓" 120 "mkdir -p /opt/app && aws s3 cp s3://${BUCKET}/app-node.tar.gz 
 echo "3/4 安裝外部工具（LibreOffice 約 250MB，可能要 5–10 分鐘）"
 ssm "setup-tools" 1800 "bash /opt/app/deploy/node/setup-tools.sh"
 
-echo "4/4 停用舊 FastAPI、寫設定、起 Node 服務"
-ssm "切換服務" 900 "systemctl disable --now app 2>/dev/null; \
-[ -f /opt/app/server/env.production ] || printf 'AWS_REGION=us-west-2\\nMODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0\\nBEDROCK_MIN_INTERVAL=2.0\\nBEDROCK_CONCURRENCY=3\\nBOX_FILES=10\\nCLASSIFY_CACHE=0\\nS3_BUCKET=${BUCKET}\\nDDB_TABLE=appeal-cases\\n' > /opt/app/server/env.production; \
-bash /opt/app/deploy/node/redeploy.sh ${BUCKET}"
+echo "4/4 停用舊 FastAPI、起 Node 服務（設定檔由 redeploy.sh 產生於 /etc/app-node.conf）"
+ssm "切換服務" 900 "systemctl disable --now app 2>/dev/null; bash /opt/app/deploy/node/redeploy.sh ${BUCKET}"
 
 IP=$(aws ec2 describe-instances --instance-ids "$IID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 echo

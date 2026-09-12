@@ -24,7 +24,10 @@ if command -v dnf >/dev/null; then
 
   # AL2023 沒有 LibreOffice 套件：用官方 RPM 包
   if ! command -v soffice >/dev/null; then
-    LO_VER="${LO_VER:-24.8.4}"
+    # 版本會下架（24.8.x 已不在 stable），從目錄取現有最新版；可用 LO_VER 覆寫
+    LO_VER="${LO_VER:-$(curl -fsSL https://download.documentfoundation.org/libreoffice/stable/ 2>/dev/null \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+/' | tr -d '/' | sort -V | tail -1)}"
+    [ -z "$LO_VER" ] && LO_VER=25.8.7
     log "下載 LibreOffice ${LO_VER} RPM（約 250MB）…"
     curl -fsSL "https://download.documentfoundation.org/libreoffice/stable/${LO_VER}/rpm/x86_64/LibreOffice_${LO_VER}_Linux_x86-64_rpm.tar.gz" -o /tmp/lo.tgz \
       && tar -xzf /tmp/lo.tgz -C /tmp \
