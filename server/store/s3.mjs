@@ -1,7 +1,7 @@
 /* S3：原檔、正規化產物、presigned 下載 */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { S3Client, PutObjectCommand, GetObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const REGION = process.env.AWS_REGION || "us-west-2";
@@ -45,6 +45,24 @@ export async function presignGet(k, { filename } = {}) {
 export async function getJson(k) {
   const r = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: k }));
   return JSON.parse(await r.Body.transformToString());
+}
+
+/** 列出前綴下的所有 key（排序後回傳）。
+    shared=true 時不套 S3_PREFIX：示範卷宗是 dev 與正式共用的內容，不該被開發前綴切開。 */
+export async function listKeys(prefix, { shared = false } = {}) {
+  const out = [];
+  let token;
+  do {
+    const r = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: shared ? prefix : key(prefix), ContinuationToken: token }));
+    for (const o of r.Contents ?? []) if (!o.Key.endsWith("/")) out.push(o.Key);
+    token = r.IsTruncated ? r.NextContinuationToken : undefined;
+  } while (token);
+  return out.sort();
+}
+
+export async function getBytes(k) {
+  const r = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: k }));
+  return Buffer.from(await r.Body.transformToByteArray());
 }
 
 export async function health() {

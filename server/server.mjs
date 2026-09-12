@@ -4,7 +4,7 @@
    ========================================================= */
 import express from "express";
 import multer from "multer";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -82,7 +82,7 @@ async function runJob(job) {
     /* ① 正規化（逐檔推事件） */
     const normalized = [];
     for (const f of job.files) {
-      const buf = await s3Body(f.rawKey);
+      const buf = await s3.getBytes(f.rawKey);
       const r = await normalize(buf, f.originalName, { outDir, fileId: f.fileId });
       const isZip = r.ok && r.kind === "zip";
       let items = isZip ? flatten([r]) : [r];
@@ -161,19 +161,47 @@ async function runJob(job) {
   }
 }
 
-async function s3Body(key) {
-  const { GetObjectCommand } = await import("@aws-sdk/client-s3");
-  const { S3Client } = await import("@aws-sdk/client-s3");
-  const c = new S3Client({ region: REGION });
-  const r = await c.send(new GetObjectCommand({ Bucket: s3.BUCKET, Key: key }));
-  return Buffer.from(await r.Body.transformToByteArray());
-}
-
 const JOBS = new Map();   // jobId → job（含 seq / finished），SSE live 推用
 
 /* =========================================================
    Endpoints
    ========================================================= */
+
+/* 收件：上傳與 demo 共用同一條路（entries = [{originalName, buffer}]） */
+async function ingest(caseId, entries) {
+  const jobId = `job_${randomUUID().slice(0, 12)}`;
+  const existing = await ddb.listFiles(caseId);
+  const seenSha = new Map(existing.map((f) => [f.sha256, f.fileId]));
+  const files = [], duplicates = [], out = [];
+  let dupSeq = 0;
+
+  for (const { originalName, buffer } of entries) {
+    const sha256 = createHash("sha256").update(buffer).digest("hex");
+    const fileId = sha256.slice(0, 12);
+    if (seenSha.has(sha256)) {
+      // 重複檔另給 id：fileId 取自 sha256，直接沿用會覆蓋正本那筆紀錄
+      const dupId = `${fileId}-d${++dupSeq}`;
+      const rec = { fileId: dupId, caseId, originalName, sha256, bytes: buffer.length, status: "duplicate",
+        duplicateOf: seenSha.get(sha256), jobId, createdAt: iso(), updatedAt: iso() };
+      await ddb.putFile(rec);
+      duplicates.push(rec);
+      out.push({ fileId: dupId, originalName, bytes: buffer.length, status: "duplicate", duplicateOf: rec.duplicateOf });
+      continue;
+    }
+    seenSha.set(sha256, fileId);
+    const rawKey = await s3.putRaw(caseId, fileId, originalName, buffer);
+    const rec = { fileId, caseId, originalName, sha256, bytes: buffer.length, rawKey, status: "queued", jobId, createdAt: iso(), updatedAt: iso() };
+    await ddb.putFile(rec);
+    files.push(rec);
+    out.push({ fileId, originalName, bytes: buffer.length, status: "queued" });
+  }
+
+  const job = { jobId, caseId, files, duplicates, seq: 0, dupSeq, finished: false };
+  JOBS.set(jobId, job);
+  await ddb.putJob({ jobId, caseId, status: "queued", total: entries.length, createdAt: iso() });
+  enqueue(job);
+  return { jobId, caseId, files: out, eventsUrl: `/api/jobs/${jobId}/events` };
+}
 
 /* 上傳整批 */
 app.post("/api/cases/:caseId/files", upload.array("files"), async (req, res) => {
@@ -182,43 +210,41 @@ app.post("/api/cases/:caseId/files", upload.array("files"), async (req, res) => 
   if (!uploaded.length) return err(res, 400, "VALIDATION", "缺少 files");
   const total = uploaded.reduce((a, f) => a + f.size, 0);
   if (total > MAX_BATCH) return err(res, 413, "PAYLOAD_TOO_LARGE", `整批 ${(total / 1e6).toFixed(0)}MB 超過上限 500MB`);
-
-  const jobId = `job_${randomUUID().slice(0, 12)}`;
-  const existing = await ddb.listFiles(caseId);
-  const seenSha = new Map(existing.map((f) => [f.sha256, f.fileId]));
-  const files = [], duplicates = [], out = [];
-  let dupSeq = 0;
-
   try {
-    for (const u of uploaded) {
-      const originalName = Buffer.from(u.originalname, "latin1").toString("utf8");   // multer 預設 latin1
-      const { createHash } = await import("node:crypto");
-      const sha256 = createHash("sha256").update(u.buffer).digest("hex");
-      const fileId = sha256.slice(0, 12);
-      if (seenSha.has(sha256)) {
-        // 重複檔另給 id：fileId 取自 sha256，直接沿用會覆蓋正本那筆紀錄
-        const dupId = `${fileId}-d${++dupSeq}`;
-        const rec = { fileId: dupId, caseId, originalName, sha256, bytes: u.size, status: "duplicate", duplicateOf: seenSha.get(sha256), createdAt: iso(), updatedAt: iso() };
-        await ddb.putFile(rec);
-        duplicates.push(rec); out.push({ fileId: dupId, originalName, bytes: u.size, status: "duplicate", duplicateOf: rec.duplicateOf });
-        continue;
-      }
-      seenSha.set(sha256, fileId);
-      const rawKey = await s3.putRaw(caseId, fileId, originalName, u.buffer);
-      const rec = { fileId, caseId, originalName, sha256, bytes: u.size, rawKey, status: "queued", jobId, createdAt: iso(), updatedAt: iso() };
-      await ddb.putFile(rec);
-      files.push(rec); out.push({ fileId, originalName, bytes: u.size, status: "queued" });
-    }
-  } catch (e) {
-    return err(res, 500, "S3_WRITE_FAILED", e.message);
-  }
-
-  const job = { jobId, caseId, files, duplicates, seq: 0, dupSeq: 0, finished: false };
-  JOBS.set(jobId, job);
-  await ddb.putJob({ jobId, caseId, status: "queued", total: uploaded.length, createdAt: iso() });
-  enqueue(job);
-  res.status(202).json({ jobId, caseId, files: out, eventsUrl: `/api/jobs/${jobId}/events` });
+    const r = await ingest(caseId, uploaded.map((u) => ({
+      originalName: Buffer.from(u.originalname, "latin1").toString("utf8"),   // multer 預設 latin1
+      buffer: u.buffer,
+    })));
+    res.status(202).json(r);
+  } catch (e) { return err(res, 500, "S3_WRITE_FAILED", e.message); }
 });
+
+/* demo：從 S3 預放的示範卷宗真跑一次（不是查表）。body {pack:"case02", messy:false} */
+const DEMO_PACKS = ["case02"];
+app.post("/api/cases/:caseId/demo", async (req, res) => {
+  const { caseId } = req.params;
+  const { pack = "case02", messy = false } = req.body ?? {};
+  if (!DEMO_PACKS.includes(pack)) return err(res, 400, "VALIDATION", `未知的示範卷宗：${pack}`);
+  try {
+    const keys = await s3.listKeys(`demo/${pack}/`, { shared: true });   // demo 不套 dev 前綴
+    if (!keys.length) return err(res, 404, "DEMO_NOT_LOADED", `S3 尚無 demo/${pack}/，請先跑 server/scripts/upload-demo.mjs`);
+    const entries = [];
+    for (const [i, k] of keys.entries()) {
+      const name = k.split("/").pop();
+      entries.push({ originalName: messy ? messyName(name, i + 1) : name, buffer: await s3.getBytes(k) });
+    }
+    const r = await ingest(caseId, entries);
+    res.status(202).json({ ...r, pack, messy });
+  } catch (e) { return err(res, 500, e.code || "S3_READ_FAILED", e.message); }
+});
+
+// 亂檔名 demo：證明判定看內容不看檔名
+function messyName(name, n) {
+  const ext = (name.match(/\.[a-z0-9]+$/i) || [""])[0].toLowerCase();
+  if (/\.(jpe?g|png|heic)$/.test(ext)) return `IMG_${3980 + n}${ext}`;
+  if (/\.(mp4|mov)$/.test(ext)) return `DASHCAM_${n}${ext}`;
+  return n % 2 ? `scan_${String(n).padStart(4, "0")}${ext}` : `文件(${n})${ext}`;
+}
 
 /* SSE */
 app.get("/api/jobs/:jobId/events", async (req, res) => {
@@ -271,8 +297,27 @@ app.get("/api/cases/:caseId/files", async (req, res) => {
       f.rawUrl = await s3.presignGet(f.rawKey, { filename: seg?.suggestedName || f.originalName });
       f.pageImageUrls = await Promise.all((f.imageKeys ?? []).map((k) => s3.presignGet(k)));
     }
+    if (f.metaKey) f.textUrl = `/api/cases/${encodeURIComponent(caseId)}/files/${f.fileId}/text`;
+    // 每個 segment 配一張該段起始頁的圖（卷宗清單縮圖用）
+    for (const s of f.segments ?? []) {
+      const idx = (f.imagePages ?? []).indexOf(s.fromPage);
+      s.pageImageUrl = idx >= 0 ? f.pageImageUrls?.[idx] ?? null : f.pageImageUrls?.[0] ?? null;
+    }
   }
   res.json({ caseId, cutoffDate, files, groups });
+});
+
+/* 正規化後的逐頁文字：供「擷取文字」檢視與 refs 的 text 型錨點反白 */
+app.get("/api/cases/:caseId/files/:fileId/text", async (req, res) => {
+  const { caseId, fileId } = req.params;
+  const file = await ddb.getFile(caseId, fileId);
+  if (!file) return err(res, 404, "FILE_NOT_FOUND", fileId);
+  if (!file.metaKey) return err(res, 404, "TEXT_NOT_AVAILABLE", `${file.kind ?? "?"} 沒有可用文字（掃描件請改用 pageImageUrls）`);
+  try {
+    const meta = await s3.getJson(file.metaKey);
+    res.json({ fileId, kind: file.kind, pages: meta.pages ?? null,
+      textPerPage: meta.textPerPage ?? (meta.text ? [meta.text] : []), warnings: meta.warnings ?? [] });
+  } catch (e) { return err(res, 500, "S3_READ_FAILED", e.message); }
 });
 
 /* 人工修正 */

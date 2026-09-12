@@ -15,6 +15,8 @@ GET  /jobs/{jobId}/events           ← SSE：每處理完一箱推一批結果
 GET  /jobs/{jobId}                  ← 同資料，輪詢版
 GET  /cases/{caseId}/files          ← 目前歸戶狀態（含人工修正）
 PATCH /cases/{caseId}/files/{fileId} ← 人工改類型／來源／檔名 → 寫稽核
+GET  /cases/{caseId}/files/{fileId}/text  ← 正規化後的逐頁文字（擷取文字檢視、text 型錨點）
+POST /cases/{caseId}/demo           ← 用 S3 預放的示範卷宗真跑一次（非查表）
 GET  /cases/{caseId}/audit          ← 稽核軌跡
 GET  /health                        ← 憑證與外部工具自檢
 ```
@@ -42,7 +44,8 @@ GET  /health                        ← 憑證與外部工具自檢
 | `error` | Error\|null | `status=error` 時 |
 | `duplicateOf` | string\|null | `status=duplicate` 時指向先到的 fileId |
 | `segments` | Segment[] | 分類結果；單一文件一筆，合併卷宗多筆 |
-| `rawUrl` | string | presigned GET，原檔（15 分鐘有效） |
+| `rawUrl` | string | presigned GET，原檔（15 分鐘有效；過期回 403，重打 `GET files` 換新）|
+| `textUrl` | string | 逐頁文字端點路徑（見 §2.5b）；無正規化產物時不存在 |
 | `pageImageUrls` | string[] | presigned GET，已產出的頁圖（順序同 `imagePages`） |
 | `imagePages` | int[] | 哪些頁有圖（pdf-text 只有首尾＋掃描頁） |
 | `createdAt` / `updatedAt` | ISO string | |
@@ -67,6 +70,7 @@ GET  /health                        ← 憑證與外部工具自檢
 | `evidence_unverified` | bool | 程式 | evidence 引用的字樣在該檔文字裡找不到 |
 | `suggestedName` | string | 程式 | 模板見 §1.4；人工可改 |
 | `manual` | object\|null | 程式 | 人工修正過的欄位 `{doc_type?, source?, suggestedName?, by, at}` |
+| `pageImageUrl` | string\|null | 程式 | 該段起始頁的 presigned 頁圖（卷宗清單縮圖用）|
 
 ### 1.3 doc_type 封閉清單
 
@@ -194,6 +198,31 @@ data: {"code":"BEDROCK_UNAVAILABLE","message":"…"}
 - `nature` 隨 `doc_type` 重算；`timing` 若改的是裁處書日期相關則整案重算
 
 Response `200`：更新後的 File。
+
+### 2.5b `GET /cases/{caseId}/files/{fileId}/text`
+
+```json
+{ "fileId": "…", "kind": "pdf-text", "pages": 3, "textPerPage": ["第1頁…", "第2頁…"], "warnings": [] }
+```
+
+- 掃描件／照片／影片：回 `200` 但 `textPerPage: []`（沒有文字層）→ 前端改用 `pageImageUrls`
+- 沒有正規化產物（error／duplicate／container）：`404 TEXT_NOT_AVAILABLE`
+- 分析階段 `refs` 的 `text` 型錨點 `{page,start,end}` 就是對 `textPerPage[page-1]` 取字元區間
+
+### 2.5c `POST /cases/{caseId}/demo`
+
+```json
+{ "pack": "case02", "messy": true }
+```
+
+從 S3 `demo/{pack}/`（**不套 `S3_PREFIX`**，dev 與正式共用）讀檔，走與上傳完全相同的 job 流程——
+真的送模型，不是查表。`messy:true` 會把檔名換成 `IMG_3985.jpg`／`scan_0001.pdf`／`文件(2).pdf`，
+用來證明判定看內容不看檔名。回應同上傳，另帶 `pack`／`messy`。
+
+示範卷宗要先上傳一次：`node server/scripts/upload-demo.mjs case02`（20 檔）。
+`404 DEMO_NOT_LOADED` 表示還沒上傳。
+
+實測：case02 亂檔名 20 檔 → 90 秒、20/20 成功、分組 訴願人 2／原處分機關 13／未知 5。
 
 ### 2.6 `GET /cases/{caseId}/audit`
 
