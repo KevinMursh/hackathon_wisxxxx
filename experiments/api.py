@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from pipeline import lawlib, objection, run_all, to_frontend
+from pipeline import assistant, lawlib, objection, run_all, to_frontend
 from pipeline.anchors import RefTable
 from pipeline.common import RUNS
 from pipeline.ingest import load_any
@@ -113,7 +113,7 @@ def _run_analyze(job: dict):
         doc["status"].pop("t", None)
 
 
-def _run_objection(job: dict):
+def _run_objection(job: dict, emit_done: bool = True):
     case_id, ob = job["caseId"], job["payload"]
     doc = _load(case_id)
     try:
@@ -137,9 +137,88 @@ def _run_objection(job: dict):
                 if i["id"] == res["issueId"] and res["revised_finding"]:
                     i["afterObjection"] = res["revised_finding"]
         _save(case_id, doc)
-        _emit(job, "done", entry)
+        if emit_done:
+            _emit(job, "done", entry)
     except Exception as e:
+        if not emit_done:
+            raise
         _emit(job, "fatal", {"code": "OBJECTION_FAILED", "message": str(e)[:300]})
+
+
+# ---------- 助手提案（chat 產生 → confirm 執行 → objection 逐項） ----------
+_proposals: dict[str, dict] = {}   # pid → proposal doc
+
+
+def _psave(p: dict):
+    _proposals[p["id"]] = p
+    d = RUNS / p["caseId"] / "proposals"; d.mkdir(parents=True, exist_ok=True)
+    (d / f"{p['id']}.json").write_text(json.dumps(p, ensure_ascii=False), encoding="utf-8")
+    if _ddb is not None:
+        try:
+            _ddb.put_item(Item={"PK": f"CASE#{p['caseId']}", "SK": f"PROPOSAL#{p['id']}", "json": json.dumps(p, ensure_ascii=False), "updatedAt": _now()})
+        except Exception as e:
+            print("ddb put proposal failed:", str(e)[:80])
+
+
+def _pload(case_id: str, pid: str) -> dict | None:
+    if pid in _proposals:
+        return _proposals[pid]
+    f = RUNS / case_id / "proposals" / f"{pid}.json"
+    if f.exists():
+        return _proposals.setdefault(pid, json.loads(f.read_text(encoding="utf-8")))
+    if _ddb is not None:
+        r = _ddb.get_item(Key={"PK": f"CASE#{case_id}", "SK": f"PROPOSAL#{pid}"}).get("Item")
+        if r:
+            return _proposals.setdefault(pid, json.loads(r["json"]))
+    return None
+
+
+def _item_reason(it: dict) -> str:
+    t = it.get("type")
+    if t == "issue":
+        return {"appellant": "認定應改為採訴願人", "agency": "認定應改為採機關", "drop": "此爭點應刪除"}.get(it.get("to"), "") + (f"：{it['why']}" if it.get("why") else "")
+    if t == "reissue":
+        return f"納入新補件（{len(it.get('docs') or [])} 份）重新審查此爭點"
+    if t in ("law", "law-rm"):
+        return ("加引 " if t == "law" else "移除引用 ") + it.get("key", "") + ("" if it.get("ok", True) else f"（{it.get('msg')}；不得寫入草稿）")
+    if t == "served":
+        return f"送達日應更正為 {it.get('v')}（原 {it.get('from')}），期間截止 {it.get('deadline')}"
+    if t == "proc":
+        return "程序應進入實體審查" if it.get("v") == "merit" else f"程序應依訴願法第 77 條第 {str(it.get('v', '')).split('-')[-1]} 款不受理"
+    if t == "verdict":
+        return f"結論應改為「{it.get('to')}」"
+    if t == "text":
+        return f"{it.get('para')} 文字改寫：{it.get('how')}"
+    if t == "frame":
+        return f"論述角度：{it.get('angle')}"
+    return json.dumps(it, ensure_ascii=False)
+
+
+def _run_proposal(job: dict):
+    """confirm：爭點類 item 各跑一次 objection；其餘 item 併成一則 objection 的 reason（掛在第一個或指定爭點）。"""
+    case_id, pid = job["caseId"], job["payload"]["pid"]
+    p = _pload(case_id, pid); doc = _load(case_id)
+    p["state"] = "running"; _psave(p)
+    try:
+        issue_items = [it for it in p["items"] if it.get("type") in ("issue", "reissue") and it.get("id")]
+        others = [it for it in p["items"] if it not in issue_items]
+        reqs = [{"issueId": it["id"], "reason": _item_reason(it), "cites": it.get("docs") or [], "label": f"爭點 {it.get('n', '')}：{_item_reason(it)}"} for it in issue_items]
+        if others:
+            first = (issue_items[0]["id"] if issue_items else (doc["output"]["issues"][0]["id"] if doc["output"].get("issues") else "I1"))
+            reqs.append({"issueId": first, "reason": "；".join(_item_reason(it) for it in others), "cites": [], "label": "；".join(_item_reason(it) for it in others)})
+        replies = []
+        for i, rq in enumerate(reqs):
+            _emit(job, "step", {"step": "objection", "status": "running", "i": i + 1, "n": len(reqs), "label": rq["label"]})
+            sub = {"jobId": job["jobId"], "caseId": case_id, "payload": {"issueId": rq["issueId"], "reason": rq["reason"], "cites": rq["cites"], "by": "承辦人", "proposalId": pid}, "events": job["events"], "subscribers": job["subscribers"]}
+            _run_objection(sub, emit_done=False)
+            doc = _load(case_id); ob = doc["objections"][-1]
+            replies.append({"label": rq["label"], "result": ob.get("result"), "reply": ob.get("reply"), "evidence": ob.get("evidence") or [], "revised_finding": ob.get("revised_finding"), "issueId": ob.get("issueId")})
+            _emit(job, "step", {"step": "objection", "status": "done", "i": i + 1, "n": len(reqs), "result": ob.get("result")})
+        p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"]); _psave(p)
+        _emit(job, "done", {"proposalId": pid, "replies": replies})
+    except Exception as e:
+        p.update(state="failed", error=str(e)[:300]); _psave(p)
+        _emit(job, "fatal", {"code": "PROPOSAL_FAILED", "message": str(e)[:300]})
 
 
 def _run_sync(job: dict):
@@ -155,7 +234,7 @@ def _worker():
         job = _q.get()
         job["state"] = "running"
         with _lock:  # 同時只跑一個 job（1 RPS）
-            {"analyze": _run_analyze, "objection": _run_objection, "sync": _run_sync}[job["kind"]](job)
+            {"analyze": _run_analyze, "objection": _run_objection, "sync": _run_sync, "proposal": _run_proposal}[job["kind"]](job)
         job["state"] = "done"
 
 
@@ -222,6 +301,63 @@ def post_objection(case_id: str, body: ObjectionIn):
         raise HTTPException(400, {"code": "VALIDATION", "message": "reason 必填", "retryable": False})
     job = _submit("objection", case_id, body.model_dump())
     return {"jobId": job["jobId"], "eventsUrl": f"/api/jobs/{job['jobId']}/events"}
+
+
+class ChatIn(BaseModel):
+    message: str
+    tab: int | None = None
+    readonly: bool = False
+    history: list[dict] = []
+
+
+@app.post("/api/cases/{case_id}/chat")
+def post_chat(case_id: str, body: ChatIn):
+    """助手：問答（唯讀）或修改提案（不執行）。同步回；工具迴圈 ≤ 5 輪。"""
+    if not body.message.strip():
+        raise HTTPException(400, {"code": "VALIDATION", "message": "message 必填", "retryable": False})
+    doc = _load(case_id)
+    state = (doc or {}).get("output") or {}
+    with _lock:  # 與分析 job 共用 1 RPS
+        res = assistant.chat(case_id, body.message, state=state, tab=body.tab, history=body.history, readonly=body.readonly)
+    if res.get("proposal"):
+        pid = f"pp_{uuid.uuid4().hex[:8]}"
+        p = {"id": pid, "caseId": case_id, "message": body.message, "createdAt": _now(), **res["proposal"]}
+        _psave(p); res["proposal"] = p
+    return res
+
+
+@app.get("/api/cases/{case_id}/proposals/{pid}")
+def get_proposal(case_id: str, pid: str):
+    p = _pload(case_id, pid)
+    if not p:
+        raise HTTPException(404, {"code": "PROPOSAL_NOT_FOUND", "message": pid, "retryable": False})
+    return p
+
+
+@app.post("/api/cases/{case_id}/proposals/{pid}/confirm", status_code=202)
+def confirm_proposal(case_id: str, pid: str):
+    p = _pload(case_id, pid)
+    if not p:
+        raise HTTPException(404, {"code": "PROPOSAL_NOT_FOUND", "message": pid, "retryable": False})
+    if p["state"] != "pending":
+        raise HTTPException(409, {"code": "PROPOSAL_NOT_PENDING", "message": p["state"], "retryable": False})
+    doc = _load(case_id)
+    if not doc or doc["status"]["state"] != "done":
+        raise HTTPException(409, {"code": "ANALYSIS_NOT_READY", "message": "先完成分析", "retryable": True})
+    p["state"] = "queued"; _psave(p)
+    job = _submit("proposal", case_id, {"pid": pid})
+    return {"jobId": job["jobId"], "proposalId": pid, "eventsUrl": f"/api/jobs/{job['jobId']}/events"}
+
+
+@app.post("/api/cases/{case_id}/proposals/{pid}/cancel")
+def cancel_proposal(case_id: str, pid: str):
+    p = _pload(case_id, pid)
+    if not p:
+        raise HTTPException(404, {"code": "PROPOSAL_NOT_FOUND", "message": pid, "retryable": False})
+    if p["state"] not in ("pending",):
+        raise HTTPException(409, {"code": "PROPOSAL_NOT_PENDING", "message": p["state"], "retryable": False})
+    p.update(state="cancelled", cancelledAt=_now()); _psave(p)
+    return {"id": pid, "state": "cancelled"}
 
 
 @app.get("/api/jobs/{job_id}")
