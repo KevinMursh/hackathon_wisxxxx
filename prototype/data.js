@@ -1049,3 +1049,47 @@ CASE_A.sims[1].borrow = { from: "理由三", to: "r3", what: "期間計算句式
 /* 法規庫持久化（待補清單） */
 let LAWPEND = [];
 try { LAWPEND = JSON.parse(localStorage.getItem("ssz.lawpend") || "[]"); } catch (e) { LAWPEND = []; }
+
+/* ---------- v10 補件：案例 A 的示範補件包（答辯書＋卷證 2 份）與併入後資料 ---------- */
+CASE_A.supplement = {
+  label: "答辯書＋卷證 2 份（環保局 114-10-14 檢卷）",
+  files: [["答辯書_環保局_1141014.pdf", 1320], ["稽查工作紀錄表_1111203.jpg", 260], ["現場照片_1111203.jpg", 118]],
+  docs: [
+    { id: "defense", title: "答辯書", tag: "答辯書", src: "原處分機關", kind: "text", pages: 2, file: null, origName: "答辯書_環保局_1141014.pdf", stdName: "答辯書.pdf", summary: "環保局答辯：送達證書載同居人簽收，逾期 931 日，請不受理",
+      html: `<div class="doc-meta num">發文日期：114-10-14　發文字號：新北環稽字第 1141987321 號</div>
+        <h4>答辯意旨</h4>
+        <p>一、<mark data-ref="df-served">本件裁處書於 112 年 2 月 7 日郵務送達，由訴願人同居之弟簽收</mark>，依行政程序法第 73 條第 1 項，補充送達於付與同居人時即生效力。</p>
+        <p>二、<mark data-ref="df-late">訴願人遲至 114 年 9 月 25 日始提起訴願，已逾訴願法第 14 條第 1 項 30 日不變期間達 931 日</mark>，依同法第 77 條第 2 款應為不受理之決定。</p>
+        <p>三、<mark data-ref="df-fact">違規事實有 111 年 12 月 3 日稽查工作紀錄表及現場照片可稽</mark>，訴願人否認違規並無實據。</p>` },
+    { id: "insp", title: "稽查工作紀錄表", tag: "稽查紀錄", src: "原處分機關", kind: "image", pages: 1, file: "../資料集/評測用（勿用於RAG）/case02-廢清法79I駁回/卷宗包/03-卷證/04-稽查工作紀錄表.jpg", origName: "稽查工作紀錄表_1111203.jpg", stdName: "稽查工作紀錄表.jpg", summary: "111-12-03 稽查員手寫紀錄（掃描件；示範用影像）", boxes: [{ ref: "in-date", label: "稽查日期 111-12-03", x: 12, y: 14, w: 40, h: 8 }] },
+    { id: "photo", title: "現場照片", tag: "採證照片", src: "第三方", kind: "image", pages: 1, file: "../資料集/評測用（勿用於RAG）/case02-廢清法79I駁回/卷宗包/03-卷證/採證照片-01_20250627-124009.jpg", origName: "現場照片_1111203.jpg", stdName: "現場照片 01.jpg", summary: "路旁棄置一般廢棄物（示範用影像）", boxes: [{ ref: "ph-site", label: "棄置位置", x: 30, y: 40, w: 40, h: 30 }] },
+  ],
+  refs: { "df-served": ["defense", "mark"], "df-late": ["defense", "mark"], "df-fact": ["defense", "mark"], "in-date": ["insp", "box"], "ph-site": ["photo", "box"] },
+  fields: { "訴願人": ["洪○", "df-served"], "原處分": ["同左", "df-late"], "送達情形": ["112-02-07 同居人簽收，即生效力", "df-served"], "知悉日": ["不影響期間起算", "df-late"], "提起訴願日": ["114-09-25，逾期 931 日", "df-late"] },
+  issueD: ["裁處書 112-02-07 由同居之弟簽收，依行政程序法 §73 I 即生送達效力；提起訴願已逾期 931 日。", "df-served"],
+  issueE: [["稽查紀錄表 111-12-03", "in-date"], ["現場照片", "ph-site"]],
+  citations: [
+    { n: "行政程序法 第 73 條第 1 項", where: "答辯書 一", ref: "df-served", status: "ok", note: "補充送達" },
+    { n: "訴願法 第 14 條第 1 項", where: "答辯書 二", ref: "df-late", status: "ok", note: "30 日不變期間" },
+    { n: "訴願法 第 77 條第 2 款", where: "答辯書 二", ref: "df-late", status: "ok", note: "逾期不受理" },
+  ],
+  citationNote: "答辯書引用 3 則，全部於法規庫驗證為現行有效。",
+};
+
+/* 案例 case02 的示範補件包：訴願人事後補送「補充理由書＋行車紀錄器截圖」（訴願人／第三方）→ 自爭點起重算 */
+CASE_B.supplement = {
+  label: "訴願人補充理由書＋行車紀錄器截圖（114-10-20 收文）",
+  files: [["補充理由書_鄭○芳_1141020.pdf", 880], ["行車紀錄器截圖_20250627.jpg", 96]],
+  docs: [
+    { id: "supp", title: "補充理由書", tag: "補充理由書", src: "訴願人", kind: "text", pages: 1, file: null, origName: "補充理由書_鄭○芳_1141020.pdf", stdName: "補充理由書.pdf", summary: "訴願人補陳：影片拍攝角度偏斜，煙蒂落點在排水溝蓋，非拋棄",
+      html: `<div class="doc-meta num">收文日期：114-10-20　收文號：1141061379-2</div><h4>補充理由</h4>
+        <p>一、<mark data-ref="sp-angle">原處分機關所稱影片第 14 至 19 秒，係自後方偏斜角度拍攝，僅見手部動作，無法認定手中持有煙蒂</mark>。</p>
+        <p>二、<mark data-ref="sp-drain">縱有物品落地，其落點為排水溝蓋，本人係暫置後隨即撿回，非廢棄物清理法第 27 條所稱「拋棄」</mark>；併附本人行車紀錄器截圖為證。</p>` },
+    { id: "dashcam", title: "行車紀錄器截圖", tag: "採證照片", src: "訴願人", kind: "image", pages: 1, file: PACK + "03-卷證/採證照片-01_20250627-124009.jpg", origName: "行車紀錄器截圖_20250627.jpg", stdName: "訴願人提供截圖 01.jpg", summary: "訴願人自行提供之車內視角截圖（12:40:21）；示範用影像", boxes: [{ ref: "dc-hand", label: "訴願人主張：手部空無一物", x: 40, y: 45, w: 30, h: 25 }] },
+  ],
+  refs: { "sp-angle": ["supp", "mark"], "sp-drain": ["supp", "mark"], "dc-hand": ["dashcam", "box"] },
+  issueId: "I1",
+  issueA: ["照片未拍到丟棄之具體情況；補充理由：影片為偏斜角度，僅見手部動作；落點為排水溝蓋且隨即撿回，非「拋棄」。", "sp-angle"],
+  issueE: [["訴願人截圖 12:40:21：主張手部空無一物", "dc-hand"]],
+  issueNote: "訴願人補提之截圖時間 12:40:21 晚於採證影片 12:40:14–19，無法反證離手瞬間；「隨即撿回」與採證照片 03 落點仍在原處不符。",
+};

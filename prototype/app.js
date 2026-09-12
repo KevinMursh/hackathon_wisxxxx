@@ -259,11 +259,13 @@ function renderDocs() {
   const groups = SRC_ORDER.map((src) => [src, c.docs.filter((d) => (d.src || "原處分機關") === src)]).filter(([, l]) => l.length);
   const GNOTE = { "第三方": "獨立證據", "本局": "受理機關", "未知": "內容無從判定提出方" };
   $("#docList").innerHTML = groups.map(([src, list]) => `<div class="grp" data-g="${src}"><span class="tri">▾</span><span class="srct ${src}" style="margin:0">${src}</span><span>${GNOTE[src] || ""}</span><span class="n">${list.length}</span></div><div class="items">${list.map((d) => {
-    const bad = d.err ? "err" : d.dup ? "dup" : d.container ? "box" : "";
+    const bad = d.err ? "err" : d.dup ? "dup" : d.container ? "box" : d.pending ? "pend" : d.staged ? "staged" : "";
     const meta = d.partOf ? `第 ${d.fromPage}–${d.toPage} 頁・${d.partOf.n}/${d.partOf.total}`
       : d.duration ? `${d.duration}s・影片`
       : `${d.pages || 1} 頁・${KIND[d.kind] || ""}`;
     const badge = d.err ? `<span class="tag err" style="font-size:10px">讀取失敗</span>`
+      : d.pending ? `<span class="tag amber" style="font-size:10px">辨識中…</span>`
+      : d.staged ? `<span class="tag ${DOCTAG[d.tag] || "neutral"} tagbtn" data-edit="${d.id}" style="font-size:10px">${esc(d.tag)} ✎</span><span class="tag amber restage" data-restage="${d.id}" style="font-size:10px;cursor:pointer">待併入・提出</span>`
       : d.dup ? `<span class="tag neutral" style="font-size:10px">重複</span>`
       : d.container ? `<span class="tag neutral" style="font-size:10px">壓縮檔</span>`
       : `<span class="tag ${DOCTAG[d.tag] || "neutral"} tagbtn" data-edit="${d.id}" title="修正類型／來源" style="font-size:10px">${esc(d.tag)} ✎</span>`;
@@ -272,13 +274,15 @@ function renderDocs() {
   $$("#docList .grp").forEach((g) => g.addEventListener("click", () => { g.classList.toggle("closed"); g.querySelector(".tri").textContent = g.classList.contains("closed") ? "▸" : "▾"; }));
   $$("#docList .item").forEach((b) => b.addEventListener("click", () => openDoc(b.dataset.doc)));
   $$("#docList .tagbtn").forEach((t) => t.addEventListener("click", (e) => { e.stopPropagation(); openTagPop(t.dataset.edit, t); }));
+  $$("#docList .restage").forEach((t) => t.addEventListener("click", (e) => { e.stopPropagation(); proposeSupplement(); }));
+  $("#addBtn").disabled = S.status !== "承辦中"; $("#addDemo").style.display = c.supplement && !c.supplementApplied && !c.docs.some((d) => d.staged || d.pending) && S.status === "承辦中" ? "" : "none";
 }
 function openTagPop(id, anchor) {
   const d = S.c.docs.find((x) => x.id === id), pop = $("#tagPop"), pane = $("#docPane").getBoundingClientRect(), r = anchor.getBoundingClientRect();
   $("#tpType").innerHTML = TYPES.map((t) => `<option ${d.tag === t ? "selected" : ""}>${t}</option>`).join(""); $("#tpSrc").innerHTML = SRC_ORDER.map((t) => `<option ${d.src === t ? "selected" : ""}>${t}</option>`).join("");
   pop.style.left = Math.max(8, Math.min(pane.width - 230, r.left - pane.left - 120)) + "px"; pop.style.top = (r.bottom - pane.top + 4) + "px"; pop.classList.add("on");
   $("#tpCancel").onclick = () => pop.classList.remove("on");
-  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; renderDocs(); renderExtract(); renderIssues(); renderDraft(); persist(); openDoc(id); } pop.classList.remove("on"); };
+  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; if (d.staged) { d.unknown = false; d.summary = `承辦人指定：${t}（${sr}）`; } renderDocs(); renderExtract(); renderIssues(); renderDraft(); persist(); openDoc(id); if (d.staged) proposeSupplement(); } pop.classList.remove("on"); };
 }
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
@@ -628,6 +632,70 @@ function applyProposal(p) {
     el.querySelector("[data-tab]").addEventListener("click", () => $$(".tab")[4].click());
   });
 }
+
+/* ---------- 補件：只辨識新檔 → 助手提案 → 確認併入 → 局部重跑 ---------- */
+const CORE_TAGS = ["訴願書", "訴願委任書", "答辯書", "答辯書檢送函", "卷證目錄", "裁處書", "裁處書送達證書"];
+function docStep(d) { return CORE_TAGS.includes(d.tag) ? 0 : 2; }
+function classifyNew(f) {
+  const ext = (f.name.match(/\.[a-z0-9]+$/i) || [""])[0].toLowerCase(), kind = /\.(jpg|jpeg|png)$/.test(ext) ? "image" : /\.(mp4|mov)$/.test(ext) ? "video" : "pdf";
+  if (f.mock) return { ...structuredClone(f.mock), include: false, staged: true };
+  const id = classifyByName(f.name), ref = id ? CASE_B.docs.find((x) => x.id === id) : null;
+  if (ref) return { id: "new-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: f.name, origName: f.name, stdName: (STD_NAME[id] || ref.title) + ext, tag: ref.tag, src: ref.src, kind, pages: 1, file: null, include: false, staged: true, summary: `Claude 判定：${ref.tag}（${ref.src}）・依內容辨識，非檔名` };
+  return { id: "new-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: f.name, origName: f.name, stdName: f.name, tag: "其他", src: "未知", kind, pages: 1, file: null, include: false, staged: true, unknown: true, summary: "無法辨識內容，請點標籤指定類型／來源後再提出併入" };
+}
+function addFiles(list) {
+  const c = S.c; if (!c) return; if (S.status !== "承辦中") return asstSay(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`);
+  const pend = [];
+  list.forEach((f) => {
+    const dupOf = c.docs.find((d) => (d.origName || d.title) === f.name || (d.stdName === f.name));
+    if (dupOf) { c.docs.push({ id: "dup-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), title: f.name, origName: f.name, stdName: f.name, tag: dupOf.tag, src: dupOf.src, kind: "missing", include: false, dup: true, summary: `與「${dupOf.stdName || dupOf.title}」相同，已排除，不重跑` }); return; }
+    const d = { id: "pend-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), title: f.name, origName: f.name, stdName: f.name, tag: "辨識中", src: "未知", kind: "missing", include: false, pending: true, summary: "Claude 辨識中…（只送這份，不重跑既有文件）", _f: f };
+    c.docs.push(d); pend.push(d);
+  });
+  renderDocs(); S.audit.push({ ts: now(), who: "hu", para: "卷宗", action: `補件上傳 ${list.length} 份（重複 ${list.length - pend.length}）` });
+  if (!pend.length) { asstOpen(); asstAdd("a", `上傳的 ${list.length} 份與既有卷證相同，已排除；未變動任何內容。`); return; }
+  setTimeout(() => {
+    pend.forEach((p) => { const i = c.docs.indexOf(p); const d = classifyNew(p._f); c.docs[i] = d; });
+    renderDocs(); proposeSupplement();
+  }, 900 + pend.length * 450);
+}
+function proposeSupplement() {
+  const c = S.c, staged = c.docs.filter((d) => d.staged && !d.include); if (!staged.length) return;
+  const unknown = staged.filter((d) => d.unknown), from = Math.min(...staged.map(docStep)), scope = []; for (let i = from; i < 6; i++) scope.push(i);
+  asstOpen();
+  const el = asstAdd("a card", `<div class="pc-head"><b>補件提案</b><span>新增 ${staged.length} 份・尚未併入，Tab1–5 未變</span></div><div class="pc-body">
+    <div class="pc-item"><div class="lab">新增文件（僅這些檔案經 Claude 辨識）</div><div class="bd"><div>${staged.map((d) => `<div class="pc-doc"><span class="tag ${DOCTAG[d.tag] || "neutral"}" style="font-size:10px">${esc(d.tag)}</span><span><span class="nm">${esc(d.stdName)}</span><span class="srct ${d.src}">${d.src}</span><br><span class="on">原檔名：${esc(d.origName)}　${esc(d.summary || "")}</span></span><span class="jump" data-doc="${d.id}">開啟 ↗</span></div>`).join("")}</div></div></div>
+    ${unknown.length ? `<div class="pc-item" style="border-color:var(--seal)"><div class="lab" style="color:var(--seal)">待指定</div><div class="bd"><span style="color:var(--seal)">${unknown.length} 份無法辨識：請在左欄點該檔的標籤 ✎ 指定類型／來源，我會重新提案。</span></div></div>` : ""}
+    <div class="pc-item"><div class="lab">影響範圍</div><div class="bd"><div class="mini-steps">${RV_STEPS.map((s, i) => `<span class="${scope.includes(i) ? "re" : ""}">${i + 1} ${s}</span>`).join("")}</div><div class="note">${from === 0 ? "含答辯書／裁處書等核心文件 → 欄位擷取與三方對照全部重算" : "僅卷證／照片 → 自爭點起重算，擷取與期間維持"}</div></div></div>
+  </div><div class="pc-foot"><span class="note">確認後才併入案件；未納入的檔案留在清單</span><button class="ghost-btn" data-no>取消</button><button class="btn" data-yes ${unknown.length ? "disabled" : ""}>確認併入</button></div>`);
+  el.querySelectorAll("[data-doc]").forEach((j) => j.addEventListener("click", () => openDoc(j.dataset.doc)));
+  el.querySelector("[data-no]").addEventListener("click", () => { el.classList.add("off"); el.querySelector(".pc-head span").textContent = "已取消・檔案留在清單標「未納入」"; staged.forEach((d) => { d.summary = "未納入案件；點「提出併入」可再提案"; }); renderDocs(); asstAdd("a", "已取消，未變動任何內容。左欄該檔案標「未納入」，隨時可再提出。"); });
+  el.querySelector("[data-yes]").addEventListener("click", () => { el.classList.add("off"); el.querySelector(".pc-head span").textContent = "已確認・執行中"; applySupplement(staged, scope); });
+}
+function applySupplement(staged, scope) {
+  const c = S.c, before = S.paras.map((x) => ({ ...x }));
+  staged.forEach((d) => { d.include = true; d.staged = false; });
+  const sup = c.supplement, fromDemo = sup && staged.some((d) => sup.docs.some((x) => x.id === d.id));
+  if (fromDemo && !c.supplementApplied) {
+    Object.assign(c.refs, sup.refs); if (sup.fields) c.fields.forEach((f) => { if (sup.fields[f.k]) f.d = sup.fields[f.k]; });
+    const it = c.issues.find((x) => x.id === (sup.issueId || "I1")) || c.issues[0];
+    if (sup.issueA) it.a = sup.issueA; if (sup.issueD) it.d = sup.issueD; if (sup.issueE) it.e = [...it.e, ...sup.issueE.filter((e) => !it.e.some((x) => x[1] === e[1]))]; if (sup.issueNote) it.ai = (it.ai || "") + " 補件後：" + sup.issueNote;
+    if (sup.citations) { c.citations = sup.citations; c.citationNote = sup.citationNote; }
+    c.supplementApplied = true;
+  }
+  S.audit.push({ ts: now(), who: "ai", para: "卷宗", action: `併入補件 ${staged.length} 份：${staged.map((d) => d.tag).join("、")}` });
+  rerunSteps(scope, () => {
+    if (scope.includes(5)) { pushVersion(`補件後重產（${staged.length} 份・${scope.length} 步）`, "AI"); }
+    S.objections.push({ ts: now(), issue: `補件 ${staged.length} 份`, issueId: "docs", text: staged.map((d) => d.stdName).join("；"), ev: [], result: "accept", reply: "已併入並重新產生受影響步驟。", evidence: [], items: staged.map((d) => ({ label: `併入：${d.stdName}（${d.tag}／${d.src}）`, result: "accept", reply: fromDemo ? "已納入三方對照與爭點證據；答辯書引用已查核。" : "已納入卷宗；三方對照與爭點依新文件重算（mock：本案無對應示範資料，內容維持）。", evidence: [] })), scope, diff: null });
+    render(); show("s-work"); persist(); asstOpen();
+    const el = asstAdd("a card rc", `<div class="pc-head"><b>已併入</b><span>重新產生 ${scope.map((i) => RV_STEPS[i]).join("、")}；其餘維持</span></div><div class="pc-body"><div>${staged.map((d) => `<div class="rc-item"><span class="note">${esc(d.stdName)}</span><br>AI：<b class="a">已納入</b>　${fromDemo ? (sup.citations ? "三方對照「機關答辯」欄已補上、爭點證據新增、引用查核 " + c.citations.length + " 則" : "爭點「訴願人主張」與卷證顯示已更新，AI 認定附補件後說明") : "已納入卷宗分組並可於爭點引用"}</div>`).join("")}</div></div><div class="pc-foot"><span class="note">可於 Tab1 三方對照、Tab3 引用查核檢視變化</span><button class="ghost-btn" data-tab="${sup && sup.citations ? 0 : 1}">${sup && sup.citations ? "看三方對照 ↗" : "看爭點 ↗"}</button></div>`);
+    el.querySelector("[data-tab]").addEventListener("click", (e) => { $$(".tab")[+e.target.dataset.tab].click(); if (+e.target.dataset.tab === 0) $("#panel").scrollTop = $("#panel").scrollHeight; });
+  });
+}
+$("#addBtn").addEventListener("click", () => { if (S.status !== "承辦中") return asstSay(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`); $("#addFile").click(); });
+$("#addFile").addEventListener("change", () => { const fs = [...$("#addFile").files].map((f) => ({ name: f.name, size: f.size })); $("#addFile").value = ""; if (fs.length) addFiles(fs); });
+$("#addDemo").addEventListener("click", () => { const sup = S.c?.supplement; if (!sup) return; addFiles(sup.files.map(([name, size], i) => ({ name, size, mock: sup.docs[i] }))); $("#addDemo").style.display = "none"; });
+{ const pane = $("#docPane"); ["dragenter", "dragover"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.add("over"); })); ["dragleave", "drop"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.remove("over"); })); pane.addEventListener("drop", (e) => { const fs = [...(e.dataTransfer?.files || [])].map((f) => ({ name: f.name, size: f.size })); if (fs.length) addFiles(fs); }); }
 function asstSend() {
   const q = $("#asstIn").value.trim(); if (!q || !S.c) return; $("#asstIn").value = ""; asstAdd("u", esc(q));
   const c = S.c;
