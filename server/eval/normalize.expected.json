@@ -253,6 +253,28 @@
       "textMax": 20
     },
     {
+      "path": "fixtures/裁罰統計表.csv",
+      "kind": "text",
+      "mustContain": [
+        "114-06-27",
+        "3600"
+      ]
+    },
+    {
+      "path": "fixtures/裁罰統計表.xlsx",
+      "kind": "office",
+      "mustContain": [
+        "3600"
+      ]
+    },
+    {
+      "path": "fixtures/簡報.pptx",
+      "kind": "office",
+      "mustContain": [
+        "稽查案件說明"
+      ]
+    },
+    {
       "path": "fixtures/卷證打包.zip",
       "kind": "zip",
       "children": 3,

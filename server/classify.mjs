@@ -138,7 +138,7 @@ export function annotateTiming(results) {
 /** 真實副檔名：以 magic bytes 判定的 mime 為準；副檔名說謊時以內容為準（重新命名才有意義） */
 const MIME_EXT = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "jpg", "image/heif": "jpg", "video/mp4": "mp4", "video/quicktime": "mov", "text/plain": "txt" };
 export function trueExt(n) {
-  if (n.kind === "office") return path.extname(n.originalName).slice(1).toLowerCase();   // odt/docx 保留原格式
+  if (n.kind === "office") return path.extname(n.originalName).slice(1).toLowerCase();   // odt/docx/xlsx 等保留原格式
   return MIME_EXT[n.mime] || path.extname(n.originalName).slice(1).toLowerCase();
 }
 
