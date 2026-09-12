@@ -12,7 +12,8 @@
 | 助手後端放哪 | Python `experiments/api.py`（pipeline、lawdb、KB retrieval、runs 快取都在這；三個 runtime 共用 1 RPS，助手與分析同一把 `_lock`） |
 | 問／改怎麼分 | 兩層：① 程式 `classify_intent()` 先判（問句 → 工具清單**不含** `propose_revision`，模型無法提案）；② 模型在改句下可選 `propose_revision` 或 `ask_clarification`。可測、不靠 prompt |
 | 提案不直接執行 | `propose_revision` 是終止工具：回前端畫卡。`confirm` 另一個端點才跑；`cancel` 只改狀態 |
-| 確認後做什麼 | 爭點類 item → 既有 `objection.run`（重引證＋採納時重產草稿）；其他 item（法規／文字／角度／期間／程序／結論）併成一則 objection 的 reason 送同一條路（現況能力，不另開新 pipeline）；影響範圍由 item 類型算出給前端畫進度 |
+| 確認後做什麼 | ① 爭點類 item 逐一 `objection.run(regen=False)` 重引證（採納／部分採納／無法採納＋卷證）② 其餘 item 程式判定（法規查得到→採納並保證加入推薦；查無→無法採納不寫入）③ 依「有效 item」的最小步驟從第 N 步起 `run_all.run(..., revision=…)` **真正局部重跑**：期間覆寫（不重打 s2）、認定寫入 s3 快取、法條程式加入／移除、結論改變相似案例排序、s6 附前一版草稿「未受影響段落維持原文」；全部無法採納 → 不重跑 |
+| 預覽 | `POST proposals/{pid}/preview`：只改寫受影響段落（≤3 段各 1 次小呼叫、約 10–20 s）供提案卡畫 diff；結果快取在提案文件 |
 | 往返方式 | `chat` 同步回（工具迴圈 ≤ 5 輪、單次 ≤ 60 s）；`confirm` 202＋job，前端輪詢 `GET analysis` 等 `objections[]` 增加（與現行 applyLiveProposal 相同） |
 | 補件 | 走既有 `POST /api/cases/{id}/files`（同 caseId 累加）；結果視窗欄位對應 `segments[].suggestedName / doc_type / source / form / nature`；匯入＝重抓 `GET files`；無後端（mock 案）維持 v10b 行為 |
 
@@ -37,7 +38,8 @@
 規則：`readonly=true`（已送審／已結案）→ 改句回 `refuse`；問句永遠不會回 `proposal`。
 
 ### `GET /api/cases/{caseId}/proposals/{pid}` → 提案文件（`state`: pending／applied／cancelled／failed；applied 時有 `replies[]`）
-### `POST /api/cases/{caseId}/proposals/{pid}/confirm` → `202 {jobId, eventsUrl}`；完成後 `analysis.objections[]` 增加、提案 `state=applied`、`replies[] = [{label, result, reply, evidence[]}]`
+### `POST /api/cases/{caseId}/proposals/{pid}/confirm` → `202 {jobId, proposalId}`；進行中 `GET proposal` 的 `progress = {phase:"objection", i, n, label} | {phase:"rerun", step:"s4", steps:[…]}`；完成後 `state=applied`、`replies[]`、`rerun:["s4","s5","s6"]`、`version:"v2"`；`analysis.output` 整份換新（`drafts` 保留舊版＋新 vN、`issues[].afterObjection`）
+### `POST /api/cases/{caseId}/proposals/{pid}/preview` → `{previews:[{type, para:"理由二", before, after}]}`
 ### `POST /api/cases/{caseId}/proposals/{pid}/cancel` → `{state:"cancelled"}`
 
 ## 2. `proposal.items[]`（與 prototype `parseIntent` 同形，伺服器補查核欄位）
