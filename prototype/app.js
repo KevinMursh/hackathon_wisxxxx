@@ -597,7 +597,7 @@ function renderProposal(p) {
   const el = asstAdd("a card", `<div class="pc-head"><b>修改提案</b><span>${p.items.length} 項・尚未執行，Tab1–5 未變</span></div><div class="pc-body">${p.items.map(item).join("")}${diff}${steps}</div><div class="pc-foot"><span class="note">按確認後才會更新；原版本保留可回復</span><button class="ghost-btn" data-no="${p.id}">取消</button><button class="btn" data-yes="${p.id}">確認執行</button></div>`);
   el.querySelectorAll("[data-tab]").forEach((j) => j.addEventListener("click", () => { $$(".tab")[+j.dataset.tab].click(); if (j.dataset.el) document.getElementById(j.dataset.el)?.scrollIntoView({ behavior: "smooth", block: "start" }); }));
   el.querySelector("[data-no]").addEventListener("click", () => { el.classList.add("off"); el.querySelector(".pc-head span").textContent = "已取消・內容未變動"; delete PENDING[p.id]; asstAdd("a", "已取消。要調整提案的哪一部分？例如改另一個爭點、換一條法規，或換個說法。"); });
-  el.querySelector("[data-yes]").addEventListener("click", () => { el.classList.add("off"); el.querySelector(".pc-head span").textContent = "已確認・執行中"; delete PENDING[p.id]; applyProposal(p); });
+  el.querySelector("[data-yes]").addEventListener("click", () => { el.classList.add("busy"); el.querySelector(".pc-foot").remove(); delete PENDING[p.id]; p.el = el; applyProposal(p); });
   return el;
 }
 function aiReply(it) {
@@ -612,14 +612,16 @@ function aiReply(it) {
   if (it.type === "text") return { result: "accept", reply: `${it.lab}已依「${it.how}」改寫，其餘段落未動。`, evidence: [], para: it.para, after: it.after };
   return { result: "accept", reply: `理由已依「${it.angle}」角度重寫；事實、爭點與法規推薦不變。`, evidence: [], para: null, after: it.after, lab: it.lab };
 }
-function rerunSteps(scope, done) {
-  const c = S.c, steps = RV_STEPS.map((n, i) => [n, scope.includes(i) ? "重新產生（附承辦人意見）" : "維持（未受影響，作為下游 context）", scope.includes(i) ? 620 : 0]);
-  $("#runTitle").textContent = "依修改提案重新產生"; $("#runSub").textContent = `${c.name}　・　重跑 ${scope.length} 步，維持 ${6 - scope.length} 步`;
-  $("#stepList").innerHTML = steps.map((s, i) => `<div class="step ${s[2] ? "" : "done"}" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${s[0]}</div><div class="out" id="so${i}">${s[2] ? "" : s[1]}</div></div><div class="ms" id="sm${i}">${s[2] ? "" : "0 ms"}</div></div>`).join("");
-  $("#runBar").style.width = "0"; show("s-run"); let t = 0;
-  steps.forEach((s, i) => { if (!s[2]) return; setTimeout(() => { $("#st" + i).classList.add("active"); $("#runBar").style.width = ((i + 1) / 6 * 100) + "%"; }, t); t += s[2]; setTimeout(() => { const el = $("#st" + i); el.classList.remove("active"); el.classList.add("done"); $("#so" + i).textContent = s[1]; $("#sm" + i).textContent = s[2] + " ms"; }, t); });
-  setTimeout(() => { done(); $("#runTitle").textContent = "正在分析卷宗"; }, t + 400);
+/* 原地重跑：不切換畫面；提案卡的六步列逐步亮起，受影響分頁標「更新中」淡化，完成後只重繪那些分頁並短暫高亮 */
+const STEP_TAB = [0, 0, 1, 2, 3, 4];
+function rerunInPlace(scope, card, done) {
+  const tabs = [...new Set(scope.map((i) => STEP_TAB[i]))], strip = card ? card.querySelector(".mini-steps") : null, head = card ? card.querySelector(".pc-head span") : null;
+  tabs.forEach((t) => { $$(".tab")[t].classList.add("busy"); $("#p" + t).classList.add("busy"); });
+  let t = 0, k = 0;
+  scope.forEach((i) => { setTimeout(() => { if (strip) { const sp = strip.children[i]; sp.classList.add("run"); sp.textContent = `${i + 1} ${RV_STEPS[i]}…`; } if (head) head.textContent = `執行中 ${++k}/${scope.length}：${RV_STEPS[i]}`; }, t); t += 620; setTimeout(() => { if (strip) { const sp = strip.children[i]; sp.classList.remove("run"); sp.classList.add("ok"); sp.textContent = `✓ ${RV_STEPS[i]}`; } }, t); });
+  setTimeout(() => { if (head) head.textContent = `已執行・重新產生 ${scope.length} 步，其餘維持`; done(tabs); tabs.forEach((t) => { $$(".tab")[t].classList.remove("busy"); const pg = $("#p" + t); pg.classList.remove("busy"); pg.classList.add("flash"); setTimeout(() => pg.classList.remove("flash"), 1600); }); }, t + 300);
 }
+function renderTabs(tabs) { const R = [renderExtract, renderIssues, renderLaws, renderSims, renderDraft]; tabs.forEach((t) => R[t]()); }
 function applyProposal(p) {
   const c = S.c, D = { accept: "採納", partial: "部分採納", reject: "無法採納" }, before = S.paras.map((x) => ({ ...x }));
   const replies = p.items.map((it) => ({ ...it, ...aiReply(it) }));
@@ -631,9 +633,9 @@ function applyProposal(p) {
   const worst = replies.every((r) => r.result === "accept") ? "accept" : replies.some((r) => r.result !== "reject") ? "partial" : "reject";
   const o = { ts: now(), issue: `${p.items.length} 項`, issueId: replies.find((r) => r.type === "issue")?.id || "multi", text: p.q, ev: [], result: worst, reply: replies.map((r) => `${D[r.result]}：${r.reply}`).join(" "), evidence: [...new Set(replies.flatMap((r) => r.evidence))], plan: newPlan || null, items: replies.map((r) => ({ label: r.label, result: r.result, reply: r.reply, evidence: r.evidence })), scope: p.scope, diff: null };
   replies.forEach((r) => S.audit.push({ ts: now(), who: "ai", para: r.label.split("：")[0], action: `${D[r.result]}：${r.reply.slice(0, 40)}…` }));
-  rerunSteps(p.scope, () => {
+  rerunInPlace(p.scope, p.el, (tabs) => {
     if (p.scope.includes(5)) { o.diff = diffParas(before, S.paras); pushVersion(`修改提案後重產（${p.scope.length} 步）`, "AI"); }
-    S.objections.push(o); render(); show("s-work"); updateChips(); persist(); $$(".tab")[4].click(); $("#panel").scrollTop = 0; asstOpen();
+    S.objections.push(o); renderTabs(tabs); if (p.scope.includes(0)) renderDocs(); updateChips(); persist(); asstOpen();
     const el = asstAdd("a card rc", `<div class="pc-head"><b>已執行</b><span>重新產生 ${p.scope.map((i) => RV_STEPS[i]).join("、")}；其餘維持</span></div><div class="pc-body"><div>${replies.map((r) => `<div class="rc-item"><span class="note">${esc(r.label)}</span><br>AI：<b class="${r.result === "accept" ? "a" : r.result === "partial" ? "p" : "r"}">${D[r.result]}</b>　${esc(r.reply)}${r.evidence.length ? `<span class="note">　重新檢視：${r.evidence.map((x) => J(x, refTitle(x) + " ↗")).join("、")}</span>` : ""}</div>`).join("")}</div></div><div class="pc-foot"><span class="note">草稿新版本已建立，原版本可於版本紀錄回復</span><button class="ghost-btn" data-tab="4">看草稿 ↗</button>${o.diff && o.diff.length ? `<span class="note">變動 ${o.diff.length} 段</span>` : ""}</div>`);
     el.querySelector("[data-tab]").addEventListener("click", () => $$(".tab")[4].click());
   });

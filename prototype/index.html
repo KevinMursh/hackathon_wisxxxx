@@ -187,6 +187,9 @@
   .tab:hover { color:var(--ink-2); } .tab.on { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
   .tab .n { font-family:var(--mono); font-size:10px; color:var(--ink-3); border:1px solid var(--line); padding:0 4px; } .tab.on .n { border-color:var(--accent); color:var(--accent); }
   .tab .dot { width:6px; height:6px; border-radius:50%; background:var(--seal); display:none; } .tab.warn .dot { display:block; }
+  .tab.busy .dot { display:block; background:var(--amber); animation:blink 1s infinite; } .tab.busy::after { content:"更新中"; font-size:10px; color:var(--amber); font-weight:400; }
+  .tabpage.busy { opacity:.45; pointer-events:none; transition:opacity .3s; } .tabpage.flash > * { animation:flash 1.6s ease-out; } @keyframes flash { 0% { background:var(--amber-soft); box-shadow:0 0 0 3px var(--amber-soft); } 100% { background:transparent; box-shadow:none; } }
+  .msg.card.busy .pc-body > .pc-item:not(:last-child) { opacity:.6; } .mini-steps span.run { border-color:var(--amber); color:var(--amber); background:var(--amber-soft); animation:blink 1s infinite; } .mini-steps span.ok { border-color:var(--green); color:var(--green); background:var(--green-soft); }
   .tabpage { display:none; padding:20px 22px 80px; max-width:960px; } .tabpage.on { display:block; }
   .sec { margin-bottom:26px; } .sec-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid var(--line-strong); flex-wrap:wrap; }
   .sec-head h3 { font-size:14px; } .box2 { border:1px solid var(--line); background:var(--surface); }
