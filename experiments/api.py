@@ -288,7 +288,7 @@ def _run_proposal(job: dict):
         p["rerun"] = steps; p["progress"] = {"phase": "rerun", "step": start, "steps": steps}; _psave(p)
         lib = lawlib.build()
         def progress(step, status, payload):
-            if status == "running":
+            if status == "running" and step in steps:   # 快取步驟也會 emit，只回報真的重跑的步
                 p["progress"] = {"phase": "rerun", "step": step, "steps": steps}; _psave(p)
             _emit(job, "step", {"step": step, "status": status})
         new_fe = run_all.run(case_id, start, images=True, docs=docs, progress=progress, revision=revision)
