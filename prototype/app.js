@@ -457,6 +457,15 @@ function openRecord(rec) {
   if (rec.state.docs && rec.state.docs.length) { const byId = Object.fromEntries(base.docs.map((d) => [d.id, d])); c.docs = rec.state.docs.map((sd) => { const d = byId[sd.id] ? structuredClone(byId[sd.id]) : { id: sd.id, title: sd.title, kind: sd.kind || "missing", note: sd.note, file: sd.file }; Object.assign(d, { tag: sd.tag || d.tag, src: sd.src || d.src, include: sd.include !== false, origName: sd.origName, stdName: sd.stdName, summary: sd.summary || d.summary, dup: sd.dup, unknown: sd.unknown }); if (sd.id === "final") { d.kind = "pdf"; d.file = sd.file; } return d; }); }
   Object.assign(S, { libId: rec.libId, status: rec.status, served: rec.state.served, recv: rec.state.recv, stances: rec.state.stances, plan: rec.state.plan, paras: rec.state.paras, versions: rec.state.versions, audit: rec.state.audit, objections: rec.state.objections || [], final: rec.final, court: rec.court, finalDiff: rec.state.finalDiff });
   runCase(c, true);
+  if (c.live && c.caseId) refreshLiveUrls(c);   // 存在案件庫裡的 presigned URL 會過期（15 分鐘）且可能是舊簽法，重開時一律向後端換新
+}
+/** 真上傳案件：用 GET files 換新每份文件的 rawUrl／downloadUrl／pageImageUrls／textUrl */
+async function refreshLiveUrls(c) {
+  try {
+    const fresh = toDocs(await Api.listFiles(c.caseId)), byId = Object.fromEntries(fresh.map((d) => [d.id, d]));
+    c.docs.forEach((d) => { const f = byId[d.id] || fresh.find((x) => x.fileId === d.fileId); if (f) Object.assign(d, { file: f.file, downloadUrl: f.downloadUrl, pageImageUrls: f.pageImageUrls, textUrl: f.textUrl, thumb: f.thumb }); });
+    if (S.doc) openDoc(S.doc);
+  } catch (e) { console.warn("refreshLiveUrls", e.message); }
 }
 
 /* =========================================================
