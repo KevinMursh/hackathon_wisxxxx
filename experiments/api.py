@@ -282,6 +282,28 @@ def _run_proposal(job: dict):
         if not eff:
             p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], rerun=[]); _psave(p)
             _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": []}); return
+        t_run = time.monotonic()
+        text_only = all(it.get("type") == "text" for it in items)
+        if text_only:  # 快路徑：只改指定段落，直接用（或現算）段落改寫，不重產整份草稿（45 s → ≤ 10 s）
+            p["progress"] = {"phase": "rerun", "step": "s6", "steps": ["s6"]}; _psave(p)
+            _emit(job, "step", {"step": "s6", "status": "running"})
+            pv = p.get("previews") or assistant.preview(case_id, fe, items)
+            latest = fe["drafts"][vers[-1]]
+            labeled = assistant.label_paras(latest["paras"])
+            new_paras = json.loads(json.dumps(latest["paras"]))
+            changed = 0
+            for x in pv:
+                hit = next((para for lab, para in labeled if lab == x["para"]), None)
+                if hit:
+                    tgt = next(q for q in new_paras if q["id"] == hit["id"]); tgt["text"] = x["after"]; changed += 1
+            old_drafts = fe.get("drafts") or {}
+            ver = f"v{len(old_drafts) + 1}"
+            fe["drafts"] = {**old_drafts, ver: {**latest, "paras": new_paras, "sub": f"（修改提案後重產 {ver}・待承辦人審核）", "proposalId": pid}}
+            doc["output"] = fe; doc["status"]["rerunAt"] = _now(); _save(case_id, doc)
+            _emit(job, "step", {"step": "s6", "status": "done"})
+            p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], version=ver, rerun=["s6"], fast=True); p.pop("progress", None); _psave(p)
+            print(f"[proposal] {case_id} {pid} 快路徑 段落 {changed} {time.monotonic()-t_run:.1f}s", flush=True)
+            _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": ["s6"], "version": ver}); return
         start = START_OF_SCOPE[min(eff)]
         revision = _build_revision(items, replies, prev_draft)
         steps = STEPS[STEPS.index(start):]
@@ -305,6 +327,7 @@ def _run_proposal(job: dict):
             new_fe.setdefault("judge", {})["afterObjection"] = {"issueId": k0, "finding": v0, "version": ver}
         doc["output"] = new_fe; doc["status"]["rerunAt"] = _now(); _save(case_id, doc)
         p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], version=ver); p.pop("progress", None); _psave(p)
+        print(f"[proposal] {case_id} {pid} 重跑 {steps} {time.monotonic()-t_run:.1f}s", flush=True)
         _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": steps, "version": ver})
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -414,6 +437,7 @@ def post_chat(case_id: str, body: ChatIn):
         res = assistant.chat(case_id, body.message, state=state, tab=body.tab, history=body.history, readonly=body.readonly)
     finally:
         _lock.release()
+    print(f"[chat] {case_id} {res['kind']} {res['usage']['ms']/1000:.1f}s in={res['usage']['input']} out={res['usage']['output']} tools={[c['name'] for c in res['tool_calls']]} q={body.message[:40]!r}", flush=True)
     if res.get("proposal"):
         pid = f"pp_{uuid.uuid4().hex[:8]}"
         p = {"id": pid, "caseId": case_id, "message": body.message, "createdAt": _now(), **res["proposal"]}
@@ -440,10 +464,12 @@ def preview_proposal(case_id: str, pid: str):
     doc = _load(case_id)
     if not _lock.acquire(timeout=3):
         return {"id": pid, "previews": None, "busy": True}
+    t0 = time.monotonic()
     try:
         pv = assistant.preview(case_id, (doc or {}).get("output") or {}, p["items"])
     finally:
         _lock.release()
+    print(f"[preview] {case_id} {pid} {len(pv)} 段 {time.monotonic()-t0:.1f}s", flush=True)
     p["previews"] = pv; _psave(p)
     return {"id": pid, "previews": pv}
 

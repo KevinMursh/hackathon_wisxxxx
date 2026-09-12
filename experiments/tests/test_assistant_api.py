@@ -174,3 +174,23 @@ def test_preview_endpoint_cached(client, monkeypatch):
     r2 = c.post(f"/api/cases/case02/proposals/{p['id']}/preview").json()
     assert r2 == r and n["calls"] == 1    # 第二次讀快取
     assert c.post("/api/cases/case02/proposals/pp_nope/preview").status_code == 404
+
+
+def test_text_only_fast_path_patches_paragraph_without_rerun(client, monkeypatch):
+    c, api = client
+    from tests.conftest import FakeBedrock, tool
+    monkeypatch.setattr(api.assistant, "_converse", FakeBedrock([tool("propose_revision", {"summary": "主文改寫", "items": [{"type": "text", "para": "主文", "how": "改為標準句式"}]})]))
+    monkeypatch.setattr(api.assistant, "call_text", lambda step, **kw: "訴願駁回。（快路徑改寫）")
+    monkeypatch.setattr(api.run_all, "run", _fake_run); RERUN_CALLS.clear()
+    p = c.post("/api/cases/case02/chat", json={"message": "主文改為標準句式"}).json()["proposal"]
+    c.post(f"/api/cases/case02/proposals/{p['id']}/confirm")
+    for _ in range(100):
+        d = c.get(f"/api/cases/case02/proposals/{p['id']}").json()
+        if d["state"] in ("applied", "failed"):
+            break
+        time.sleep(0.05)
+    assert d["state"] == "applied" and d.get("fast") is True and d["rerun"] == ["s6"] and RERUN_CALLS == []
+    an = c.get("/api/cases/case02/analysis").json()
+    latest = an["output"]["drafts"][d["version"]]
+    from pipeline.assistant import label_paras
+    assert next(pp for lab, pp in label_paras(latest["paras"]) if lab == "主文")["text"] == "訴願駁回。（快路徑改寫）"
