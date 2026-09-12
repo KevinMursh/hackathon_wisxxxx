@@ -100,3 +100,11 @@ def test_build_revision_maps_items():
     assert ov["findings"] == {"I1": "採訴願人"} and ov["add_laws"] == [{"name": "行政罰法", "article": "18", "paragraph": "1"}]
     assert ov["rm_laws"] == ["訴願法 第 58 條"] and ov["served"] == "114-09-16" and ov["in_time"] is False and ov["verdict"] == "撤銷" and ov["prev_draft"] == "舊草稿"
     assert rev["instructions"]["s5"] and any("理由二" in s for s in rev["instructions"]["s6"]) and not any("第 9 條" in s for s in rev["instructions"]["s4"])
+
+
+def test_text_item_para_normalized_to_label(state):
+    from pipeline.assistant import label_paras
+    labeled = label_paras(list(state["drafts"].values())[-1]["paras"])
+    lab, para = next((l, p) for l, p in labeled if l.startswith("理由"))
+    out = A.enrich_items("case02", [{"type": "text", "para": para["text"], "how": "精簡"}, {"type": "text", "para": lab, "how": "x"}, {"type": "text", "para": "把理由三改短", "how": "x"}], state)
+    assert out[0]["para"] == lab and out[1]["para"] == lab and out[2]["para"] == "理由三"

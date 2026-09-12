@@ -97,6 +97,14 @@ def enrich_items(case_id: str, items: list[dict], state: dict | None) -> list[di
             it = {**it, "from": period.get("served"), "deadline": p["deadline"], "inTime": p["inTime"], "daysLeft": p.get("daysLeft")}
         elif t == "verdict":
             it = {**it, "from": ((state or {}).get("judge") or {}).get("verdict")}
+        elif t == "text":  # 模型有時把整段內容填進 para：對回段落標籤（主文／事實N／理由N）
+            drafts = (state or {}).get("drafts") or {}
+            labeled = label_paras(list(drafts.values())[-1]["paras"]) if drafts else []
+            para = (it.get("para") or "").strip()
+            if labeled and para not in [l for l, _ in labeled]:
+                hit = next((l for l, p_ in labeled if para and (para in p_["text"] or p_["text"] in para or p_["text"][:30] == para[:30])), None)
+                m = re.search(r"(主文|事實[一二三四五六七八九十\d]+|理由[一二三四五六七八九十\d]+)", para)
+                it = {**it, "para": hit or (m.group(1) if m else para[:12] + "…"), "para_text": para if not hit else None}
         out.append(it)
     return out
 
@@ -120,7 +128,7 @@ TOOLS = [
             "why": {"type": "string"},
             "n": {"type": "string", "description": "law：法規名稱"}, "art": {"type": "string"}, "p": {"type": "string"}, "k": {"type": "string"},
             "v": {"type": "string", "description": "served：114-09-16；proc：merit|77-2"},
-            "para": {"type": "string", "description": "text：理由二／主文"}, "how": {"type": "string"},
+            "para": {"type": "string", "description": "text：段落標籤，必須是本案摘要 draft_paras 之一（如 理由二／主文），不要填段落內容"}, "how": {"type": "string"},
             "angle": {"type": "string", "description": "frame：論述角度"},
             "docs": {"type": "array", "items": {"type": "string"}, "description": "reissue：新文件 fileId"}}, "required": ["type"]}}}, "required": ["summary", "items"]}},
 ]
