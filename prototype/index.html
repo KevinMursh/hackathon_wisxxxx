@@ -318,13 +318,27 @@
 
   /* ---------- 助手 ---------- */
   .asst-btn { position:fixed; right:18px; bottom:18px; z-index:55; width:52px; height:52px; border-radius:50%; background:var(--accent); color:var(--on-accent); border:none; box-shadow:var(--shadow); font-size:12px; font-weight:600; display:grid; place-items:center; }
-  .asst { position:fixed; right:18px; bottom:80px; z-index:55; width:min(380px, calc(100vw - 36px)); height:min(520px, calc(100vh - 120px)); background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); display:none; flex-direction:column; }
+  .asst { position:fixed; right:18px; bottom:80px; z-index:55; width:min(600px, calc(100vw - 36px)); height:min(680px, calc(100vh - 110px)); background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); display:none; flex-direction:column; }
   .asst.on { display:flex; }
   .asst-log { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; font-size:12.5px; }
   .msg { max-width:92%; padding:7px 11px; line-height:1.7; } .msg.u { align-self:flex-end; background:var(--accent-soft); border:1px solid var(--accent); } .msg.a { align-self:flex-start; background:var(--surface-2); border:1px solid var(--line); }
   .msg .src { display:block; font-size:11px; color:var(--ink-3); margin-top:4px; } .msg .open { font-size:11px; padding:1px 8px; margin-left:4px; }
   .asst-in { display:flex; gap:6px; padding:8px; border-top:1px solid var(--line); } .asst-in input { flex:1; font-size:12.5px; }
   .asst-sug { display:flex; flex-wrap:wrap; gap:5px; padding:6px 8px 0; } .asst-sug button { font-size:11px; padding:2px 8px; }
+  .msg.card { max-width:100%; width:100%; padding:0; background:var(--surface); border:1px solid var(--accent); }
+  .msg.card.rc { border-color:var(--green); } .msg.card.off { opacity:.55; } .msg.card.off .pc-foot { display:none; }
+  .pc-head { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line); background:var(--accent-soft); font-size:12px; } .pc-head b { color:var(--accent); } .rc .pc-head { background:var(--green-soft); } .rc .pc-head b { color:var(--green); }
+  .pc-body { padding:10px 12px; display:flex; flex-direction:column; gap:10px; }
+  .pc-item { border:1px solid var(--line); } .pc-item > .lab { font-size:10.5px; letter-spacing:.1em; color:var(--ink-3); padding:5px 10px; border-bottom:1px solid var(--line); background:var(--surface-2); display:flex; gap:8px; align-items:center; } .pc-item > .lab .jump { margin-left:auto; letter-spacing:0; }
+  .pc-item .bd { padding:8px 10px; font-size:12.5px; line-height:1.7; display:flex; flex-direction:column; gap:6px; }
+  .arw { color:var(--ink-3); margin:0 6px; }
+  .mini-law { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .mini-law .nm { font-weight:600; } .mini-law .vd { font-family:var(--mono); font-size:11px; color:var(--ink-3); } .mini-law.bad .nm { text-decoration:line-through; color:var(--seal); }
+  .mini-steps { display:flex; gap:4px; flex-wrap:wrap; } .mini-steps span { flex:1 1 auto; font-size:11px; padding:3px 6px; border:1px solid var(--line); color:var(--ink-3); text-align:center; white-space:nowrap; } .mini-steps span.re { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); font-weight:600; }
+  .mini-tp { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); border:1px solid var(--line); } .mini-tp > div { padding:6px 8px; border-right:1px solid var(--line); font-size:12px; min-width:0; } .mini-tp > div:last-child { border-right:none; } .mini-tp .k { font-size:10.5px; color:var(--ink-3); display:block; }
+  .mini-jbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .mini-jbar .jv { font-weight:600; color:var(--accent); font-size:13px; } .mini-jbar .jart { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+  .pc-diff { font-size:12px; line-height:1.85; padding:6px 8px; background:var(--surface-2); border-left:3px solid var(--accent); } .pc-diff .pl { font-size:10.5px; color:var(--ink-3); display:block; }
+  .pc-foot { display:flex; gap:8px; justify-content:flex-end; align-items:center; padding:8px 12px; border-top:1px solid var(--line); background:var(--surface-2); } .pc-foot .note { margin-right:auto; } .pc-foot button { white-space:nowrap; }
+  .rc-item { padding:6px 0; border-top:1px dashed var(--line); font-size:12.5px; } .rc-item:first-child { border-top:none; } .rc-item b.a { color:var(--green); } .rc-item b.p { color:var(--amber); } .rc-item b.r { color:var(--seal); }
 
   @media (max-width:760px) {
     .topbar { flex-wrap:wrap; height:auto; min-height:52px; padding:6px 12px; gap:8px; }
@@ -337,7 +351,7 @@
 
 <header class="topbar">
   <div class="seal-mark">訴</div>
-  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ 原型展示 v7</span></div>
+  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ 原型展示 v9</span></div>
   <div class="chip" id="chip"><span class="eyebrow">承辦中</span><b id="chipName">—</b><span class="num" id="chipNo">—</span></div>
   <div class="chip status" id="statusChip"><b id="statusText">—</b></div>
   <div class="chip judge" id="judgeChip"><span class="eyebrow">AI 判定</span><b id="judgeText">—</b></div>
@@ -442,12 +456,12 @@
 </section>
 
 <!-- ======== 助手 ======== -->
-<button class="asst-btn" id="asstBtn" title="案件問答助手">問答</button>
+<button class="asst-btn" id="asstBtn" title="案件助手">助手</button>
 <div class="asst" id="asst">
-  <div class="chat-head"><span class="eyebrow">案件問答助手</span><span>只讀・不修改任何內容</span><button class="ghost-btn" id="asstClose" style="margin-left:auto;padding:2px 8px">×</button></div>
+  <div class="chat-head"><span class="eyebrow">案件助手</span><span>問答唯讀・修改須經您確認才執行</span><button class="ghost-btn" id="asstClose" style="margin-left:auto;padding:2px 8px">×</button></div>
   <div class="asst-log" id="asstLog"></div>
   <div class="asst-sug" id="asstSug"></div>
-  <div class="asst-in"><input id="asstIn" placeholder="例如：送達日在哪份文件？答辯書引了哪些法條？"><button class="btn" id="asstSend">送出</button></div>
+  <div class="asst-in"><input id="asstIn" placeholder="問：送達日在哪份文件？　改：爭點 1 改採訴願人，加引行政罰法第 18 條第 1 項"><button class="btn" id="asstSend">送出</button></div>
 </div>
 
 <!-- ======== Modals ======== -->
