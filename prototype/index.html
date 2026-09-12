@@ -119,13 +119,6 @@
   .field label { display:block; font-size:11.5px; color:var(--ink-3); margin-bottom:4px; } .field label b { color:var(--seal); }
   .field select, .field input[type=text], .field input[type=date], .field textarea { width:100%; }
   .field textarea { min-height:110px; resize:vertical; line-height:1.7; }
-  .rvp { border:1px solid var(--line); border-left:3px solid var(--accent); background:var(--surface-2); padding:10px 12px; margin-bottom:12px; }
-  .rvp .t { font-size:12px; font-weight:600; margin-bottom:8px; } .rvp .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:6px; } .rvp .row > * { min-width:0; }
-  .rvp input[type=text], .rvp select { font-size:12.5px; } .rvp textarea { min-height:52px; }
-  .rvp .ok { color:var(--green); font-size:11.5px; } .rvp .bad { color:var(--seal); font-size:11.5px; } .rvp .dim { color:var(--ink-3); font-size:11.5px; }
-  .rvp .iss { display:grid; grid-template-columns:auto 1fr; gap:6px 10px; align-items:start; padding:6px 0; border-top:1px solid var(--line); } .rvp .iss:first-of-type { border-top:none; }
-  .scope { border:1px solid var(--line); background:var(--surface); padding:10px 12px; font-size:12.5px; line-height:1.8; margin-top:4px; }
-  .scope .t { font-size:11.5px; color:var(--ink-3); } .scope .re { color:var(--accent); font-weight:600; } .scope .kp { color:var(--ink-3); } .scope label { display:inline-flex; gap:4px; align-items:center; margin-left:10px; font-size:12px; }
   .reply .items { margin:6px 0 0; padding:0; list-style:none; } .reply .items li { padding:4px 0; border-top:1px dashed var(--line); }
   .evpick { display:flex; flex-wrap:wrap; gap:6px; } .evpick label { display:flex; align-items:center; gap:4px; font-size:12px; border:1px solid var(--line); padding:2px 8px; cursor:pointer; }
   .evpick label.on { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
@@ -251,7 +244,6 @@
   .lead .ai { color:var(--accent); font-weight:600; }
   .ailab { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:2px 9px; border:1px solid var(--accent); color:var(--accent); background:var(--accent-soft); white-space:nowrap; }
   .ailab.obj { border-color:var(--green); color:var(--green); background:var(--green-soft); }
-  .objlink { font-size:12px; color:var(--seal); cursor:pointer; border-bottom:1px dashed var(--seal); white-space:nowrap; }
   .basis { padding:8px 14px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-2); background:var(--surface-2); } .basis b { color:var(--accent); font-weight:600; margin-right:6px; }
   .tagbtn { cursor:pointer; } .tagbtn:hover { border-color:var(--accent); color:var(--accent); }
   .tagpop { position:absolute; z-index:30; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); padding:10px; display:none; flex-direction:column; gap:6px; font-size:12px; width:220px; }
@@ -459,18 +451,6 @@
 </div>
 
 <!-- ======== Modals ======== -->
-<div class="modal" id="objModal"><div class="modal-box wide">
-  <div class="mhead"><h3>修正意見</h3><span class="note">各欄位皆選填，至少填一項；AI 逐項回覆採納／部分採納／無法採納</span><button class="ghost-btn" data-close="objModal">×</button></div>
-  <div class="mbody">
-    <div class="field"><label>1　這次要改什麼（可複選）</label><div class="evpick" id="rvTypes"></div></div>
-    <div id="rvPanels"></div>
-    <div class="field"><label>2　客製化指示（選填）</label><textarea id="rvCustom" style="min-height:130px" placeholder="上述欄位未涵蓋的修改需求，直接用文字說明：可貼入法條全文、判決要旨、要求的論述角度、篇幅或格式限制。AI 會視為承辦人指示，逐項回覆採納與否；法規庫查無的引用不會寫進草稿。"></textarea></div>
-    <div class="field"><label>引用卷證（選填）</label><div class="evpick" id="objEv"></div></div>
-    <div class="scope" id="rvScope"></div>
-  </div>
-  <div class="mfoot"><span class="hint" id="rvHint" style="margin-right:auto">尚未填寫任何內容</span><button class="ghost-btn" data-close="objModal">取消</button><button class="btn" id="objSend" disabled>送出修正意見</button></div>
-</div></div>
-
 <div class="modal" id="closeModal"><div class="modal-box wide">
   <div class="mhead"><h3>登錄委員會結論並結案</h3><button class="ghost-btn" data-close="closeModal">×</button></div>
   <div class="mbody" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">

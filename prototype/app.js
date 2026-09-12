@@ -360,17 +360,16 @@ function renderExtract() {
 function renderIssues() {
   const c = S.c, stN = { agency: "採機關", appellant: "採訴願人", open: "待議" };
   const verdictOf = (pid) => { const p = c.plans.find((x) => x.id === pid); return p ? p.verdict : "—"; };
-  $("#p1").innerHTML = `<div class="sec"><div class="sec-head"><h3>雙方癥結點</h3><span class="note">訴願人主張 ／ 機關答辯 ／ 卷證顯示 ／ AI 認定與依據　不同意請點「對此提出修正意見」</span></div>
+  $("#p1").innerHTML = `<div class="sec"><div class="sec-head"><h3>雙方癥結點</h3><span class="note">訴願人主張 ／ 機關答辯 ／ 卷證顯示 ／ AI 認定與依據　不同意可在右下角問答助手說明要修改之處</span></div>
     ${c.issues.map((it, i) => { const ai = it.stance || "open"; const cur = S.stances[it.id] || ai; const obj = S.objections.find((o) => o.issueId === it.id && o.result !== "reject"); return `
       <div class="issue" id="iss-${it.id}"><div class="issue-head"><span class="n">爭點 ${i + 1}</span><h3>${esc(it.title)}</h3>
         ${obj ? `<span class="ailab obj">修正後：${stN[cur]}</span><span class="note">原 AI 認定：${stN[ai]}</span>` : `<span class="ailab">AI 認定：${stN[ai]}</span>`}
-        ${editable() ? `<span class="objlink" data-obj="${it.id}">對此提出修正意見</span>` : ""}</div>
+</div>
         <div class="issue-grid"><div><div class="lab">訴願人主張</div>${J(it.a[1], esc(it.a[0]))}</div><div><div class="lab">機關答辯</div>${J(it.d[1], esc(it.d[0]))}</div><div><div class="lab">卷證顯示</div><div class="ev">${it.e.map((e) => e[1] ? `<span class="tag accent jump" data-jump="${e[1]}">${esc(e[0])}<span class="srct ${srcOf(e[1])}">${srcOf(e[1])}</span></span>` : `<span class="tag neutral">${esc(e[0])}</span>`).join("")}</div></div></div>
         <div class="basis"><b>依據</b>${esc(it.ai || "")}</div>
         <div class="issue-foot"><span class="lab" style="font-size:10.5px;color:var(--ink-3)">法律素材</span>${it.law.map((l) => `<span>${esc(l)}</span>`).join("")}</div>
         <div class="lead"><span class="ai">→ 結論：${esc(verdictOf(obj && obj.plan ? obj.plan : c.judge))}</span><span class="note">採機關 → ${esc(verdictOf(it.lead.agency[0]))}　採訴願人 → ${esc(verdictOf(it.lead.appellant[0]))}</span></div></div>`; }).join("")}</div>
-    <p class="foot-note">爭點由三方對照之衝突列與答辯書逐點回應段落配對產生；AI 認定僅附一句依據，不附信心度。承辦人的立場透過「修正意見」表達：AI 重新引證後逐項回覆採納／部分採納／無法採納。</p>`;
-  $$("#p1 .objlink").forEach((l) => l.addEventListener("click", () => openObjection(l.dataset.obj)));
+    <p class="foot-note">爭點由三方對照之衝突列與答辯書逐點回應段落配對產生；AI 認定僅附一句依據，不附信心度。承辦人的修正透過右下角問答助手提出：AI 先提案、承辦人確認後才重新產生，並逐項回覆採納／部分採納／無法採納。</p>`;
 }
 
 /* ---------- 三時點比對（零 AI） ---------- */
@@ -412,7 +411,7 @@ function refTitle(r) { const x = S.c.refs[r]; if (!x) return r; const d = S.c.do
 function renderDraft() {
   const c = S.c, jp = judgePlan(), cp = currentPlan(), d = draftFor(S.plan), ro = !editable();
   const RISK = { low: "低", mid: "中", high: "高" };
-  const acts = S.status === "承辦中" ? `<button class="ghost-btn" id="objBtn">提出修正意見</button><button class="btn" id="submitBtn">送委員會審議</button>` : S.status === "已送審" ? `<button class="btn" id="closeBtn">登錄委員會結論並結案</button>` : `<button class="ghost-btn" id="courtBtn">登錄法院結果</button><button class="ghost-btn" id="forkBtn">另存為新草稿</button>`;
+  const acts = S.status === "承辦中" ? `<button class="btn" id="submitBtn">送委員會審議</button>` : S.status === "已送審" ? `<button class="btn" id="closeBtn">登錄委員會結論並結案</button>` : `<button class="ghost-btn" id="courtBtn">登錄法院結果</button><button class="ghost-btn" id="forkBtn">另存為新草稿</button>`;
   const life = ["承辦中", "已送審", "已結案"], li = life.indexOf(S.status);
   const last = S.objections[S.objections.length - 1];
   const DN = { accept: "採納", partial: "部分採納", reject: "無法採納" }, cls = (r) => r === "accept" ? "a" : r === "partial" ? "p" : "r";
@@ -430,7 +429,6 @@ function renderDraft() {
   $("#copyAll").addEventListener("click", () => { const clone = $("#draftBody").cloneNode(true); $$(".tools", clone).forEach((t) => t.remove()); navigator.clipboard?.writeText(clone.innerText); asstSay("已複製全文至剪貼簿。"); });
   $("#exportOdf").addEventListener("click", () => asstSay("原型未串接公文系統；正式版將以 ODF 範本輸出並帶入委員名單與教示條款。"));
   $("#exportCmp").addEventListener("click", exportCompare);
-  $("#objBtn")?.addEventListener("click", () => openObjection());
   $("#submitBtn")?.addEventListener("click", () => { if (!confirm("定稿並送訴願審議委員會審議？送審後草稿將唯讀。")) return; S.status = "已送審"; pushVersion("定稿送審", "承辦人"); S.audit.push({ ts: now(), who: "hu", para: "案件", action: "送委員會審議" }); recompute(); renderIssues(); $$(".tab")[4].click(); });
   $("#closeBtn")?.addEventListener("click", openClose);
   $("#courtBtn")?.addEventListener("click", () => $("#courtModal").classList.add("on"));
@@ -438,92 +436,8 @@ function renderDraft() {
 }
 function diffParas(oldP, newP) { const out = []; oldP.forEach((q) => { if (q.kind === "h4") return; const cur = newP.find((x) => x.id === q.id); if (!cur) out.push({ label: paraLabel(q), html: `<del>${esc(plain(q.text))}</del>` }); else if (plain(cur.text) !== plain(q.text)) out.push({ label: paraLabel(q), html: diffHtml(plain(q.text), plain(cur.text)) }); }); newP.forEach((q) => { if (q.kind !== "h4" && !oldP.some((x) => x.id === q.id)) out.push({ label: paraLabel(q), html: `<ins>${esc(plain(q.text))}</ins>` }); }); return out; }
 
-/* ---------- 修正意見 ---------- */
-const RV_TYPES = [["fact", "事實欄位", 0], ["proc", "程序判定", 1], ["issue", "爭點認定", 2], ["law", "法規引用", 3], ["frame", "論述架構或結論", 4], ["text", "文字表達", 5]];
+/* ---------- 修正意見：v9 起改由問答助手以「提案 → 確認卡 → 局部重跑」處理；S.objections 結構保留供紀錄顯示 ---------- */
 const RV_STEPS = ["案件擷取與分類", "訴願期間與程序審查", "爭點", "法規推薦", "相似案例", "決定書草稿"];
-const RV_ART77 = ["1", "2", "3", "4", "6", "7", "8"];
-function rvTypesOn() { return $$("#rvTypes input:checked").map((x) => x.value); }
-function rvLawCheck(name, art) {
-  if (!name) return ["dim", "輸入法規名稱"]; const l = LAWLIB.find((x) => x.n === name) || LAWLIB.filter((x) => name.includes(x.n) || x.n.includes(name)).sort((p, q) => q.n.length - p.n.length)[0]; if (!l) return ["bad", "法規庫查無此法規，將不引用（可於客製化指示貼入條文，AI 會標示為未經查核）"];
-  if (!art) return ["dim", `法規庫有（${l.date} 版，${l.arts} 條），請填條號`]; const n = parseInt(art, 10); if (!(n >= 1)) return ["bad", "條號格式不正確"]; if (n > l.arts) return ["bad", `${l.n} 僅 ${l.arts} 條，第 ${n} 條不存在`];
-  const dup = (S.c.laws || []).some((x) => x.n === l.n && String(x.art || "").replace(/[^\d]/g, "").startsWith(String(n))); return ["ok", `法規庫有・${l.date} 版${dup ? "・已在推薦清單" : "・將加入推薦與草稿引用"}`];
-}
-function rvPanel(t) {
-  const c = S.c;
-  if (t === "fact") return `<div class="rvp" data-p="fact"><div class="t">事實欄位</div><div class="row"><select id="rvFactK" style="flex:1">${c.fields.map((f) => `<option>${esc(f.k)}</option>`).join("")}</select><input type="text" id="rvFactV" style="flex:2" placeholder="正確內容（送達日請用 114-09-16 格式，系統會重算期間）"></div></div>`;
-  if (t === "proc") return `<div class="rvp" data-p="proc"><div class="t">程序判定</div><div class="row"><select id="rvProc" style="flex:1"><option value="">— 選擇應有之程序結果 —</option><option value="merit">應進入實體審查</option>${RV_ART77.map((k) => `<option value="77-${k}">應依訴願法 §77 (${k}) 不受理</option>`).join("")}</select><input type="text" id="rvProcWhy" style="flex:2" placeholder="理由（選填）"></div></div>`;
-  if (t === "issue") return `<div class="rvp" data-p="issue"><div class="t">爭點認定（可多個）</div>${c.issues.map((it, i) => `<div class="iss"><label><input type="checkbox" class="rvIss" value="${it.id}"> 爭點 ${i + 1}</label><div><div style="font-size:12.5px;margin-bottom:4px">${esc(it.title)}<span class="dim">　AI：${{ agency: "採機關", appellant: "採訴願人", open: "待議" }[S.stances[it.id] || it.stance || "open"]}</span></div><div class="row"><select class="rvIssTo" data-id="${it.id}"><option value="appellant">我認為：採訴願人</option><option value="agency">我認為：採機關</option><option value="drop">刪除此爭點</option></select><input type="text" class="rvIssWhy" data-id="${it.id}" style="flex:1" placeholder="理由（選填）"></div></div></div>`).join("")}<div class="row" style="margin-top:6px"><span class="dim">新增爭點</span><input type="text" id="rvIssNew" style="flex:1" placeholder="例：訴願人提出之時效抗辯（選填）"></div></div>`;
-  if (t === "law") return `<div class="rvp" data-p="law"><div class="t">法規引用（即時查核法規庫）</div><div id="rvLawRows"></div><button class="ghost-btn" id="rvLawAdd" style="font-size:11.5px">＋ 再加一條</button><datalist id="rvLawList">${LAWLIB.map((l) => `<option value="${esc(l.n)}">`).join("")}</datalist></div>`;
-  if (t === "frame") return `<div class="rvp" data-p="frame"><div class="t">論述架構或結論</div><div class="row"><select id="rvVerdict" style="flex:1"><option value="">結論：維持目前（${esc(currentPlan().verdict)}）</option>${c.plans.filter((p) => p.id !== currentPlan().id).map((p) => `<option value="${p.id}">結論改為：${esc(p.verdict)}（${esc(p.art)}）</option>`).join("")}</select></div><div class="row"><input type="text" id="rvAngle" style="flex:1" placeholder="論述角度、篇幅或架構要求，例：從舉證責任分配切入；理由三段以內"></div></div>`;
-  if (t === "text") return `<div class="rvp" data-p="text"><div class="t">文字表達（只改該段，不動實質）</div><div class="row"><select id="rvPara" style="flex:1">${S.paras.filter((p) => p.kind !== "h4" && p.kind !== "meta").map((p) => `<option value="${p.id}">${esc(paraLabel(p))}　${esc(plain(p.text).slice(0, 28))}…</option>`).join("")}</select><input type="text" id="rvTextHow" style="flex:1" placeholder="例：語氣改平實、改為標準主文句式"></div></div>`;
-}
-function rvLawRow() { const d = document.createElement("div"); d.className = "row"; d.innerHTML = `<input type="text" class="rvLawN" list="rvLawList" style="flex:2" placeholder="法規名稱"><input type="text" class="rvLawA" style="width:70px" placeholder="條"><input type="text" class="rvLawP" style="width:60px" placeholder="項（選填）"><span class="dim rvLawS" style="flex:1 1 100%">輸入法規名稱</span>`; $("#rvLawRows").appendChild(d); d.querySelectorAll("input").forEach((i) => i.addEventListener("input", () => { const [k, m] = rvLawCheck(d.querySelector(".rvLawN").value.trim(), d.querySelector(".rvLawA").value.trim()); const sp = d.querySelector(".rvLawS"); sp.className = k + " rvLawS"; sp.textContent = m; rvUpdate(); })); }
-function rvCollect() {
-  const on = rvTypesOn(), items = [], c = S.c;
-  if (on.includes("fact") && $("#rvFactV")?.value.trim()) items.push({ type: "fact", step: 0, k: $("#rvFactK").value, v: $("#rvFactV").value.trim(), label: `事實欄位「${$("#rvFactK").value}」→ ${$("#rvFactV").value.trim()}` });
-  if (on.includes("proc") && $("#rvProc")?.value) items.push({ type: "proc", step: 1, v: $("#rvProc").value, why: $("#rvProcWhy").value.trim(), label: `程序判定：${$("#rvProc").selectedOptions[0].textContent}${$("#rvProcWhy").value.trim() ? "（" + $("#rvProcWhy").value.trim() + "）" : ""}` });
-  if (on.includes("issue")) { $$(".rvIss:checked").forEach((cb) => { const id = cb.value, it = c.issues.find((x) => x.id === id), to = $(`.rvIssTo[data-id="${id}"]`).value, why = $(`.rvIssWhy[data-id="${id}"]`).value.trim(); items.push({ type: "issue", step: 2, id, to, why, label: `爭點 ${c.issues.indexOf(it) + 1}（${it.title}）：${{ appellant: "採訴願人", agency: "採機關", drop: "刪除" }[to]}${why ? "，" + why : ""}` }); }); if ($("#rvIssNew")?.value.trim()) items.push({ type: "issue-new", step: 2, v: $("#rvIssNew").value.trim(), label: `新增爭點：${$("#rvIssNew").value.trim()}` }); }
-  if (on.includes("law")) $$("#rvLawRows .row").forEach((r) => { const n = r.querySelector(".rvLawN").value.trim(), art = r.querySelector(".rvLawA").value.trim(), p = r.querySelector(".rvLawP").value.trim(); if (!n) return; const [k, m] = rvLawCheck(n, art); items.push({ type: "law", step: 3, n, art, p, ok: k === "ok", msg: m, label: `法規引用：${n}${art ? " 第 " + art + " 條" : ""}${p ? " 第 " + p + " 項" : ""}` }); });
-  if (on.includes("frame") && ($("#rvVerdict")?.value || $("#rvAngle")?.value.trim())) { const pid = $("#rvVerdict").value; items.push({ type: "frame", step: pid ? 4 : 5, plan: pid || null, angle: $("#rvAngle").value.trim(), label: (pid ? `結論改為 ${c.plans.find((p) => p.id === pid).verdict}` : "論述架構") + ($("#rvAngle").value.trim() ? "：" + $("#rvAngle").value.trim() : "") }); }
-  if (on.includes("text") && $("#rvTextHow")?.value.trim()) { const p = S.paras.find((x) => x.id === $("#rvPara").value); items.push({ type: "text", step: 5, para: p?.id, how: $("#rvTextHow").value.trim(), label: `文字表達（${paraLabel(p)}）：${$("#rvTextHow").value.trim()}` }); }
-  const custom = $("#rvCustom").value.trim();
-  if (custom.length >= 4) { const st = /送達|收文|日期|機關名|訴願人姓名|文號/.test(custom) ? 0 : /不受理|77|程序|逾期|期間/.test(custom) ? 1 : /爭點/.test(custom) ? 2 : /第\s*\d+\s*條|函釋|判決|判例|釋字|法規|條例|準則/.test(custom) ? 3 : /結論|撤銷|駁回|不受理/.test(custom) ? 4 : 5; items.push({ type: "custom", step: st, v: custom, label: `客製化指示：${custom.slice(0, 60)}${custom.length > 60 ? "…" : ""}` }); }
-  return items;
-}
-function rvScope(items) { if ($("#rvAll")?.checked) return [0, 1, 2, 3, 4, 5]; if (!items.length) return []; const from = Math.min(...items.map((i) => i.step)); const set = new Set(); for (let i = from; i < 6; i++) set.add(i); if (from === 3 && items.every((i) => i.step === 3)) set.delete(4); if (from === 5 && items.every((i) => i.type === "text")) return [5]; return [...set]; }
-function rvUpdate() {
-  const items = rvCollect(), sc = rvScope(items), allOn = $("#rvAll")?.checked;
-  $("#objSend").disabled = !items.length; $("#rvHint").textContent = items.length ? `${items.length} 項意見` : "尚未填寫任何內容";
-  const re = RV_STEPS.filter((_, i) => sc.includes(i)), kp = RV_STEPS.filter((_, i) => !sc.includes(i));
-  $("#rvScope").innerHTML = `<div class="t">3　影響範圍（依意見類型算出，可改）<label><input type="checkbox" id="rvAll" ${allOn ? "checked" : ""}> 全部重跑</label></div>${items.length ? `<div><span class="re">重新產生：</span>${re.join(" → ") || "—"}</div><div><span class="kp">維持不變：${kp.join("、") || "—"}</span></div><div class="note">未受影響的分頁原樣保留並作為下游 context；每步 prompt 附承辦人意見，AI 須遵守或說明無法採納。</div>` : `<div class="kp">填寫後顯示哪些分頁會重新產生</div>`}`;
-  $("#rvAll").onchange = rvUpdate;
-}
-function openObjection(preId) {
-  const c = S.c;
-  $("#rvTypes").innerHTML = RV_TYPES.map(([k, n]) => `<label><input type="checkbox" value="${k}" ${preId && k === "issue" ? "checked" : ""}>${n}</label>`).join("");
-  $("#rvCustom").value = "";
-  const evs = c.issues.flatMap((it) => it.e.filter((e) => e[1])); $("#objEv").innerHTML = evs.length ? evs.map((e) => `<label><input type="checkbox" value="${e[1]}">${esc(e[0])}</label>`).join("") : '<span class="note">本案無可勾選之卷證</span>';
-  $$("#objEv input").forEach((cb) => cb.addEventListener("change", () => cb.parentElement.classList.toggle("on", cb.checked)));
-  const renderPanels = () => { const on = rvTypesOn(); $("#rvPanels").innerHTML = RV_TYPES.filter(([k]) => on.includes(k)).map(([k]) => rvPanel(k)).join(""); if (on.includes("law")) { rvLawRow(); $("#rvLawAdd").onclick = rvLawRow; } if (preId && preId !== "other") { const cb = $(`.rvIss[value="${preId}"]`); if (cb) cb.checked = true; } $$("#rvPanels input, #rvPanels select, #rvPanels textarea").forEach((el) => { el.addEventListener("input", rvUpdate); el.addEventListener("change", rvUpdate); }); rvUpdate(); };
-  $$("#rvTypes input").forEach((cb) => cb.addEventListener("change", () => { cb.parentElement.classList.toggle("on", cb.checked); renderPanels(); }));
-  $$("#rvTypes input:checked").forEach((cb) => cb.parentElement.classList.add("on"));
-  $("#rvCustom").oninput = rvUpdate; renderPanels();
-  $("#objModal").classList.add("on");
-}
-function rvReply(item) {
-  const c = S.c, D = { accept: "採納", partial: "部分採納", reject: "無法採納" };
-  if (item.type === "issue") { const it = c.issues.find((x) => x.id === item.id), cur = S.stances[it.id] || it.stance; if (item.to === "drop") return { result: "partial", reply: "該爭點為訴願書與答辯書均有論及之事項，依訴願法第 67 條應予論斷；已於理由中併入相鄰爭點簡述，不另立標題。", evidence: [] }; if (item.to === cur) return { result: "accept", reply: "與 AI 原認定一致，已將承辦人理由補入依據。", evidence: [] }; const r = it.objection || c.objectionOther || CASE_B.objectionOther; return { result: r.result, reply: r.reply.replace(/^(採納|部分採納|無法採納)。/, ""), evidence: r.evidence || [], plan: r.plan, stance: r.result !== "reject" ? item.to : null }; }
-  if (item.type === "issue-new") return { result: "partial", reply: `已依承辦人指示新增爭點「${item.v}」；卷內未見訴願人就此提出主張，暫以「訴願人未爭執」列入理由，請確認是否保留。`, evidence: [] };
-  if (item.type === "fact") { const m = /^(\d{3})-(\d{2})-(\d{2})$/.exec(item.v); if (/送達|收受/.test(item.k) && m) { S.served = item.v; return { result: "accept", reply: `送達日改為 ${item.v}，訴願期間已重算；三方對照該列標記「承辦人更正」。`, evidence: ["sv-date"] }; } return { result: "accept", reply: `欄位「${item.k}」已更新為「${item.v}」，下游各步以更正後內容重產。`, evidence: [] }; }
-  if (item.type === "proc") { if (item.v === "merit") return { result: isOverdue() ? "reject" : "accept", reply: isOverdue() ? "依承辦人所定送達日與收文日，本件仍逾 30 日不變期間；程序審查為規則運算，除非更正送達日，否則無法進入實體。" : "程序各款均通過，維持進入實體審查。", evidence: [] }; return { result: "partial", reply: `程序判定屬承辦人職權，已依指示改列訴願法 §77 (${item.v.slice(3)})；惟卷面程序清單各款顯示通過，請於送審前補充該款事實依據。`, evidence: [] }; }
-  if (item.type === "law") return item.ok ? { result: "accept", reply: `${item.n}${item.art ? " 第 " + item.art + " 條" : ""} 已加入法規推薦，條文原文自法規庫帶入並於草稿理由引用。`, evidence: [] } : { result: "reject", reply: `${item.msg}。未寫入草稿，以免引用不存在之條文。`, evidence: [] };
-  if (item.type === "frame") return item.plan ? { result: "accept", reply: `結論改為「${c.plans.find((p) => p.id === item.plan).verdict}」，草稿依該方案重寫；相似案例已改檢索同結論之決定書。${item.angle ? "論述角度：" + item.angle + "。" : ""}`, evidence: [], plan: item.plan } : { result: "accept", reply: `草稿理由已依「${item.angle}」重寫；事實、爭點與法規推薦不變。`, evidence: [] };
-  if (item.type === "text") return { result: "accept", reply: `${paraLabel(S.paras.find((p) => p.id === item.para))}已依指示改寫，其餘段落未動。`, evidence: [], para: item.para };
-  return { result: "partial", reply: "已依客製化指示調整草稿；指示中引用之資料凡法規庫查無者，均以「承辦人提供，未經查核」標示而未寫入正文。", evidence: [] };
-}
-function rerunSteps(scope, done) {
-  const c = S.c, steps = RV_STEPS.map((n, i) => [n, scope.includes(i) ? "重新產生（附承辦人修正意見）" : "維持（未受影響，作為下游 context）", scope.includes(i) ? 620 : 0]);
-  $("#runTitle").textContent = "依修正意見重新產生"; $("#runSub").textContent = `${c.name}　・　重跑 ${scope.length} 步，維持 ${6 - scope.length} 步`;
-  $("#stepList").innerHTML = steps.map((s, i) => `<div class="step ${s[2] ? "" : "done"}" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${s[0]}</div><div class="out" id="so${i}">${s[2] ? "" : s[1]}</div></div><div class="ms" id="sm${i}">${s[2] ? "" : "0 ms"}</div></div>`).join("");
-  $("#runBar").style.width = "0"; show("s-run"); let t = 0;
-  steps.forEach((s, i) => { if (!s[2]) return; setTimeout(() => { $("#st" + i).classList.add("active"); $("#runBar").style.width = ((i + 1) / 6 * 100) + "%"; }, t); t += s[2]; setTimeout(() => { const el = $("#st" + i); el.classList.remove("active"); el.classList.add("done"); $("#so" + i).textContent = s[1]; $("#sm" + i).textContent = s[2] + " ms"; }, t); });
-  setTimeout(() => { done(); $("#runTitle").textContent = "正在分析卷宗"; }, t + 400);
-}
-$("#objSend").addEventListener("click", () => {
-  const c = S.c, items = rvCollect(), scope = rvScope(items), ev = $$("#objEv input:checked").map((x) => x.value); if (!items.length) return;
-  const before = S.paras.map((x) => ({ ...x }));
-  const replies = items.map((it) => ({ ...it, ...rvReply(it) }));
-  const D = { accept: "採納", partial: "部分採納", reject: "無法採納" };
-  replies.forEach((r) => { S.audit.push({ ts: now(), who: "hu", para: r.label.split("：")[0], action: `修正意見：${r.label}` }); if (r.stance) S.stances[r.id] = r.stance; });
-  const newPlan = replies.map((r) => r.plan).filter(Boolean).pop();
-  if (newPlan && c.drafts[newPlan]) { S.plan = newPlan; const d = draftFor(newPlan); S.paras = d.paras.map((p) => ({ ...p, tpl: p.text, src: "ai-edit", refs: p.refs ? p.refs.slice() : [] })); }
-  else if (scope.includes(5)) S.paras = S.paras.map((p) => replies.some((r) => r.type === "text" && r.para === p.id) || !replies.every((r) => r.type === "text") && p.kind !== "h4" && p.kind !== "meta" ? { ...p, src: "ai-edit" } : p);
-  const worst = replies.some((r) => r.result === "accept") ? (replies.every((r) => r.result === "accept") ? "accept" : "partial") : replies.some((r) => r.result === "partial") ? "partial" : "reject";
-  const o = { ts: now(), issue: `${items.length} 項`, issueId: replies.find((r) => r.type === "issue")?.id || "multi", text: replies.map((r) => r.label).join("；"), ev, result: worst, reply: replies.map((r) => `${D[r.result]}：${r.reply}`).join(" "), evidence: [...new Set(replies.flatMap((r) => r.evidence))], plan: newPlan || null, items: replies.map((r) => ({ label: r.label, result: r.result, reply: r.reply, evidence: r.evidence })), scope, diff: null };
-  replies.forEach((r) => S.audit.push({ ts: now(), who: "ai", para: r.label.split("：")[0], action: `${D[r.result]}：${r.reply.slice(0, 40)}…` }));
-  $("#objModal").classList.remove("on");
-  rerunSteps(scope, () => { if (scope.includes(5)) { o.diff = diffParas(before, S.paras); pushVersion(`修正意見後重產（${scope.length} 步）`, "AI"); } S.objections.push(o); render(); show("s-work"); updateChips(); persist(); $$(".tab")[4].click(); $("#panel").scrollTop = 0; });
-});
 function exportCompare() {
   const c = S.c, jp = judgePlan(), cp = currentPlan(), stN = { appellant: "採訴願人", agency: "採機關", open: "待議" };
   const cols = S.plan !== jp.id ? [["原判定", jp], ["修正後", cp]] : [["AI 判定", jp]];
@@ -610,7 +524,7 @@ const SYN = [["送達日", "送達日期"], ["收文", "收文"], ["煙蒂", "�
 function asstSend() {
   const q = $("#asstIn").value.trim(); if (!q || !S.c) return; $("#asstIn").value = ""; asstAdd("u", esc(q));
   const c = S.c;
-  if (/改|修改|幫我寫|重寫|刪|加一段|潤飾/.test(q)) return asstAdd("a", "助手不修改草稿或任何案件內容。請直接在草稿頁點段落編輯，或用「提出修正意見」請 AI 重新產生。");
+  if (/改|修改|幫我寫|重寫|刪|加一段|潤飾/.test(q)) return asstAdd("a", "助手不修改草稿或任何案件內容。請直接在草稿頁點段落編輯，修改功能開發中：日後在此說明要改什麼，AI 會先提案、經您確認後才更新。");
   if (/法條|引用|法規|援引/.test(q)) return asstAdd("a", c.citations.length ? `答辯書引用 ${c.citations.length} 則：<br>${c.citations.map((x) => `・${J(x.ref, esc(x.n))}　<span class="st ${x.status}" style="font-size:10px">${{ ok: "已驗證", amended: "已修正", gap: "漏引" }[x.status] || x.status}</span>`).join("<br>")}<span class="src">來源：法規推薦分頁・引用查核</span>` : `本案尚無答辯書可查核。<span class="src">${esc(c.citationNote || "")}</span>`);
   if (/爭點|癥結/.test(q)) return asstAdd("a", `本案 ${c.issues.length} 個爭點：<br>${c.issues.map((it, i) => `・爭點 ${i + 1}：${esc(it.title)}（AI ${{ agency: "採機關", appellant: "採訴願人", open: "待議" }[it.stance || "open"]}）`).join("<br>")}<span class="src">來源：爭點分頁</span>`);
   if (/期間|逾期|幾天|屆滿/.test(q)) { const p = period(); return asstAdd("a", p ? `送達日 ${S.served}，起算 ${toMg(p.start)}，屆滿 ${toMg(p.due)}；收文日 ${S.recv || "—"}，${p.recv === null ? "尚無收文日" : p.over ? `<b style="color:var(--seal)">逾期 ${p.days} 日</b>` : `未逾期，尚餘 ${p.left} 日`}。${c.period.servedRef ? J(c.period.servedRef, "開啟送達證書 ↗") : ""}<span class="src">來源：期間計算模組（送達日以卷附送達證書為準）</span>` : "尚未取得送達日，無法計算期間。"); }
