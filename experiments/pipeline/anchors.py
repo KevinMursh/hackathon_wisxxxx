@@ -34,9 +34,9 @@ def locate(doc: Doc, quote: str) -> dict | None:
 
 class RefTable:
     """收集錨點：ref id → [fileId, type, payload]，型別對齊前端 refs（text / doc / time）。"""
-    def __init__(self, docs: list[Doc]):
+    def __init__(self, docs: list[Doc], prefix: str = "q"):
         self.by_name = {d.name: d for d in docs}
-        self.refs, self._n, self.unverified = {}, 0, []
+        self.refs, self._n, self.unverified, self.prefix = {}, 0, [], prefix
 
     def add(self, q: dict | None) -> str | None:
         if not q or not q.get("file"):
@@ -45,7 +45,7 @@ class RefTable:
         if not d:
             self.unverified.append(q); return None
         self._n += 1
-        rid = f"q{self._n}"
+        rid = f"{self.prefix}{self._n}"
         m = re.search(r"(\d{1,3})\s*秒", q.get("quote", "")) if d.doc_type == "採證影片" else None
         pos = locate(d, q.get("quote", ""))
         if pos:

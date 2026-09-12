@@ -11,17 +11,36 @@ GROUP = {"機關權限": "實體法規", "處分依據": "實體法規", "裁罰
 HEADS = ("主文", "事實", "理由", "據上論結", "教示", "訴願決定書")
 
 
+def build_paras(draft: str, docs: list[Doc], rt: RefTable | None = None) -> list[dict]:
+    """草稿純文字 → 段落（h4／p）＋〔檔名〕錨點＋〔借自〕標記。"""
+    rt = rt or RefTable(docs, prefix="v")
+    paras = []
+    for n, line in enumerate(l.strip() for l in draft.splitlines() if l.strip()):
+        kind = "h4" if line in HEADS or (len(line) <= 6 and line.rstrip("：:") in HEADS) else "p"
+        borrows = re.findall(r"〔借自[：:]\s*([^〕]+)〕", line)
+        files = [x.strip() for f in re.findall(r"〔([^〕]+)〕", line) if not f.startswith("借自") for x in re.split(r"[、，,;；]", f)]
+        refs = [rt.add({"file": f, "quote": ""}) for f in files if f]
+        paras.append({"id": f"p{n}", "kind": kind, "text": re.sub(r"〔[^〕]+〕", "", line), "refs": [r for r in refs if r], "borrow": borrows or None})
+    return paras
+
+
 def _tri(t, rt: RefTable):
     if not t:
         return [None, None]
     return [t.get("value"), rt.add(t.get("quote"))]
 
 
-def build(docs: list[Doc], fields: dict, period: dict, issues: dict, laws_verified: list, citations: list,
-          laws_extra: dict, sims: list, sim_notes: dict, draft: str, draft_cites: list, lib: dict | None = None) -> dict:
+def build(docs: list[Doc], fields: dict | None, period: dict | None, issues: dict | None, laws_verified: list | None, citations: list | None,
+          laws_extra: dict | None, sims: list | None, sim_notes: dict | None, draft: str | None, draft_cites: list | None, lib: dict | None = None) -> dict:
+    """任一步驟尚未完成可傳 None，該分頁的鍵就不出現（API 進行中回部分結果用）。"""
     rt = RefTable(docs)
     out = {}
     lib = lib or {"laws": [], "letters": [], "rulings": []}
+    if fields is None or period is None:
+        out["files"] = [[d.name, d.fileId, d.doc_type, d.source, d.originalName] for d in docs]
+        out["lawlib"] = {"laws": lib["laws"], "rulings": lib["letters"], "judgments": lib["rulings"], "sync": lib.get("sync")}
+        out["refs"] = {}
+        return out
     # 三時點：行為時／裁處時／決定時（預定＝收文＋3 個月，訴願法 §85）
     from datetime import date, timedelta
     def _d(s):
@@ -54,12 +73,19 @@ def build(docs: list[Doc], fields: dict, period: dict, issues: dict, laws_verifi
     ]
 
     # Tab 2
+    if issues is None:
+        out.update(lawlib={"laws": lib["laws"], "rulings": lib["letters"], "judgments": lib["rulings"], "sync": lib.get("sync")}, refs=rt.refs, unverifiedQuotes=rt.unverified)
+        return out
     out["issues"] = [{"id": i["id"], "title": i["title"],
                       "a": [i["appellant_claim"], None], "d": [i["agency_reply"], None],
                       "e": [[q["quote"][:40], rt.add(q)] for q in i["evidence"]],
                       "law": i["laws"], "finding": i["finding"], "reason": i["reason"]} for i in issues["issues"]]
 
     # Tab 3
+    if laws_verified is None:
+        out.update(lawlib={"laws": lib["laws"], "rulings": lib["letters"], "judgments": lib["rulings"], "sync": lib.get("sync")}, refs=rt.refs, unverifiedQuotes=rt.unverified)
+        return out
+    citations, laws_extra = citations or [], laws_extra or {}
     out["laws"] = []
     for r in laws_verified:
         badges = []
@@ -86,6 +112,10 @@ def build(docs: list[Doc], fields: dict, period: dict, issues: dict, laws_verifi
     out["alert"] = laws_extra.get("alert") or ({"title": "法規時效性警示（由三時點比對產生）", "text": "；".join(f"{k}：{v}" for k, v in seen_lib.items())} if warns else None)
 
     # Tab 4
+    if sims is None:
+        out.update(lawlib={"laws": lib["laws"], "rulings": lib["letters"], "judgments": lib["rulings"], "sync": lib.get("sync")}, refs=rt.refs, unverifiedQuotes=rt.unverified)
+        return out
+    sim_notes = sim_notes or {"notes": []}
     notes = {n["id"]: n for n in sim_notes.get("notes", [])}
     out["sims"] = [{"fn": s["id"], "s": notes.get(s["id"], {}).get("score", 0), "why": notes.get(s["id"], {}).get("why_similar", ""),
                     "one": notes.get(s["id"], {}).get("one_liner", ""), "chips": notes.get(s["id"], {}).get("chips", []),
@@ -98,13 +128,11 @@ def build(docs: list[Doc], fields: dict, period: dict, issues: dict, laws_verifi
     out["simDist"] = [[k, v] for k, v in dist.items()]
 
     # Tab 5
-    paras, cur_kind = [], "p"
-    for n, line in enumerate(l.strip() for l in draft.splitlines() if l.strip()):
-        kind = "h4" if line in HEADS or (len(line) <= 6 and line.rstrip("：:") in HEADS) else "p"
-        borrows = re.findall(r"〔借自[：:]\s*([^〕]+)〕", line)
-        files = [x.strip() for f in re.findall(r"〔([^〕]+)〕", line) if not f.startswith("借自") for x in re.split(r"[、，,;；]", f)]
-        refs = [rt.add({"file": f, "quote": ""}) for f in files if f]
-        paras.append({"id": f"p{n}", "kind": kind, "text": re.sub(r"〔[^〕]+〕", "", line), "refs": [r for r in refs if r], "borrow": borrows or None})
+    if draft is None:
+        out.update(lawlib={"laws": lib["laws"], "rulings": lib["letters"], "judgments": lib["rulings"], "sync": lib.get("sync")}, refs=rt.refs, unverifiedQuotes=rt.unverified)
+        return out
+    draft_cites = draft_cites or []
+    paras = build_paras(draft, docs, rt)
     m_main = re.search(r"主文\s*\n+\s*(.+)", draft)
     m_art = re.search(r"依訴願法第\s*(\d+)\s*條第\s*(\d+)\s*項", draft)
     verdict = (m_main.group(1).strip() if m_main else "").rstrip("。")
@@ -119,3 +147,13 @@ def build(docs: list[Doc], fields: dict, period: dict, issues: dict, laws_verifi
     out["refs"] = rt.refs
     out["unverifiedQuotes"] = rt.unverified
     return out
+
+
+def build_partial(docs: list[Doc], acc: dict, lib: dict | None = None) -> dict:
+    """acc = 各步 emit 的 payload 累積：{"s2":{fields,period},"s3":{issues},"s4":{laws,citations,alert},"s5":{sims,notes},"s6":{draft}}"""
+    from . import lawdb
+    s2, s3, s4, s5, s6 = (acc.get(k) or {} for k in ("s2", "s3", "s4", "s5", "s6"))
+    draft = s6.get("draft")
+    return build(docs, s2.get("fields"), s2.get("period"), s3.get("issues"), s4.get("laws"), s4.get("citations"),
+                 {"alert": s4.get("alert")} if s4 else None, s5.get("sims"), s5.get("notes"), draft,
+                 lawdb.check_citations(lawdb.load(), draft, source="草稿") if draft else None, lib)

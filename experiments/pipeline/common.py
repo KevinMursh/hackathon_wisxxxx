@@ -49,9 +49,11 @@ def docs_block(docs: dict, only: list[str] | None = None, max_chars: int = 8000)
     return "\n\n".join(parts)
 
 
-def image_block(path: Path) -> dict:
-    fmt = "jpeg" if path.suffix.lower() in (".jpg", ".jpeg") else "png"
-    return {"image": {"format": fmt, "source": {"bytes": path.read_bytes()}}}
+def image_block(src) -> dict:
+    """src 可為 Path 或 bytes（S3 讀來的頁圖）。"""
+    data = src if isinstance(src, (bytes, bytearray)) else Path(src).read_bytes()
+    fmt = "png" if data[:4] == b"\x89PNG" else "jpeg"
+    return {"image": {"format": fmt, "source": {"bytes": bytes(data)}}}
 
 
 # ---------- 呼叫 ----------

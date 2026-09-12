@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from . import casedb, lawdb, lawlib, to_frontend
 from .anchors import locate
 from .common import RUNS, call_json, prompt, stream_text
-from .ingest import Doc, by_name, for_step, load_local, load_remote, prompt_block
+from .ingest import Doc, by_name, for_step, load_any, load_local, load_remote, prompt_block
 from .retrieval import retrieve
 from .schemas import Fields, Issues, Laws, Sims
 
@@ -31,7 +31,7 @@ def _roc(s):
 
 
 def _imgs(docs: list[Doc]):
-    return [p for d in docs for p in d.images if not isinstance(p, str)]
+    return [p for d in docs for p in d.images if not isinstance(p, str) or not p.startswith("http")]
 
 
 def _img_note(docs: list[Doc]):
@@ -65,15 +65,19 @@ def verify_quotes(docs: list[Doc], issues: dict) -> int:
 
 
 # ---------- 主流程 ----------
-def run(case: str, start="s2", images=True, api: str | None = None):
-    docs = load_remote(case, api) if api else load_local(case)
+def run(case: str, start="s2", images=True, api: str | None = None, docs: list[Doc] | None = None, progress=None) -> dict:
+    """progress(step, status, payload) 在每步開始／完成時呼叫（API 用）。回傳前端物件。"""
+    docs = docs or (load_remote(case, api) if api else load_any(case))
     db = lawdb.load()
     order = ["s2", "s3", "s4", "s5", "s6"]
     todo = order[order.index(start):] if start in order else []  # --from fe：全部讀快取，只重做程式步驟與 adapter
     t0 = time.monotonic()
     log = lambda m: print(m, file=sys.stderr)
+    emit = progress or (lambda *a: None)
+    partial = {}  # 逐步累積給前端的鍵，每步完成就 emit 一次
 
     # s2
+    emit("s2", "running", None)
     d2 = for_step(docs, "s2")
     if "s2" in todo:
         fields = call_json("s2_fields", Fields, case=case, system=SYS + "\n\n" + prompt("s2_fields"),
@@ -82,6 +86,8 @@ def run(case: str, start="s2", images=True, api: str | None = None):
         fields = _load(case, "s2_fields")
     period = period_and_checks(fields); _save(case, "s2_period", period)
     log(f"[s2] {fields['appellant_masked']} / {fields['disposition_no']} / 送達 {period['served']} 收文 {period['recv']} → 在期間內 {period['in_time']}；三方對照 {len(fields['compare'])} 列")
+    emit("s2", "done", {"fields": fields, "period": period})
+    emit("s3", "running", None)
 
     # s3
     if "s3" in todo:
@@ -95,6 +101,8 @@ def run(case: str, start="s2", images=True, api: str | None = None):
     for i in issues["issues"]:
         log(f"[s3] {i['id']} {i['title']} → {i['finding']}：{i['reason'][:36]}")
     log(f"[s3] 引句回查失敗 {bad} 則")
+    emit("s3", "done", {"issues": issues})
+    emit("s4", "running", None)
 
     # s4：字典查核 + KB 候選（函釋／判解）+ 1 次挑選
     cites = []
@@ -126,6 +134,8 @@ def run(case: str, start="s2", images=True, api: str | None = None):
             hit = next((h for h in cand_list if h["title"] == r["name"] or r["name"] in h["title"]), None)
             verified.append({**r, "status": "ok" if hit else "unknown_law", "text": hit["text"][:600] if hit else "", "uri": hit["uri"] if hit else ""})
     _save(case, "s4_verified", {"laws": verified, "citations": cites, "kb_candidates": [h["title"] for h in cand_list]})
+    emit("s4", "done", {"laws": verified, "citations": cites, "alert": laws.get("alert")})
+    emit("s5", "running", None)
     log(f"[s4] 推薦 {len(verified)}（法規 {sum(v['kind']=='法規' for v in verified)}／函釋判解 {sum(v['kind']!='法規' for v in verified)}；查無 {sum(v['status']=='unknown_law' for v in verified)}）；答辯／裁處書引用 {len(cites)} 則；alert={bool(laws.get('alert'))}")
 
     # s5：KB decisions（同法）+ 規則重排
@@ -152,6 +162,8 @@ def run(case: str, start="s2", images=True, api: str | None = None):
     else:
         sim_notes = _load(case, "s5_sims") if sims else {"notes": []}
     _save(case, "s5_list", sims)
+    emit("s5", "done", {"sims": sims, "notes": sim_notes})
+    emit("s6", "running", None)
     log(f"[s5] {law_name}（KB 命中 {len(kb_ids)}）→ " + "；".join(f"{x['year']} {x['clause']} {x['result']}" for x in sims))
 
     # s6
@@ -174,7 +186,9 @@ def run(case: str, start="s2", images=True, api: str | None = None):
     lib = lawlib.build()
     fe = to_frontend.build(docs, fields, period, issues, verified, cites, laws, sims, sim_notes, draft, draft_cites, lib)
     _save(case, "frontend", fe)
+    emit("s6", "done", {"draft": draft})
     log(f"[fe] refs {len(fe['refs'])}（text {sum(v[1]=='text' for v in fe['refs'].values())}／doc {sum(v[1]=='doc' for v in fe['refs'].values())}／time {sum(v[1]=='time' for v in fe['refs'].values())}）；未定位引句 {len(fe['unverifiedQuotes'])}；判定 {fe['judge']['verdict']} {fe['judge']['art']} risk={fe['judge']['risk']}；總耗時 {time.monotonic()-t0:.0f}s")
+    return fe
 
 
 if __name__ == "__main__":

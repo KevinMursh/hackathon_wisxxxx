@@ -65,7 +65,7 @@ def from_files(files: list[dict], base: Path | None = None) -> list[Doc]:
         if f.get("status") in ("duplicate", "error", "excluded") or f.get("excluded"):
             continue
         text, tpp = _read_text(f, base or Path("."))
-        images = [(base / p) if base and not str(p).startswith("http") else p for p in f.get("images", [])]
+        images = [(base / p) if base and isinstance(p, str) and not p.startswith("http") else p for p in f.get("images", [])]
         for i, seg in enumerate(f.get("segments") or [{}]):
             m = seg.get("manual") or {}
             doc_type = m.get("doc_type") or seg.get("doc_type", "其他")
@@ -79,6 +79,10 @@ def from_files(files: list[dict], base: Path | None = None) -> list[Doc]:
                             nature=NATURE.get(doc_type, "未知"), timing=seg.get("timing", "未知"), kind=f.get("kind", "text"),
                             text=seg_text, textPerPage=tpp[a - 1:b] if tpp else [], images=images,
                             fromPage=a, toPage=b, summary=seg.get("summary", ""), segId=seg.get("segId", f"{f['fileId']}#{i}")))
+    # 合併卷宗（多 segment）與單檔同時上傳時內容重複：同 doc_type 已有單檔者，捨棄合併卷宗的那段
+    multi_ids = {d.fileId for d in docs if sum(x.fileId == d.fileId for x in docs) > 1}
+    single_types = {d.doc_type for d in docs if d.fileId not in multi_ids}
+    docs = [d for d in docs if d.fileId not in multi_ids or d.doc_type not in single_types or d.doc_type == "其他"]
     # 同類型同日期會撞名（隊友模板已知問題）→ 加 -1/-2 保證 prompt 中檔名唯一
     seen = {}
     for d in docs:
@@ -94,6 +98,38 @@ def from_files(files: list[dict], base: Path | None = None) -> list[Doc]:
 def load_local(case: str) -> list[Doc]:
     base = INPUTS / case
     return from_files(json.loads((base / "files.json").read_text(encoding="utf-8"))["files"], base)
+
+
+def load_ddb(case_id: str, table: str = "appeal-cases", bucket: str = "ntpc-law3-deploy-229004791954", region: str = "us-west-2") -> list[Doc]:
+    """直接讀隊友的 DynamoDB（CASE#{id} / FILE#）與 S3 normalized/{fileId}/meta.json、頁圖；同一台 EC2 走 instance profile。"""
+    import boto3
+    from boto3.dynamodb.conditions import Key
+    ddb = boto3.resource("dynamodb", region_name=region).Table(table)
+    s3 = boto3.client("s3", region_name=region)
+    items = ddb.query(KeyConditionExpression=Key("PK").eq(f"CASE#{case_id}") & Key("SK").begins_with("FILE#"))["Items"]
+    files = []
+    for it in items:
+        f = {k: v for k, v in it.items() if k not in ("PK", "SK")}
+        f["segments"] = [dict(sg) for sg in (f.get("segments") or [])]
+        for sg in f["segments"]:
+            for k in ("fromPage", "toPage"):
+                if k in sg and sg[k] is not None:
+                    sg[k] = int(sg[k])
+        if f.get("status") == "done" and f.get("metaKey"):
+            meta = json.loads(s3.get_object(Bucket=bucket, Key=f["metaKey"])["Body"].read())
+            f["text"], f["textPerPage"] = meta.get("text", ""), meta.get("textPerPage") or []
+            f["images"] = [s3.get_object(Bucket=bucket, Key=k)["Body"].read() for k in (f.get("imageKeys") or [])[:20]]
+        else:
+            f["text"], f["textPerPage"], f["images"] = "", [], []
+        files.append(f)
+    if not files:
+        raise FileNotFoundError(f"CASE_NOT_FOUND: {case_id}")
+    return from_files(files)
+
+
+def load_any(case_id: str) -> list[Doc]:
+    """本機 inputs/{case}/files.json 有就用本機（開發），否則讀雲端 DDB+S3。"""
+    return load_local(case_id) if (INPUTS / case_id / "files.json").exists() else load_ddb(case_id)
 
 
 def load_remote(case_id: str, api_base: str) -> list[Doc]:
