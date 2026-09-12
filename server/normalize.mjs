@@ -21,7 +21,15 @@ const MAX_SCAN_PAGES = 200;      // 超過即拒絕（防止把整卷上百頁�
 
 export const KINDS = ["pdf-text", "pdf-scan", "image", "video", "office", "text", "unsupported"];
 
-const OFFICE_EXT = new Set(["doc", "docx", "odt", "rtf"]);
+const OFFICE_EXT = new Set(["doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "ppt", "pptx", "odp"]);
+// file-type 對 OOXML 回這些 mime；一律交給 LibreOffice 轉 PDF
+const OFFICE_MIME = new Set([
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.oasis.opendocument.text", "application/vnd.oasis.opendocument.spreadsheet", "application/vnd.oasis.opendocument.presentation",
+  "application/msword", "application/vnd.ms-excel", "application/vnd.ms-powerpoint", "application/rtf",
+]);
 const TEXT_EXT = new Set(["txt", "md", "csv"]);
 const IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/gif", "image/tiff", "image/bmp"]);
 const VIDEO_MIME = new Set(["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm", "video/x-matroska"]);
@@ -156,8 +164,10 @@ async function fromVideo(buffer, base, dir, ext) {
 
 /* ---------- Office ---------- */
 function isOffice(ft, ext) {
-  if (ft?.ext === "docx" || ft?.ext === "odt" || ft?.ext === "rtf") return true;
-  if (ft?.mime === "application/x-cfb" && (ext === "doc" || !ext)) return true;   // 舊版 .doc 是 CFB 容器
+  if (ft?.mime && OFFICE_MIME.has(ft.mime)) return true;
+  if (ft?.ext && OFFICE_EXT.has(ft.ext)) return true;
+  if (ft?.mime === "application/x-cfb" && OFFICE_EXT.has(ext)) return true;      // 舊版 doc/xls/ppt 是 CFB 容器
+  if (ft?.mime === "application/zip" && OFFICE_EXT.has(ext)) return true;        // OOXML 有時只認得出 zip
   return !ft && OFFICE_EXT.has(ext);
 }
 
@@ -165,7 +175,7 @@ async function fromOffice(buffer, base, dir, ext) {
   base.kind = "office";
   const src = path.join(dir, `source.${ext}`);
   await fs.writeFile(src, buffer);
-  if (ext === "docx") {
+  if (ext === "docx") {   // 純文字走 mammoth 較快；試算表／簡報只走 soffice
     try { base.text = (await mammoth.extractRawText({ buffer })).value.trim(); }
     catch (e) { base.warnings.push(`mammoth failed: ${e.message}`); }
   }

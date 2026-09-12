@@ -30,31 +30,40 @@
 
 ## 2. `server/server.mjs`
 
-5. ☐ Express + multer（memory storage，單檔 100 MB、整批 500 MB → 413 `PAYLOAD_TOO_LARGE`）
-6. ☐ `POST /api/cases/:caseId/files`：sha256 → 同批／該案既有重複標 `duplicate` → 原檔上 S3 → 建 File（`queued`）＋ Job → 202 回 `{jobId, files, eventsUrl}` → 丟進佇列
-7. ☐ Job 佇列：**單 worker 序列**（1 RPS）；每 job：逐檔 normalize → 推 `normalized` 事件、正規化產物上 S3 → `pack()` → 逐箱 classify → 推 `box`/`result` → `annotateTiming` → 寫 File `done`/`error` → 推 `done`；`BEDROCK_UNAVAILABLE` → 推 `fatal`、job `failed`
-8. ☐ 事件持久化：每個事件 `appendEvent` 到 DynamoDB（`EVT#{seq}`），SSE 從 DB 回放，重連帶 `Last-Event-ID` 補推
-9. ☐ `GET /api/jobs/:jobId/events`：SSE（`Cache-Control: no-cache`、`X-Accel-Buffering: no`）；先回放已存事件，再 live 推；`done`/`fatal` 後關閉
-10. ☐ `GET /api/jobs/:jobId`：輪詢版
-11. ☐ `GET /api/cases/:caseId/files`：含 `groups`（五組含未知，依人工修正後 source）、`cutoffDate`、每檔 `rawUrl`/`pageImageUrls` presigned；`?includeExcluded`
-12. ☐ `PATCH /api/cases/:caseId/files/:fileId`：驗枚舉（400 `VALIDATION`）→ 改 `doc_type`/`source`/`suggestedName`/`excluded` → 未給名則重算 → `nature` 重算、裁處書日期變動則整案 `timing` 重算 → 每欄一筆稽核 → 回更新後 File
-13. ☐ `GET /api/cases/:caseId/audit`
-14. ☐ `GET /api/health`：Bedrock 憑證（`ListFoundationModels` 或最小 Converse）、五個外部工具 `which`、S3 `HeadBucket`、DDB `DescribeTable`；任一 false → 503
-15. ☐ 錯誤處理：統一 `{code, message, retryable}`；未捕捉例外 → 500 `INTERNAL`＋log；**沒有任何 fallback 假資料**
-16. ☐ 日誌：每個 Bedrock 呼叫記 `jobId/box/ms/tokens`；stdout（systemd journal 收）
+5. ☑ Express + multer（memory storage，單檔 100 MB、整批 500 MB → 413 `PAYLOAD_TOO_LARGE`）
+6. ☑ `POST /api/cases/:caseId/files`：sha256 → 同批／該案既有重複標 `duplicate` → 原檔上 S3 → 建 File（`queued`）＋ Job → 202 回 `{jobId, files, eventsUrl}` → 丟進佇列
+7. ☑ Job 佇列：**單 worker 序列**（1 RPS）；每 job：逐檔 normalize → 推 `normalized` 事件、正規化產物上 S3 → `pack()` → 逐箱 classify → 推 `box`/`result` → `annotateTiming` → 寫 File `done`/`error` → 推 `done`；`BEDROCK_UNAVAILABLE` → 推 `fatal`、job `failed`
+8. ☑ 事件持久化：每個事件 `appendEvent` 到 DynamoDB（`EVT#{seq}`），SSE 從 DB 回放，重連帶 `Last-Event-ID` 補推
+9. ☑ `GET /api/jobs/:jobId/events`：SSE（`Cache-Control: no-cache`、`X-Accel-Buffering: no`）；先回放已存事件，再 live 推；`done`/`fatal` 後關閉
+10. ☑ `GET /api/jobs/:jobId`：輪詢版
+11. ☑ `GET /api/cases/:caseId/files`：含 `groups`（五組含未知，依人工修正後 source）、`cutoffDate`、每檔 `rawUrl`/`pageImageUrls` presigned；`?includeExcluded`
+12. ☑ `PATCH /api/cases/:caseId/files/:fileId`：驗枚舉（400 `VALIDATION`）→ 改 `doc_type`/`source`/`suggestedName`/`excluded` → 未給名則重算 → `nature` 重算、裁處書日期變動則整案 `timing` 重算 → 每欄一筆稽核 → 回更新後 File
+13. ☑ `GET /api/cases/:caseId/audit`
+14. ☑ `GET /api/health`：Bedrock 憑證（`ListFoundationModels` 或最小 Converse）、五個外部工具 `which`、S3 `HeadBucket`、DDB `DescribeTable`；任一 false → 503
+15. ☑ 錯誤處理：統一 `{code, message, retryable}`；未捕捉例外 → 500 `INTERNAL`＋log；**沒有任何 fallback 假資料**
+16. ☑ 日誌：每個 Bedrock 呼叫記 `jobId/box/ms/tokens`；stdout（systemd journal 收）
 
 ## 3. 本機端到端（`server/eval/api.test.sh`）
 
-17. ☐ `node server.mjs` 起本機（`.env` 指 dev 前綴）
-18. ☐ `curl /api/health` → 200，tools 全 true
-19. ☐ `curl -F files=@…×18` 上傳 case02 亂檔名版 → 202、18 筆、含 1 筆 `duplicate`（同檔上傳兩次）
-20. ☐ `curl -N /api/jobs/{id}/events` → `normalized`×18 → `box`×2 → `result`×18 → `done`
-21. ☐ 上傳 `卷宗全卷合併.pdf` → `result.segments` 17 段
-22. ☐ 上傳 `truncated.pdf` → 該檔 `ok:false, NORMALIZE_FAILED`，job 仍 `done`
-23. ☐ `PATCH` 一檔 source 未知→第三方 → `GET files` 的 `groups` 移組、`audit` 一筆
-24. ☐ `PATCH` 給非法枚舉 → 400
-25. ☐ 中斷 SSE 再帶 `Last-Event-ID` 重連 → 補推不重複
-26. ☐ `aws s3 ls s3://…/dev/cases/…` raw 與 normalized 都在；DynamoDB 有 FILE/JOB/EVT/AUDIT 項
+17. ☑ `node server.mjs` 起本機（`.env` 指 dev 前綴）
+18. ☑ `curl /api/health` → 200，tools 全 true
+19. ☑ `curl -F files=@…×18` 上傳 case02 亂檔名版 → 202、18 筆、含 1 筆 `duplicate`（同檔上傳兩次）
+20. ☑ `curl -N /api/jobs/{id}/events` → `normalized`×18 → `box`×2 → `result`×18 → `done`
+21. ☑ 上傳 `卷宗全卷合併.pdf` → `result.segments` 17 段
+22. ☑ 上傳 `truncated.pdf` → 該檔 `ok:false, NORMALIZE_FAILED`，job 仍 `done`
+23. ☑ `PATCH` 一檔 source 未知→第三方 → `GET files` 的 `groups` 移組、`audit` 一筆
+24. ☑ `PATCH` 給非法枚舉 → 400
+25. ☑ 中斷 SSE 再帶 `Last-Event-ID` 重連 → 補推不重複
+26. ☑ `aws s3 ls s3://…/dev/cases/…` raw 與 normalized 都在；DynamoDB 有 FILE/JOB/EVT/AUDIT 項
+
+### 本機端到端實測（2026-09-12）
+
+case02 完整卷宗 23 檔（18 卷宗 + 合併卷宗 + 重複檔 + 壞檔 + xlsx）：**145 秒**、3 箱、22 ok / 1 error（truncated.pdf）/ 1 duplicate。
+`GET files` 回 groups（訴願人 3／原處分機關 12／第三方 2／本局 0／未知 5）、cutoffDate `114-09-16`、nature／timing 推導正確、presigned URL 可用；
+合併卷宗 18 段；PATCH 未知→第三方後分組即時改變並寫入稽核；非法枚舉回 400；Last-Event-ID 重連補推 29 筆。
+S3 78 個物件（raw + normalized meta/頁圖），DynamoDB 23 FILE + 44 EVT + AUDIT。
+
+**修掉的 bug**：① patch 重複給 `updatedAt` → DynamoDB 拒絕整個 job；② SSE `maxSeq` 為 NaN 導致事件全被丟棄（只剩 keepalive）；③ 重複檔沿用 sha256 前綴當 fileId → 覆蓋正本紀錄，改為 `{sha12}-d{n}`。
 
 ## 4. 部署檔 `deploy/`
 
