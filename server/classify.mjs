@@ -5,6 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
+import { createHash } from "node:crypto";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
@@ -44,6 +45,16 @@ const TOOL = {
 
 let SYSTEM;
 async function systemPrompt() { return (SYSTEM ??= await fs.readFile(path.join(here, "prompts", "classify.md"), "utf8")); }
+
+/* ---------- 本機 cache（實驗用）：key = sha256(model + prompt + 箱內各檔 sha256 + 送圖數)；prompt 一改自動失效 ---------- */
+const CACHE_DIR = process.env.CLASSIFY_CACHE === "0" ? null : path.join(here, ".cache");
+async function cacheKey(items, model) {
+  const h = createHash("sha256").update(model).update(await systemPrompt());
+  for (const n of items) h.update(n.sha256).update(String(imagesToSend(n).length)).update(String(n.text?.length ?? 0));
+  return h.digest("hex");
+}
+async function cacheGet(key) { if (!CACHE_DIR) return null; try { return JSON.parse(await fs.readFile(path.join(CACHE_DIR, key + ".json"), "utf8")); } catch { return null; } }
+async function cachePut(key, val) { if (!CACHE_DIR) return; await fs.mkdir(CACHE_DIR, { recursive: true }); await fs.writeFile(path.join(CACHE_DIR, key + ".json"), JSON.stringify(val)); }
 
 /* ---------- 裝箱 ---------- */
 function cost(n) { return { images: imagesToSend(n).length, chars: Math.min(n.text?.length ?? 0, TEXT_CAP) }; }
@@ -194,19 +205,24 @@ export async function classifyAll(normalized, { perFile = false, model = MODEL, 
     const byId = new Map(box.items.map((n) => [n.fileId, n]));
     const settle = (fileId, r) => results.set(fileId, { fileId, originalName: byId.get(fileId)?.originalName, box: bi, ...r });
     try {
-      let out;
-      if (box.oversize) out = await classifyOversize(box.items[0], model);
+      const key = await cacheKey(box.items, model);
+      let out = await cacheGet(key);
+      if (out) out = { ...out, cached: true };
       else {
-        const blocks = [];
-        for (const n of box.items) blocks.push(...(await fileBlocks(n, perFile ? {} : {})));
-        out = await converse(blocks, { model });
+        if (box.oversize) out = await classifyOversize(box.items[0], model);
+        else {
+          const blocks = [];
+          for (const n of box.items) blocks.push(...(await fileBlocks(n)));
+          out = await converse(blocks, { model });
+        }
+        await cachePut(key, out);
       }
       const seen = new Set();
       for (const r of out.results ?? []) {
         const n = byId.get(r.fileId);
         if (!n || seen.has(r.fileId)) continue;              // 多的丟
         seen.add(r.fileId);
-        settle(r.fileId, { ok: true, segments: r.segments.map((s) => postprocess(s, n)), ms: out.ms, usage: seen.size === 1 ? out.usage : undefined });   // 用量只記在箱內第一筆，避免重複加總
+        settle(r.fileId, { ok: true, segments: r.segments.map((s) => postprocess({ ...s }, n)), ms: out.ms, cached: !!out.cached, usage: seen.size === 1 ? out.usage : undefined });   // 用量只記在箱內第一筆，避免重複加總
       }
       for (const n of box.items) if (!seen.has(n.fileId)) {   // 少的：單檔補跑一次
         try {

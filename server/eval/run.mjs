@@ -44,6 +44,7 @@ try {
   results = await classifyAll(normalized, { perFile, onBox: (i, n) => console.log(`  box ${i + 1}/${n} done`) });
 } catch (e) { console.error(`FATAL ${e.code}: ${e.message}`); process.exit(2); }
 const totalMs = Date.now() - t1;
+const cachedN = results.filter((r) => r.cached).length;
 const byId = new Map(results.map((r) => [r.fileId, r]));
 
 /* ③ 評分 */
@@ -90,7 +91,7 @@ date 命中            ${pct(m.dateOk, m.dateN)}
 doc_no 命中          ${pct(m.docNoOk, m.docNoN)}\nsuggestedName 命中   ${pct(m.nameOk, m.nameN)}
 evidence 回查失敗    ${m.unverified}
 錯誤/未回            ${m.errors}
-耗時 ${(totalMs / 1000).toFixed(1)}s   tokens in=${tokens.in} out=${tokens.out}`);
+耗時 ${(totalMs / 1000).toFixed(1)}s   tokens in=${tokens.in} out=${tokens.out}   cache 命中 ${cachedN}/${results.length}（CLASSIFY_CACHE=0 關閉）`);
 if (Object.keys(confusion).length) console.log("混淆：", confusion);
 if (outFile) await fs.writeFile(outFile, JSON.stringify({ model: MODEL, perFile, group, metrics: m, totalMs, results }, null, 2));
 await fs.rm(outDir, { recursive: true, force: true });
