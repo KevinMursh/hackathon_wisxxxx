@@ -241,7 +241,10 @@ function runLive(caseId, job, meta = {}) {
   $("#stepList").innerHTML = LIVE_STEPS.map(([name, kind], i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${name}</div><div class="out" id="so${i}"></div>${kind === "classify" ? `<div class="classify" id="cls0" style="flex-direction:column;gap:3px"></div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
   $("#runBar").style.width = "0"; show("s-run");
   $("#st0").classList.add("active");
-  $("#so0").textContent = `已收 ${job.files.length} 個檔案，辨識中…`;
+  const q = job.queue || { ahead: 0 };
+  $("#so0").textContent = q.ahead
+    ? `已收 ${job.files.length} 個檔案・排隊中：前面還有 ${q.ahead} 件，約 ${Math.ceil(q.etaMs / 1000)} 秒`
+    : `已收 ${job.files.length} 個檔案，辨識中…`;
 
   const t0 = Date.now();
   const seen = new Map(job.files.map((f) => [f.fileId, f.originalName]));
@@ -278,6 +281,11 @@ function runLive(caseId, job, meta = {}) {
   };
 
   const stream = Api.streamJob(job.jobId, {
+    onQueued: (d) => {
+      $("#runTitle").textContent = "排隊中";
+      $("#so0").textContent = `前面還有 ${d.ahead} 件處理中，約 ${Math.ceil((d.etaMs || 0) / 1000)} 秒後開始`;
+    },
+    onStarted: () => { $("#runTitle").textContent = "正在分析卷宗"; $("#so0").textContent = `開始辨識 ${S.liveCase.total} 個檔案…`; },
     onNormalized: (d) => {
       if (!seen.has(d.fileId)) seen.set(d.fileId, d.fileId);
       place(d.fileId, seen.get(d.fileId), `${KIND[d.kind] || d.kind}${d.pages ? `・${d.pages} 頁` : d.duration ? `・${d.duration}s` : ""}`);

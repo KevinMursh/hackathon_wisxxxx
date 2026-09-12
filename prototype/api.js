@@ -74,6 +74,8 @@ const Api = {
       try { data = JSON.parse(e.data); } catch { /* 保持空物件 */ }
       fn?.(data, maxSeq);
     });
+    on("queued", handlers.onQueued);
+    on("started", handlers.onStarted);
     on("normalized", handlers.onNormalized);
     on("container", handlers.onContainer);
     on("box", handlers.onBox);

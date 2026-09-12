@@ -54,11 +54,28 @@ bus.setMaxListeners(0);
 const queue = [];
 let working = false;
 
-function enqueue(job) { queue.push(job); if (!working) drain(); }
+function enqueue(job) {
+  queue.push(job);
+  job.queuePos = working ? queue.length : 0;     // 0 = 立刻開始
+  if (!working) drain(); else announceQueue();
+}
+
+/** 讓排隊中的 job 知道自己排第幾、前面大概要多久（用最近幾次的實際耗時估） */
+const recentMs = [];
+const avgJobMs = () => (recentMs.length ? Math.round(recentMs.reduce((a, b) => a + b, 0) / recentMs.length) : 50000);
+function announceQueue() {
+  queue.forEach((j, i) => {
+    const ahead = i + (working ? 1 : 0);
+    if (j.announced === ahead) return;
+    j.announced = ahead;
+    emit(j, "queued", { ahead, etaMs: ahead * avgJobMs() }).catch(() => {});
+  });
+}
 async function drain() {
   working = true;
   while (queue.length) {
     const job = queue.shift();
+    announceQueue();
     try { await runJob(job); }
     catch (e) { console.error(`[job ${job.jobId}] 未捕捉例外`, e); }
   }
@@ -77,6 +94,7 @@ async function runJob(job) {
   const t0 = Date.now();
   const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "job-"));
   await ddb.updateJob(jobId, { status: "running", startedAt: iso() });
+  await emit(job, "started", { total: job.files.length });
   const counters = { ok: 0, error: 0, duplicate: job.duplicates.length };
   try {
     /* ① 正規化（逐檔推事件） */
@@ -124,30 +142,41 @@ async function runJob(job) {
     }
 
     /* ② 分類（箱之間併發） */
+    const byId = new Map(normalized.map((n) => [n.fileId, n]));
+    const pushed = new Set();
+
+    /** 一箱跑完就寫 DB、推事件，不等整批 */
+    const flush = async (rs) => {
+      for (const r of rs) {
+        if (!r || pushed.has(r.fileId)) continue;
+        pushed.add(r.fileId);
+        const n = byId.get(r.fileId);
+        if (r.ok) {
+          counters.ok++;
+          const patch = {
+            status: "done", kind: n?.kind, pages: n?.pages, duration: n?.duration,
+            mime: n?.mime, warnings: n?.warnings ?? [],
+            imagePages: n?.imagePages ?? null, contentImagePages: n?.contentImagePages ?? null,
+            imageKeys: n?._keys?.imageKeys ?? [], metaKey: n?._keys?.metaKey,
+            segments: r.segments.map((s, i) => ({ segId: `${r.fileId}#${i}`, ...s })),
+          };   // updatedAt 由 ddb.updateFile 自動加，這裡不能重複給
+          await ddb.updateFile(caseId, r.fileId, patch);
+          await emit(job, "result", { fileId: r.fileId, ok: true, segments: patch.segments });
+        } else {
+          counters.error++;
+          await ddb.updateFile(caseId, r.fileId, { status: "error", error: r.error });
+          await emit(job, "result", { fileId: r.fileId, ok: false, error: r.error });
+        }
+      }
+    };
+
     const results = await classifyAll(normalized, {
       onBox: (done, total) => emit(job, "box", { done, total }).catch(() => {}),
+      onBoxResults: flush,
     });
     annotateTiming(results);
+    await flush(results);            // 補漏（單檔補跑等情況）
 
-    const byId = new Map(normalized.map((n) => [n.fileId, n]));
-    for (const r of results) {
-      const n = byId.get(r.fileId);
-      if (r.ok) {
-        counters.ok++;
-        const patch = {
-          status: "done", kind: n?.kind, pages: n?.pages, duration: n?.duration,
-          mime: n?.mime, warnings: n?.warnings ?? [],
-          imagePages: n?.imagePages ?? null, imageKeys: n?._keys?.imageKeys ?? [], metaKey: n?._keys?.metaKey,
-          segments: r.segments.map((s, i) => ({ segId: `${r.fileId}#${i}`, ...s })),
-        };   // updatedAt 由 ddb.updateFile 自動加，這裡不能重複給
-        await ddb.updateFile(caseId, r.fileId, patch);
-        await emit(job, "result", { fileId: r.fileId, ok: true, segments: patch.segments });
-      } else {
-        counters.error++;
-        await ddb.updateFile(caseId, r.fileId, { status: "error", error: r.error });
-        await emit(job, "result", { fileId: r.fileId, ok: false, error: r.error });
-      }
-    }
     await emit(job, "done", { jobId, total: job.files.length, ...counters, ms: Date.now() - t0 });
     await ddb.updateJob(jobId, { status: "done", finishedAt: iso(), counters });
   } catch (e) {
@@ -158,6 +187,7 @@ async function runJob(job) {
   } finally {
     await fs.rm(outDir, { recursive: true, force: true });
     job.finished = true;
+    recentMs.push(Date.now() - t0); if (recentMs.length > 5) recentMs.shift();
   }
 }
 
@@ -214,7 +244,8 @@ async function ingest(caseId, entries) {
   JOBS.set(jobId, job);
   await ddb.putJob({ jobId, caseId, status: "queued", total: entries.length, createdAt: iso() });
   enqueue(job);
-  return { jobId, caseId, files: out, eventsUrl: `/api/jobs/${jobId}/events` };
+  return { jobId, caseId, files: out, eventsUrl: `/api/jobs/${jobId}/events`,
+    queue: { ahead: job.queuePos, etaMs: job.queuePos * avgJobMs() } };
 }
 
 /* 上傳整批 */

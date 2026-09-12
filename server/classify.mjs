@@ -15,7 +15,8 @@ export const SOURCES = ["訴願人", "原處分機關", "第三方", "本局", "
 export const FORMS = ["文字PDF", "掃描", "照片", "影片", "系統列印", "手寫"];
 
 /* 裝箱預算：三者先到先開新箱 */
-export const BOX = { files: +(process.env.BOX_FILES || 10), images: 20, chars: 120_000 };
+export const BOX = { files: +(process.env.BOX_FILES || 10), images: 20, chars: 120_000,
+  first: +(process.env.BOX_FIRST || 3) };   // 第一箱刻意小：讓第一批判定早點出現，總時間幾乎不變
 const PAGE_CAP = 3000;           // 每頁文字上限（字）
 const TEXT_CAP = 60_000;         // 每檔文字上限（字）；20 頁合併卷宗約 25k
 
@@ -84,7 +85,8 @@ export function pack(normalized, box = BOX) {
   for (const n of interleave(usable)) {
     const c = cost(n);
     if (c.images > box.images) { boxes.push({ items: [n], images: c.images, chars: c.chars, oversize: true }); continue; }   // 多頁掃描獨占一箱（可能超過 20 張，另切）
-    if (!cur || cur.items.length >= box.files || cur.images + c.images > box.images || cur.chars + c.chars > box.chars) {
+    const cap = boxes.length <= 1 ? (box.first || box.files) : box.files;   // 填第一箱時 boxes.length 已是 1
+    if (!cur || cur.items.length >= cap || cur.images + c.images > box.images || cur.chars + c.chars > box.chars) {
       cur = { items: [], images: 0, chars: 0 }; boxes.push(cur);
     }
     cur.items.push(n); cur.images += c.images; cur.chars += c.chars;
@@ -179,7 +181,7 @@ function postprocess(seg, n) {
  * classifyAll(normalized, {perFile, model, onBox})
  *  → [{fileId, ok, segments | error, box, ms}]
  */
-export async function classifyAll(normalized, { perFile = false, model = MODEL, onBox } = {}) {
+export async function classifyAll(normalized, { perFile = false, model = MODEL, onBox, onBoxResults } = {}) {
   const results = new Map();
   for (const n of normalized) {
     if (!n.ok) results.set(n.fileId, { fileId: n.fileId, originalName: n.originalName, ok: false, error: n.error });
@@ -226,6 +228,8 @@ export async function classifyAll(normalized, { perFile = false, model = MODEL, 
       if (e.code === "BEDROCK_UNAVAILABLE") fatal ??= e;
     }
     onBox?.(++doneBoxes, boxes.length, results);
+    // 該箱的結果立刻回報，呼叫端才能邊跑邊推給前端（別等整批跑完）
+    if (onBoxResults) await onBoxResults(box.items.map((n) => results.get(n.fileId)).filter(Boolean), bi);
   }));
   if (fatal) throw fatal;
   const out = [...results.values()];
