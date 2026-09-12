@@ -233,7 +233,8 @@ def chat(case_id: str, message: str, *, state: dict | None = None, tab: int | No
     sys_txt = prompt("system") + "\n\n" + prompt("assistant")
     brief = {"issues": [[i["id"], i["title"], i.get("afterObjection") or i.get("finding")] for i in (ctx.state.get("issues") or [])],
              "judge": (ctx.state.get("judge") or {}).get("verdict"), "period": {k: (ctx.state.get("period") or {}).get(k) for k in ("served", "recv", "deadline", "inTime")},
-             "laws": [l["n"] for l in (ctx.state.get("laws") or [])][:20], "files": [[f[0], f[2], f[3], f[1]] for f in (ctx.state.get("files") or [])][:40]}   # [檔名, 類型, 來源, fileId]；reissue 的 docs 填 fileId
+             "laws": [l["n"] for l in (ctx.state.get("laws") or [])][:20],
+             "draft_paras": [lab for lab, _ in label_paras(list((ctx.state.get("drafts") or {}).values())[-1]["paras"])] if ctx.state.get("drafts") else [], "files": [[f[0], f[2], f[3], f[1]] for f in (ctx.state.get("files") or [])][:40]}   # [檔名, 類型, 來源, fileId]；reissue 的 docs 填 fileId
     tab_name = ["案件擷取與分類", "爭點", "法規推薦", "相似案例", "決定書草稿"][tab] if tab is not None and 0 <= tab <= 4 else "未知"
     msgs = []
     for h in (history or [])[-6:]:
