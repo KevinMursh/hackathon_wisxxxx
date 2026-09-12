@@ -546,6 +546,83 @@ function openTagPop(id, anchor) {
   };
 }
 
+/* =========================================================
+   F12：真檔案檢視（後端給的 rawUrl／textUrl／pageImageUrls）
+   mock 的 kind 只有 text/image/pdf/video，後端是 pdf-text/pdf-scan/image/video/office/text/unsupported
+   ========================================================= */
+const TEXT_CACHE = new Map();
+
+async function withFreshUrl(d, fn) {
+  try { return await fn(d); }
+  catch (e) {                                  // presigned 15 分鐘過期 → 重取一次
+    if (!S.c?.caseId) throw e;
+    const fresh = toDocs(await Api.listFiles(S.c.caseId)).find((x) => x.id === d.id);
+    if (!fresh) throw e;
+    Object.assign(d, { file: fresh.file, pageImageUrls: fresh.pageImageUrls });
+    return fn(d);
+  }
+}
+
+function openLiveDoc(d, view, tools, head) {
+  const page = d.fromPage && d.fromPage > 1 ? `page=${d.fromPage}&` : "";
+  const pdfFrame = () => `<div style="padding:10px 12px 0">${head}</div><iframe class="doc-pdf" src="${d.file}#${page}toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>`;
+
+  const paintText = async () => {
+    view.innerHTML = `<div class="doc-body">${head}<p class="note">讀取文字中…</p></div>`;
+    try {
+      if (!TEXT_CACHE.has(d.fileId)) TEXT_CACHE.set(d.fileId, await Api.fileText(S.c.caseId, d.fileId));
+      const t = TEXT_CACHE.get(d.fileId);
+      const pages = (t.textPerPage || []).slice((d.fromPage || 1) - 1, d.toPage || undefined);
+      view.innerHTML = `<div class="doc-body">${head}${pages.length
+        ? pages.map((txt, i) => `<h4>第 ${(d.fromPage || 1) + i} 頁</h4><pre style="white-space:pre-wrap;font:12.5px/1.9 var(--mono);margin:0 0 14px">${esc(txt || "（本頁無文字）")}</pre>`).join("")
+        : `<p class="note">這份文件沒有文字層（掃描件／照片），請切換「頁面影像」檢視。</p>`}</div>`;
+    } catch (e) {
+      view.innerHTML = `<div class="doc-body">${head}<p class="note" style="color:var(--seal)">讀取文字失敗：${esc(e.code || "")} ${esc(e.message || "")}</p></div>`;
+    }
+  };
+
+  const paintImages = () => {
+    const urls = d.pageImageUrls?.length ? d.pageImageUrls : d.file ? [d.file] : [];
+    tools.innerHTML = `<button class="ghost-btn" data-z="-">－</button><button class="ghost-btn" data-z="+">＋</button><button class="ghost-btn" data-z="0">重設</button>` + tools.innerHTML;
+    view.innerHTML = `<div style="padding:10px 12px 0">${head}</div>` + urls.map((u, i) =>
+      `<div class="doc-img"><div class="imgwrap"><img src="${u}" alt="${esc(d.title)} 第 ${i + 1} 張" loading="lazy"></div></div>`).join("");
+    const fit = () => $$(".doc-img", view).forEach((el) => el.style.setProperty("--imgw", Math.round((view.clientWidth - 24) * S.zoom) + "px"));
+    fit();
+    $$("#docTools button[data-z]").forEach((b) => b.addEventListener("click", () => {
+      S.zoom = b.dataset.z === "0" ? 1 : Math.min(4, Math.max(.5, S.zoom + (b.dataset.z === "+" ? .4 : -.4))); fit();
+    }));
+    $$(".doc-img img", view).forEach((img) => img.addEventListener("error", () => withFreshUrl(d, () => openDoc(d.id)).catch(() => {})));
+  };
+
+  const modes = [];
+  if (d.kind === "pdf-text" || d.kind === "office") modes.push(["pdf", "原始 PDF"], ["text", "擷取文字"], ["img", "頁面影像"]);
+  else if (d.kind === "pdf-scan") modes.push(["pdf", "原始 PDF"], ["img", "頁面影像"]);
+  else if (d.kind === "image") modes.push(["img", "影像"]);
+  else if (d.kind === "text") modes.push(["text", "內容"]);
+
+  if (d.kind === "video") {
+    tools.innerHTML = `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">新分頁開啟</a>`;
+    view.innerHTML = `<div class="doc-video">${head}<video id="vid" controls preload="metadata" src="${d.file}"></video>
+      <p class="note" style="margin-top:8px">${d.duration ? `時長 ${d.duration} 秒；` : ""}分類時取 ${d.pageImageUrls?.length || 3} 幀判定類型。</p></div>`;
+    return;
+  }
+  if (!modes.length) {
+    view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b><br>${esc(d.summary || "此格式不支援預覽")}${d.err ? `<br><span style="color:var(--seal)">${esc(d.err.code)}：${esc(d.err.message || "")}</span>` : ""}</div>`;
+    return;
+  }
+
+  const paint = () => {
+    const m = S.docMode[d.id] || modes[0][0];
+    tools.innerHTML = modes.map(([k, label]) => `<button class="ghost-btn ${m === k ? "on" : ""}" data-m="${k}">${label}</button>`).join("")
+      + (d.file ? `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">下載</a>` : "");
+    if (m === "pdf") view.innerHTML = pdfFrame();
+    else if (m === "img") paintImages();
+    else paintText();
+    $$("#docTools button[data-m]").forEach((b) => b.addEventListener("click", () => { S.docMode[d.id] = b.dataset.m; S.zoom = 1; paint(); }));
+  };
+  paint();
+}
+
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
   S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on");
