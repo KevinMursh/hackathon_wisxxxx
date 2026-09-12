@@ -366,7 +366,7 @@ function toCase(caseId, docs, doc) {
   const refs = {};
   for (const [k, v] of Object.entries(o.refs || {})) { const id = byFile[v[0]]; if (id) refs[k] = [id, v[1], v[2]]; }
   const fixRef = (r) => (r && refs[r] ? r : null);
-  const finding = (f) => f === "採機關" ? "agency" : f === "採訴願人" ? "appellant" : "open";
+  const finding = (f) => /^採機關/.test(f || "") ? "agency" : /^採訴願人/.test(f || "") ? "appellant" : "open";
   const plan = { id: "A", name: "AI 判定", verdict: j.verdict || "—", art: j.art || "", when: {}, basis: [], facts: (j.issues || []).map((x) => `${x[0]}（${x[1]}）`), cases: [], risk: [j.risk || "mid", j.riskNote || ""] };
   let sect = "", n = 0;
   const paras = (o.drafts?.A?.paras || []).map((p) => {
@@ -840,8 +840,9 @@ async function applyServerProposal(p) {
     S.objections.push({ ts: now(), issue: `${p.items.length} 項`, issueId: replies[0]?.issueId || "multi", text: p.q, ev: [], result: worst, reply: replies.map((x) => `${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}：${x.reply}`).join(" "), evidence: [], plan: null, items: replies.map((x) => ({ label: x.label, result: x.result, reply: x.reply, evidence: [] })), scope: p.scope, diff, proposalId: p.id });
     (p.scope || []).forEach((i) => { const sp = strip?.children[i]; if (sp) { sp.classList.remove("run"); sp.classList.add("ok"); sp.textContent = `✓ ${RV_STEPS[i]}`; } });
     renderTabs(tabs); updateChips(); persist(); asstOpen();
-    if (head) head.textContent = `已執行・AI 重新引證 ${replies.length} 項${diff ? "，草稿已重產" : "，結論不變"}`;
-    const el = asstAdd("a card rc", `<div class="pc-head"><b>已執行</b><span>${diff ? "爭點認定與草稿已更新" : "AI 維持原認定，理由如下"}</span></div><div class="pc-body"><div>${replies.map((x) => `<div class="rc-item"><span class="note">${esc(x.label)}</span><br>AI：<b class="${x.result === "accept" ? "a" : x.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}</b>　${esc(x.reply || "")}${x.evidence.length ? `<span class="note">　依據：${x.evidence.map(esc).join("、")}</span>` : ""}</div>`).join("")}</div></div><div class="pc-foot"><span class="note">${diff ? `草稿新版本 ${latest}，原版本可於版本紀錄回復` : "草稿未變動"}</span><button class="ghost-btn" data-tab="4">看草稿 ↗</button></div>`);
+    const anyAcc = replies.some((x) => x.result !== "reject");
+    if (head) head.textContent = `已執行・AI 重新引證 ${replies.length} 項${anyAcc ? (diff ? "，草稿已重產" : "，已採納") : "，維持原認定"}`;
+    const el = asstAdd("a card rc", `<div class="pc-head"><b>已執行</b><span>${anyAcc ? "爭點認定與草稿已更新" : "AI 維持原認定，理由如下"}</span></div><div class="pc-body"><div>${replies.map((x) => `<div class="rc-item"><span class="note">${esc(x.label)}</span><br>AI：<b class="${x.result === "accept" ? "a" : x.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}</b>　${esc(x.reply || "")}${x.evidence.length ? `<span class="note">　依據：${x.evidence.map(esc).join("、")}</span>` : ""}</div>`).join("")}</div></div><div class="pc-foot"><span class="note">${diff ? `草稿新版本 ${latest}，原版本可於版本紀錄回復` : "草稿未變動"}</span><button class="ghost-btn" data-tab="4">看草稿 ↗</button></div>`);
     el.querySelector("[data-tab]").addEventListener("click", () => $$(".tab")[4].click());
     tabs.forEach((t) => { const pg = $("#p" + t); pg.classList.add("flash"); setTimeout(() => pg.classList.remove("flash"), 1600); });
   } catch (e) { if (head) head.textContent = `執行失敗：${e.code || ""} ${e.message || ""}`; asstSay(`執行失敗：${e.message || e.code}`); }

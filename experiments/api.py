@@ -131,6 +131,9 @@ def _run_objection(job: dict, emit_done: bool = True):
         s4 = json.loads((RUNS / case_id / "s4_verified.json").read_text(encoding="utf-8"))["output"]["laws"]
         issues_raw = json.loads((RUNS / case_id / "s3_issues.json").read_text(encoding="utf-8"))["output"]
         res = objection.run(case_id, docs, issues_raw, fe["judge"], ob, draft, s4, {}, progress=lambda s, st, p: _emit(job, "step", {"step": s, "status": st}))
+        rf = res.get("revised_finding")  # 模型偶爾回「採機關（補強法條引用）」：正規化成三值，附註留在 reply
+        if rf and rf not in ("採機關", "採訴願人", "待議"):
+            res["revised_finding"] = next((k for k in ("採訴願人", "採機關", "待議") if rf.startswith(k)), None)
         entry = {k: v for k, v in res.items() if k not in ("newDraft", "newIssues", "newDraftCitations")}
         entry.update(at=_now(), jobId=job["jobId"])
         doc.setdefault("objections", []).append(entry)
