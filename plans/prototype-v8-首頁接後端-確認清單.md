@@ -47,13 +47,13 @@
 
 | # | 項目 | 依賴 |
 |---|---|---|
-| F7 | ◐ `prototype/api.js`（端點與 toDocs 已寫並驗過，尚未被畫面呼叫） | 統一入口：`health / uploadFiles / streamJob / listFiles / patchFile / audit / loadDemo / fetchText`；含錯誤物件與 403 重取（D5） | — |
-| F8 | ☐ 首頁上傳接 `POST files` | 產 caseId（D4）→ 202 → 進 s-run；`health` 不 ok 禁用按鈕（D6） | — |
-| F9 | ☐ 分析中步驟一吃 SSE | `normalized` 先顯示格式／頁數；`result` 逐箱到、前端排隊演出逐檔浮現；`container` 顯示「壓縮檔展開 N 份」；`fatal` 顯示錯誤 | — |
-| F10 | ☐ 進工作畫面改讀 `GET files` | `groups` 直接畫五組；`cutoffDate` 存起來給分析階段 | — |
+| F7 | ☑ `prototype/api.js`（端點與 toDocs 已寫並驗過，尚未被畫面呼叫） | 統一入口：`health / uploadFiles / streamJob / listFiles / patchFile / audit / loadDemo / fetchText`；含錯誤物件與 403 重取（D5） | — |
+| F8 | ☑ 首頁上傳接 `POST files` | 產 caseId（D4）→ 202 → 進 s-run；`health` 不 ok 禁用按鈕（D6） | — |
+| F9 | ☑ 分析中步驟一吃 SSE | `normalized` 先顯示格式／頁數；`result` 逐箱到、前端排隊演出逐檔浮現；`container` 顯示「壓縮檔展開 N 份」；`fatal` 顯示錯誤 | — |
+| F10 | ☑ 進工作畫面改讀 `GET files` | `groups` 直接畫五組；`cutoffDate` 存起來給分析階段 | — |
 | F11 | ☐ 就地修正接 `PATCH` | 改類型／來源 → 樂觀更新 → 失敗回滾；稽核從 `GET audit` 讀 | — |
 | F12 | ☐ 文件檢視 | 文字類：`GET …/text` 渲染＋「原始 PDF」切換（`rawUrl`）；掃描／照片：`pageImageUrls`；影片：`rawUrl` | B1 |
-| F13 | ☐ demo 按鈕改真跑 | 「載入 case02 卷宗包」「以亂檔名載入」改打 `POST demo` | B2 |
+| F13 | ☑ demo 按鈕改真跑 | 「載入 case02 卷宗包」「以亂檔名載入」改打 `POST demo` | B2 |
 | F14 | ☐ 逾時與進度 | 預期 60–90 秒；顯示「已完成 N/M 檔」；超過 3 分鐘顯示逾時可重試 | — |
 
 ## 3. 建議執行順序
@@ -103,6 +103,25 @@
 | 卡片加一句說明 | 單張卡有空間，把 `cardDesc` 放回來（原本被 v7 精簡掉），讓評審一眼知道這案有什麼 |
 | mock 詞彙對齊後端 | `data.js` 的 5 個舊粗標籤（送達證書／影像放大／通知書／係數計算／影片）改成後端 27 類的正式名稱，mock 與真資料不再兩套詞 |
 | 內嵌大圖也送模型 | 見 `文件歸戶與自動命名-實作計畫.md`：`pdfimages` 偵測 ≥500×300，解決「有文字層但頁面壓著照片」的流失 |
+
+## 4.2 接線實測（2026-09-12，本機後端）
+
+用 headless Chrome 點示範案件卡（亂檔名）走完整條路：
+
+```
+ 0s  點卡片 → POST /api/cases/{id}/demo
+34s  第一批 normalized 事件到，佔位列開始浮現
+66s  第一箱 result 回來，佔位列就地替換成判定結果
+72s  done：20 份完成・0 重複・0 失敗 → 進工作畫面
+     卷宗 22 列（含合併段）、分組 訴願人 2／原處分機關 15／未知 5、主控台無錯誤
+```
+
+**修掉的效能問題**：demo 端點原本逐檔從 S3 序列下載（30 秒才回 202），改平行；
+`ingest` 的 S3 上傳與 DynamoDB 寫入也從序列改平行（每批 6／10）。
+上傳 15 檔 **4.1 秒**回 202；demo 本機 15.8 秒（大半是筆電對 S3 的頻寬，EC2 同區應更快，待部署後量測）。
+
+**尚未接線**：分頁 2–5（欄位／爭點／法規／草稿）走 `docs/API-分析階段.md`，該 API 由隊友負責；
+工作畫面上方有黃色提示條說明「卷宗歸戶為真實結果，分頁 2–5 尚未接線」，分頁鎖住不可點。
 
 ## 5. 不在本輪
 

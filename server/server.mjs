@@ -175,26 +175,40 @@ async function ingest(caseId, entries) {
   const files = [], duplicates = [], out = [];
   let dupSeq = 0;
 
-  for (const { originalName, buffer } of entries) {
-    const sha256 = createHash("sha256").update(buffer).digest("hex");
+  // 先算 sha（純 CPU，快），再平行上傳 S3；重複判定仍依進來的順序，結果可預期
+  const hashed = entries.map(({ originalName, buffer }) => ({ originalName, buffer, sha256: createHash("sha256").update(buffer).digest("hex") }));
+  const toUpload = [];
+  for (const h of hashed) if (!seenSha.has(h.sha256)) { seenSha.set(h.sha256, h.sha256.slice(0, 12)); toUpload.push(h); }
+  const rawKeys = new Map();
+  const CONCURRENCY = 6;
+  for (let i = 0; i < toUpload.length; i += CONCURRENCY) {
+    await Promise.all(toUpload.slice(i, i + CONCURRENCY).map(async (h) => {
+      rawKeys.set(h.sha256, await s3.putRaw(caseId, h.sha256.slice(0, 12), h.originalName, h.buffer));
+    }));
+  }
+  seenSha.clear();
+  for (const f of existing) seenSha.set(f.sha256, f.fileId);
+
+  const records = [];
+  for (const { originalName, buffer, sha256 } of hashed) {
     const fileId = sha256.slice(0, 12);
     if (seenSha.has(sha256)) {
       // 重複檔另給 id：fileId 取自 sha256，直接沿用會覆蓋正本那筆紀錄
       const dupId = `${fileId}-d${++dupSeq}`;
       const rec = { fileId: dupId, caseId, originalName, sha256, bytes: buffer.length, status: "duplicate",
         duplicateOf: seenSha.get(sha256), jobId, createdAt: iso(), updatedAt: iso() };
-      await ddb.putFile(rec);
-      duplicates.push(rec);
+      records.push(rec); duplicates.push(rec);
       out.push({ fileId: dupId, originalName, bytes: buffer.length, status: "duplicate", duplicateOf: rec.duplicateOf });
       continue;
     }
     seenSha.set(sha256, fileId);
-    const rawKey = await s3.putRaw(caseId, fileId, originalName, buffer);
+    const rawKey = rawKeys.get(sha256) ?? await s3.putRaw(caseId, fileId, originalName, buffer);
     const rec = { fileId, caseId, originalName, sha256, bytes: buffer.length, rawKey, status: "queued", jobId, createdAt: iso(), updatedAt: iso() };
-    await ddb.putFile(rec);
-    files.push(rec);
+    records.push(rec); files.push(rec);
     out.push({ fileId, originalName, bytes: buffer.length, status: "queued" });
   }
+  // DynamoDB 寫入平行化：20 次序列 round trip 會讓 202 慢十幾秒
+  for (let i = 0; i < records.length; i += 10) await Promise.all(records.slice(i, i + 10).map((r) => ddb.putFile(r)));
 
   const job = { jobId, caseId, files, duplicates, seq: 0, dupSeq, finished: false };
   JOBS.set(jobId, job);
@@ -228,11 +242,11 @@ app.post("/api/cases/:caseId/demo", async (req, res) => {
   try {
     const keys = await s3.listKeys(`demo/${pack}/`, { shared: true });   // demo 不套 dev 前綴
     if (!keys.length) return err(res, 404, "DEMO_NOT_LOADED", `S3 尚無 demo/${pack}/，請先跑 server/scripts/upload-demo.mjs`);
-    const entries = [];
-    for (const [i, k] of keys.entries()) {
+    // 平行抓（原本 20 次序列 GET 讓使用者乾等 30 秒才拿到 202）
+    const entries = await Promise.all(keys.map(async (k, i) => {
       const name = k.split("/").pop();
-      entries.push({ originalName: messy ? messyName(name, i + 1) : name, buffer: await s3.getBytes(k) });
-    }
+      return { originalName: messy ? messyName(name, i + 1) : name, buffer: await s3.getBytes(k) };
+    }));
     const r = await ingest(caseId, entries);
     res.status(202).json({ ...r, pack, messy });
   } catch (e) { return err(res, 500, e.code || "S3_READ_FAILED", e.message); }

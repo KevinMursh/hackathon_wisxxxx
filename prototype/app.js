@@ -62,7 +62,29 @@ fileInput.addEventListener("change", (e) => { addFiles(e.target.files); fileInpu
 ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
 $("#clearBtn").addEventListener("click", (e) => { e.preventDefault(); FILES = []; renderFiles(); });
-$("#runBtn").addEventListener("click", () => runCase(autoClassify()));
+$("#runBtn").addEventListener("click", () => startUpload());
+
+/* ---------- F8：真上傳 ---------- */
+const newCaseId = () => { const d = new Date(), p = (n) => String(n).padStart(2, "0");
+  return `c${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${Math.random().toString(36).slice(2, 6)}`; };
+
+function uploadError(e) {
+  // 沒有 fallback：後端壞了就說壞了，不拿假資料頂替
+  $("#fileHint").innerHTML = `<span style="color:var(--seal)">${esc(e.code || "ERROR")}：${esc(e.message || "")}</span>`;
+  $("#runBtn").disabled = false; $("#runBtn").textContent = "重試";
+}
+
+async function startUpload() {
+  const files = FILES.map((f) => f.file).filter(Boolean);
+  if (!files.length) return uploadError({ code: "NO_FILE", message: "沒有可上傳的檔案（請重新選擇）" });
+  $("#runBtn").disabled = true; $("#runBtn").textContent = "上傳中…";
+  try {
+    const caseId = newCaseId();
+    const r = await Api.upload(caseId, files);
+    runLive(caseId, r);
+  } catch (e) { uploadError(e); }
+  finally { $("#runBtn").textContent = "開始分析"; }
+}
 
 /* ---------- 貼上文字 ---------- */
 // v7：貼上訴願書文字的即時解析入口自首頁移除；parseAppeal／buildLive 保留供 pipeline 參考
@@ -78,17 +100,26 @@ $$("#caseGrid .go").forEach((el) => el.addEventListener("click", () => startDemo
 $$("#caseGrid .alt").forEach((el) => el.addEventListener("click", (e) => { e.stopPropagation(); startDemo(+el.dataset.messy, true); }));
 $$(".case-card").forEach((el) => el.addEventListener("click", (e) => { if (!e.target.closest(".go,.alt")) startDemo(+el.dataset.i, false); }));
 
-/* 目前仍走 mock；F13 會改成打 POST /api/cases/{id}/demo 真跑一次 */
-function startDemo(i, messy) {
-  const c = structuredClone(CASES[i]);
-  if (messy) c.docs = c.docs.map((d) => ({ ...d, origName: MESSY_NAMES[d.id] || d.origName || d.title }));
-  runCase(c);
+/* 示範案件：打 POST /api/cases/{id}/demo，從 S3 預放的卷宗真跑一次（不是查表） */
+async function startDemo(i, messy) {
+  const c = CASES[i];
+  if (!c.hasDemoPack) return;
+  const card = $("#caseGrid .case-card"), go = $("#caseGrid .go");
+  const label = go.textContent; go.textContent = messy ? "亂檔名載入中…" : "載入中…";
+  try {
+    const caseId = newCaseId();
+    const r = await Api.demo(caseId, { pack: "case02", messy });
+    runLive(caseId, r, { title: c.cardTitle, name: c.name, no: c.no, messy });
+  } catch (e) {
+    go.textContent = label;
+    card.insertAdjacentHTML("beforeend", `<p class="cdesc" style="color:var(--seal)">${esc(e.code || "ERROR")}：${esc(e.message || "")}</p>`);
+  }
 }
 
 function renderLibCard() {}
 
 $("#libBtn").addEventListener("click", openLibrary);
-$("#backBtn").addEventListener("click", () => { persist(); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
+$("#backBtn").addEventListener("click", () => { persist(); $("#analysisNote").style.display = "none"; $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; }); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
 renderLibCard();
 
 /* =========================================================
@@ -188,6 +219,120 @@ function runCase(c, restore) {
   let t = 0;
   steps.forEach((s, i) => { setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.add("active"); $("#runBar").style.width = ((i + 1) / steps.length * 100) + "%"; if (s[3]) $$("#cls" + i + " > span").forEach((sp, k) => setTimeout(() => sp.classList.add("in"), 80 + k * (1000 / Math.max(1, c.docs.length)))); }, t); t += s[2]; setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.remove("active"); el.classList.add("done"); $("#so" + i).textContent = s[1]; $("#sm" + i).textContent = s[2] + " ms"; }, t); });
   setTimeout(() => { render(); show("s-work"); persist(); }, t + 500);
+}
+
+/* =========================================================
+   F9／F10：真分析中畫面（吃 SSE）→ 工作畫面（吃 GET files）
+   步驟一是真的；步驟 2–5 待分析階段 API（docs/API-分析階段.md）接線
+   ========================================================= */
+const LIVE_STEPS = [
+  ["文件辨識（Claude 判定）", "classify"],
+  ["欄位擷取（三方對照）", "pending"],
+  ["爭點比對（訴願書 vs 答辯書 vs 卷證）", "pending"],
+  ["法規檢索與引用查核", "pending"],
+  ["AI 判定與草稿生成", "pending"],
+];
+
+function runLive(caseId, job, meta = {}) {
+  S.liveCase = { caseId, jobId: job.jobId, total: job.files.length };
+  $("#chip").classList.add("on"); $("#chipName").textContent = meta.name || "新上傳案件";
+  $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = "";
+  $("#runSub").textContent = `${meta.title || `${job.files.length} 個檔案`}　・　${caseId}${meta.messy ? "　・　亂檔名（檔名不參與判定）" : ""}`;
+  $("#stepList").innerHTML = LIVE_STEPS.map(([name, kind], i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${name}</div><div class="out" id="so${i}"></div>${kind === "classify" ? `<div class="classify" id="cls0" style="flex-direction:column;gap:3px"></div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
+  $("#runBar").style.width = "0"; show("s-run");
+  $("#st0").classList.add("active");
+  $("#so0").textContent = `已收 ${job.files.length} 個檔案，辨識中…`;
+
+  const t0 = Date.now();
+  const seen = new Map(job.files.map((f) => [f.fileId, f.originalName]));
+  let done = 0, dup = 0, bad = 0;
+  const queue = [];                       // result 是逐箱回來的，排隊演成逐檔浮現
+  let draining = false;
+  const drain = () => {
+    if (draining || !queue.length) return;
+    draining = true;
+    const row = queue.shift();
+    $("#cls0").insertAdjacentHTML("beforeend", row);
+    const el = $("#cls0").lastElementChild;
+    requestAnimationFrame(() => el.classList.add("in"));
+    $("#so0").textContent = `${done} / ${S.liveCase.total} 份`;
+    setTimeout(() => { draining = false; drain(); }, 70);
+  };
+
+  const row = (fid, name, tag, src, summary, cls = "") =>
+    `<span data-fid="${esc(fid)}" style="display:flex;gap:8px;align-items:center;${cls}"><span class="num" style="color:var(--ink-3);min-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(name)}</span><span>→</span><b style="white-space:nowrap">${esc(tag)}</b><span class="srct ${src}" style="flex:none">${esc(src)}</span><span style="color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(summary)}</span></span>`;
+
+  // 正規化事件很早就到（每檔一筆），先佔位讓畫面立刻有東西；分類結果回來再就地替換
+  const place = (fid, name, meta) => {
+    if ($(`#cls0 [data-fid="${fid}"]`)) return;
+    $("#cls0").insertAdjacentHTML("beforeend", row(fid, name, "辨識中…", "未知", meta, "opacity:.5"));
+    requestAnimationFrame(() => $(`#cls0 [data-fid="${fid}"]`)?.classList.add("in"));
+  };
+
+  const push = (fid, name, tag, src, summary, cls = "") => {
+    const held = fid && $(`#cls0 [data-fid="${fid}"]:not(.filled)`);
+    if (held) { held.outerHTML = row(fid, name, tag, src, summary, cls); const el = $(`#cls0 [data-fid="${fid}"]`); el.classList.add("in", "filled"); }
+    else queue.push(row(fid, name, tag, src, summary, cls));
+    $("#so0").textContent = `${done} / ${S.liveCase.total} 份`;
+    drain();
+  };
+
+  const stream = Api.streamJob(job.jobId, {
+    onNormalized: (d) => {
+      if (!seen.has(d.fileId)) seen.set(d.fileId, d.fileId);
+      place(d.fileId, seen.get(d.fileId), `${KIND[d.kind] || d.kind}${d.pages ? `・${d.pages} 頁` : d.duration ? `・${d.duration}s` : ""}`);
+    },
+    onContainer: (d) => push(d.fileId, seen.get(d.fileId) || d.fileId, "壓縮檔", "未知", `已展開 ${d.childIds.length} 份`, "opacity:.6"),
+    onResult: (d) => {
+      const name = seen.get(d.fileId) || d.fileId;
+      if (d.duplicate) { dup++; done++; return push(d.fileId, name, "重複", "未知", "與既有檔案內容相同，已排除", "opacity:.55"); }
+      if (!d.ok) { bad++; done++; return push(d.fileId, name, "讀取失敗", "未知", d.error?.code || "NORMALIZE_FAILED", "opacity:.7;color:var(--seal)"); }
+      done++;
+      const segs = d.segments || [];
+      segs.forEach((sg, i) => push(i === 0 ? d.fileId : null, segs.length > 1 ? `${name}（${i + 1}/${segs.length}）` : name, sg.doc_type, sg.source, sg.summary || ""));
+      $("#runBar").style.width = Math.round((done / S.liveCase.total) * 100 * 0.6) + "%";
+    },
+    onDone: async (d) => {
+      $("#st0").classList.remove("active"); $("#st0").classList.add("done");
+      $("#so0").textContent = `${d.ok} 份完成・${d.duplicate} 份重複・${d.error} 份失敗`;
+      $("#sm0").textContent = `${Math.round((d.ms || Date.now() - t0) / 1000)} s`;
+      $("#runBar").style.width = "60%";
+      for (let i = 1; i < LIVE_STEPS.length; i++) { $("#so" + i).textContent = "待分析階段 API 接線"; $("#st" + i).style.opacity = ".45"; }
+      try { await enterWork(caseId); } catch (e) { fail(e); }
+    },
+    onFatal: (e) => fail(e),
+  });
+
+  function fail(e) {
+    $("#st0").classList.remove("active");
+    $("#so0").innerHTML = `<span style="color:var(--seal)">${esc(e.code || "ERROR")}：${esc(e.message || "")}</span>`;
+    $("#runTitle").textContent = "分析失敗";
+    stream.close();
+  }
+
+  // 逾時：超過 3 分鐘視為異常（實測 20 檔約 60–90 秒）
+  setTimeout(() => { if (!$("#st0").classList.contains("done")) fail({ code: "TIMEOUT", message: "超過 3 分鐘未完成，請重試或檢查後端日誌" }); }, 180000);
+}
+
+/** 取回歸戶結果，進工作畫面（分析階段未接線前只有卷宗瀏覽器是真的） */
+async function enterWork(caseId) {
+  const payload = await Api.listFiles(caseId);
+  const docs = toDocs(payload);
+  S.c = {
+    id: caseId, no: caseId, name: docs.find((d) => d.party)?.party || "新上傳案件",
+    live: true, analysisPending: true, caseId, cutoffDate: payload.cutoffDate,
+    docs, fields: [], cls: [], issues: [], laws: [], citations: [], sims: [], simDist: [], drafts: {}, refs: {},
+    period: { served: null, recv: null },
+  };
+  S.doc = null; S.zoom = 1; S.docMode = {}; S.audit = []; S.objections = []; S.paras = []; S.versions = [];
+  S.status = "承辦中"; S.libId = `${caseId}`;
+  renderDocs();
+  $("#analysisNote").style.display = "";
+  $$(".tab").forEach((b, i) => { b.disabled = i > 0; b.style.opacity = i > 0 ? ".4" : ""; });
+  $$(".tab")[0].click();
+  const first = docs.find((d) => d.include !== false);
+  if (first) openDoc(first.id);
+  show("s-work");
 }
 
 /* =========================================================
