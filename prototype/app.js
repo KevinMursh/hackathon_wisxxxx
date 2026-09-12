@@ -70,7 +70,10 @@ $("#runBtn").addEventListener("click", () => runCase(autoClassify()));
 /* ---------- 示範案件卡與案件庫卡 ---------- */
 /* 示範案件卡是唯一的 demo 入口（v8：上傳區的小字連結移除）。
    「以亂檔名」保留在卡片上——它證明判定看內容不看檔名，是這套系統的重點之一。 */
-$("#caseGrid").innerHTML = CASES.map((c, i) => `<div class="case-card" data-i="${i}"><span class="no num">案號 ${c.no}</span><h3>${c.cardTitle}</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${c.cardTags.slice(1, 2).join("")}</div><div class="foot"><span>${c.name}</span><span style="display:flex;gap:14px;align-items:center">${c.hasDemoPack ? `<span class="alt" data-messy="${i}" title="檔名換成 IMG_3985.jpg／scan_0001.pdf，證明判定看內容不看檔名">以亂檔名 →</span>` : ""}<span class="go" data-run="${i}">開始分析 →</span></span></div></div>`).join("");
+/* 首頁只留一張示範案件卡：case02（唯一有 S3 卷宗包、能真跑的那案）。
+   其餘案例仍在 CASES 內供案件庫與測試使用，只是不在首頁露出。 */
+const DEMO_CASES = CASES.filter((c) => c.hasDemoPack);
+$("#caseGrid").innerHTML = DEMO_CASES.map((c) => { const i = CASES.indexOf(c); return `<div class="case-card" data-i="${i}"><span class="no num">案號 ${c.no}</span><h3>${c.cardTitle}</h3><p class="cdesc">${esc(c.cardDesc || "")}</p><div style="display:flex;flex-wrap:wrap;gap:6px">${c.cardTags.slice(1, 2).join("")}</div><div class="foot"><span>${c.name}</span><span style="display:flex;gap:14px;align-items:center"><span class="alt" data-messy="${i}" title="檔名換成 IMG_3985.jpg／scan_0001.pdf，證明判定看內容不看檔名">以亂檔名 →</span><span class="go" data-run="${i}">開始分析 →</span></span></div></div>`; }).join("");
 $$("#caseGrid .go").forEach((el) => el.addEventListener("click", () => startDemo(+el.dataset.run, false)));
 $$("#caseGrid .alt").forEach((el) => el.addEventListener("click", (e) => { e.stopPropagation(); startDemo(+el.dataset.messy, true); }));
 $$(".case-card").forEach((el) => el.addEventListener("click", (e) => { if (!e.target.closest(".go,.alt")) startDemo(+el.dataset.i, false); }));
