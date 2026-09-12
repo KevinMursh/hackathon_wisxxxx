@@ -447,6 +447,8 @@ app.get("/api/health", async (_req, res) => {
 /* 分析階段（步驟 2–5／異議／法規庫）→ 同機 Python :8100；契約 docs/API-分析階段.md */
 mountAnalysisProxy(app);
 
+// 歷史決定書 PDF（相似案例展開用）：deploy/analysis 把 資料集/ 解到與 server/ 同層；只開放 命題方提供/，評測用資料夾不對外
+app.use("/dataset", express.static(path.join(path.dirname(new URL(import.meta.url).pathname), "..", "資料集", "命題方提供"), { index: false, dotfiles: "deny" }));
 app.use(express.static(process.env.FRONTEND_DIR || path.join(path.dirname(new URL(import.meta.url).pathname), "..", "prototype")));
 
 app.use((e, _req, res, _next) => {

@@ -531,7 +531,7 @@ function renderDocs() {
     return `<div class="item ${d.include === false ? "skip" : ""} ${bad}" data-doc="${d.id}" title="${esc(d.origName ? "原檔名：" + d.origName : d.title)}"><i></i><span class="t">${esc(d.stdName || d.title)}</span><span class="m">${meta}</span>${badge}<span class="sum">${esc(d.summary || "")}</span></div>`;
   }).join("")}</div>`).join("");
   $$("#docList .grp").forEach((g) => g.addEventListener("click", () => { g.classList.toggle("closed"); g.querySelector(".tri").textContent = g.classList.contains("closed") ? "▸" : "▾"; }));
-  $$("#docList .item").forEach((b) => b.addEventListener("click", () => openDoc(b.dataset.doc)));
+  $$("#docList .item").forEach((b) => b.addEventListener("click", () => { if (S.doc === b.dataset.doc) closeDoc(); else openDoc(b.dataset.doc); }));
   $$("#docList .tagbtn").forEach((t) => t.addEventListener("click", (e) => { e.stopPropagation(); openTagPop(t.dataset.edit, t); }));
   $("#addBtn").disabled = S.status !== "承辦中"; $("#addDemo").style.display = c.supplement && !c.docs.some((d) => d.staged || d.pending || d.imported) && S.status === "承辦中" ? "" : "none";
 }
@@ -641,6 +641,12 @@ function openLiveDoc(d, view, tools, head) {
   paint();
 }
 
+/* 再點同一份文件 → 取消選取：清空檢視區 */
+function closeDoc() {
+  S.doc = null; $("#tagPop").classList.remove("on"); $$("#docList .item").forEach((b) => b.classList.remove("on"));
+  $("#curDocName").textContent = "未選取文件"; $("#docTools").innerHTML = "";
+  $("#docView").innerHTML = `<div class="doc-empty"><span>未選取文件</span><span class="note">點選左側清單中的文件即可檢視；再點一次可取消選取</span></div>`;
+}
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
   S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on");
@@ -785,9 +791,14 @@ function renderLaws() {
     <p class="foot-note">「未收錄」表示決定書慣常援引但法規庫尚未收錄之函釋或裁量基準（如環保署函、裁罰準則）；函釋無統一 API，須由承辦人確認後人工入庫。</p>`;
 }
 function oldLaw(fn) { const y = parseInt(fn, 10); const L = LAWLIB.find((x) => fn.includes(x.n.replace("污", "汙")) || fn.includes(x.n)); if (!L) return null; const ay = parseInt(L.date, 10); if (!y || !ay) return null; if (y < ay) return `${L.n} ${L.date} 修正前`; if (y === ay) return `${L.n} 修法同年，援引前請確認該案決定日`; return null; }
+/* 決定書 PDF 位置：真案 sims[].path 是伺服器絕對路徑 → /dataset/…（Node 對外）；mock 走 data.js 對照表（本機 ../資料集） */
+function simUrl(s) {
+  if (s.path) { const i = s.path.indexOf("命題方提供/"); if (i >= 0) return `${Api.base.replace(/\/api$/, "")}/dataset/${s.path.slice(i + "命題方提供/".length).split("/").map(encodeURIComponent).join("/")}`; }
+  const f = histFile(s.fn) || histFile(s.fn.replace(/^\d+\./, "")); return f ? (S.c.live ? `${Api.base.replace(/\/api$/, "")}/dataset/${f.replace(/^\.\.\/資料集\/命題方提供\//, "").split("/").map(encodeURIComponent).join("/")}` : f) : null;
+}
 function renderSims() {
   const c = S.c, total = c.simDist.reduce((a, b) => a + b[1], 0), closed = LIB.filter((r) => r.status === "已結案").length;
-  $("#p3").innerHTML = `<div class="sec"><div class="sec-head"><h3>Top ${c.sims.length} 相似歷史決定書</h3><span class="note">來源：資料集 101 件・本局案件庫已結案 ${closed} 件　點列展開決定書全文</span></div><div class="box2">${c.sims.map((s, i) => { const f = histFile(s.fn); return `<div class="sim ${f ? "exp" : ""}" data-i="${i}"><div class="sim-top"><span class="rank">${i + 1}</span><span class="fn">${esc(s.fn)}<span class="arrow">${f ? "▸ 展開" : ""}</span></span><span class="tag neutral" style="font-size:10px">資料集</span><span class="score">${s.s}%</span></div><div class="simbar"><i style="width:${s.s}%"></i></div><p class="why">${esc(s.why)}</p><div class="chips">${s.chips.map((x) => `<span class="tag ${x === "須注意" || x === "反面案例" ? "seal" : "neutral"}">${esc(x)}</span>`).join("")}${oldLaw(s.fn) ? `<span class="tag amber">舊法時期：${esc(oldLaw(s.fn))}</span>` : ""}</div>${s.borrow ? `<div class="borrow"><b>可借用</b>　該案${esc(s.borrow.from)} → 本案${esc(paraLabel(S.paras.find((q) => q.id === s.borrow.to)) || s.borrow.to)}：${esc(s.borrow.what)}</div>` : ""}${f ? `<div class="body"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="note num">${esc(f.split("/").pop())}</span><a class="ghost-btn" href="${f}" target="_blank" style="text-decoration:none;margin-left:auto">新分頁開啟</a></div><iframe data-src="${f}#toolbar=0&view=FitH" title="${esc(s.fn)}"></iframe></div>` : ""}</div>`; }).join("")}${closed ? LIB.filter((r) => r.status === "已結案" && r.libId !== S.libId).slice(0, 2).map((r) => `<div class="sim"><div class="sim-top"><span class="rank">庫</span><span class="fn">${esc(r.no)}　${esc(r.name)}</span><span class="tag accent" style="font-size:10px">本局案件庫</span><span class="score">—</span></div><p class="why">已結案案件：結論「${esc(r.verdict)}」，${r.court ? "法院結果：" + esc(r.court.res) : "尚無法院結果"}。</p></div>`).join("") : ""}</div></div>
+  $("#p3").innerHTML = `<div class="sec"><div class="sec-head"><h3>Top ${c.sims.length} 相似歷史決定書</h3><span class="note">來源：資料集 101 件・本局案件庫已結案 ${closed} 件　點列展開決定書全文</span></div><div class="box2">${c.sims.map((s, i) => { const f = simUrl(s); return `<div class="sim ${f ? "exp" : ""}" data-i="${i}"><div class="sim-top"><span class="rank">${i + 1}</span><span class="fn">${esc(s.fn)}<span class="arrow">${f ? "▸ 展開" : ""}</span></span><span class="tag neutral" style="font-size:10px">資料集</span><span class="score">${s.s}%</span></div><div class="simbar"><i style="width:${s.s}%"></i></div><p class="why">${esc(s.why)}</p><div class="chips">${s.chips.map((x) => `<span class="tag ${x === "須注意" || x === "反面案例" ? "seal" : "neutral"}">${esc(x)}</span>`).join("")}${oldLaw(s.fn) ? `<span class="tag amber">舊法時期：${esc(oldLaw(s.fn))}</span>` : ""}</div>${s.borrow ? `<div class="borrow"><b>可借用</b>　該案${esc(s.borrow.from)} → 本案${esc(paraLabel(S.paras.find((q) => q.id === s.borrow.to)) || s.borrow.to)}：${esc(s.borrow.what)}</div>` : ""}${f ? `<div class="body"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="note num">${esc(f.split("/").pop())}</span><a class="ghost-btn" href="${f}" target="_blank" style="text-decoration:none;margin-left:auto">新分頁開啟</a></div><iframe data-src="${f}#toolbar=0&view=FitH" title="${esc(s.fn)}"></iframe></div>` : ""}</div>`; }).join("")}${closed ? LIB.filter((r) => r.status === "已結案" && r.libId !== S.libId).slice(0, 2).map((r) => `<div class="sim"><div class="sim-top"><span class="rank">庫</span><span class="fn">${esc(r.no)}　${esc(r.name)}</span><span class="tag accent" style="font-size:10px">本局案件庫</span><span class="score">—</span></div><p class="why">已結案案件：結論「${esc(r.verdict)}」，${r.court ? "法院結果：" + esc(r.court.res) : "尚無法院結果"}。</p></div>`).join("") : ""}</div></div>
     <div class="sec"><div class="sec-head"><h3>相似案例之決定結果分布</h3></div><div class="dist">${c.simDist.filter((d) => d[1] > 0).map((d) => `<div style="background:${d[2]};width:${d[1] / total * 100}%">${d[1]}</div>`).join("")}</div><div class="dist-key">${c.simDist.map((d) => `<span><i style="background:${d[2]}"></i>${d[0]} ${d[1]} 件</span>`).join("")}</div></div>
     <p class="foot-note">相似度綜合案由、援引法條、爭點類型與事實敘述四項計算；系統刻意納入結果相反之案例（反面案例）提醒撤銷風險。${esc(c.simsNote || "")}</p>`;
   $$("#p3 .sim.exp").forEach((el) => el.addEventListener("click", (e) => { if (e.target.closest("a")) return; const open = el.classList.toggle("open"); el.querySelector(".arrow").textContent = open ? "▾ 收合" : "▸ 展開"; const fr = el.querySelector("iframe"); if (open && fr && !fr.src) fr.src = fr.dataset.src; }));
