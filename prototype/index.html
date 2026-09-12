@@ -457,9 +457,10 @@
 <section class="screen" id="s-law">
   <div class="lib">
     <div class="lib-head"><div><div class="eyebrow">本局法規庫</div><h2>法規、函釋與待補清單</h2></div><div class="note" id="lawStat"></div></div>
-    <div class="filters"><div class="rtabs" style="border:none;background:none;display:flex;gap:4px"><button class="ghost-btn on" data-l="law">法規</button><button class="ghost-btn" data-l="rul">函釋</button><button class="ghost-btn" data-l="pend">待補清單</button></div><span class="note" style="margin-left:auto">來源：命題方提供／自行蒐集／全國法規資料庫（開放資料，示意）／案件查核待補</span></div>
+    <div class="filters"><div class="rtabs" style="border:none;background:none;display:flex;gap:4px"><button class="ghost-btn on" data-l="law">法規</button><button class="ghost-btn" data-l="rul">函釋</button></div><span class="note" id="syncStat" style="margin-left:auto"></span><button class="btn" id="syncBtn">同步全國法規資料庫</button></div>
     <table class="libtable" id="lawTable"></table>
-    <p class="foot-note">法規版本以全國法規資料庫「最新修正日期」為準；每案依行為時／裁處時／決定時三個時點與修正日期比對，修正落在行為時之後者依行政罰法第 5 條為新舊法比較。結案時引用查核「待補」之函釋、準則自動列入待補清單，補齊後即納入下一案之查核字典——這是法規庫的更新機制。</p>
+    <div id="syncLog" class="note" style="margin:8px 0 0"></div>
+    <p class="foot-note">法條：來源為全國法規資料庫（law.moj.gov.tw）官方開放資料，每日更新之 XML／JSON 全量檔，正式版由後端每日同步後提供；「施行日」另自附則解析。函釋：各部會查詢系統無統一 API，由承辦人確認後人工入庫。每案依行為時／裁處時／決定時與修正（施行）日期比對，修正落在行為時之後者依行政罰法第 5 條為新舊法比較。</p>
   </div>
 </section>
 

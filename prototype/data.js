@@ -1002,8 +1002,8 @@ CASE_C.dates = { act: "113-02-07", disp: "114-09-07", decide: "115-01-15" };
 /* 每條推薦法規對應法規庫名稱（供三時點比對） */
 CASES.forEach((c) => c.laws.forEach((l) => { l.lib = (LAWLIB.find((x) => l.n.startsWith(x.n)) || {}).n || null; }));
 /* case02 引用查核：與 pipeline 結果一致——裁罰準則、環保署函不在資料集 → 待補 */
-CASE_B.citations = CASE_B.citations.map((x) => /裁罰準則|環保署/.test(x.n) ? { ...x, status: "pending", note: "資料集無此法規／函釋；決定書慣常援引，結案時列入法規庫待補" } : x);
-CASE_B.citations.splice(3, 0, { n: "新北市政府環境保護局裁罰準則係數說明（附表 1 項次 13）", where: "答辯書 理由二（四）、裁處書", ref: "df-coef", status: "pending", note: "機關內部裁量基準，資料集無；待補" });
+CASE_B.citations = CASE_B.citations.map((x) => /裁罰準則|環保署/.test(x.n) ? { ...x, status: "pending", note: "法規庫未收錄此函釋；決定書慣常援引，請承辦人確認後入庫" } : x);
+CASE_B.citations.splice(3, 0, { n: "新北市政府環境保護局裁罰準則係數說明（附表 1 項次 13）", where: "答辯書 理由二（四）、裁處書", ref: "df-coef", status: "pending", note: "機關內部裁量基準，法規庫未收錄" });
 /* 相似案例可借用段落（→ 本案草稿段落 id） */
 CASE_B.sims[0].borrow = { from: "理由六", to: "r6", what: "影像逐幀檢視之駁斥句式" };
 CASE_B.sims[1].borrow = { from: "理由四", to: "r4", what: "以車籍鎖定行為人之論述" };

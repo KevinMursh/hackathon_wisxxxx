@@ -363,7 +363,7 @@ function pendingCites() { return (S.c.citations || []).filter((x) => x.status ==
 
 /* ---------- Tab 3／4 ---------- */
 function renderLaws() {
-  const c = S.c, STN = { ok: "已驗證", amended: "該條已修正", missing: "查無此條", repealed: "已廢止", gap: "漏引", pending: "待補" };
+  const c = S.c, STN = { ok: "已驗證", amended: "該條已修正", missing: "查無此條", repealed: "已廢止", gap: "漏引", pending: "未收錄" };
   const d = c.dates || {}; const tp = `<div class="tp"><div><span class="k">行為時</span><div class="v">${esc(d.act || "—")}</div></div><div><span class="k">裁處時</span><div class="v">${esc(d.disp || "—")}</div></div><div><span class="k">決定時（預定）</span><div class="v">${esc(d.decide || "—")}</div></div><div><span class="k">比對規則</span><div class="note">法規修正日落在行為時之後 → 行政罰法 §5 從新從輕比較</div></div></div>`;
   const anyWarn = c.laws.some((l) => { const v = versionCheck(l.lib); return v && v.warn; });
   const alert = c.alert || (anyWarn ? { title: "法規時效性警示（由三時點比對產生）", text: c.laws.filter((l) => versionCheck(l.lib)?.warn).map((l) => `<b>${esc(l.n)}</b>：${esc(versionCheck(l.lib).text)}`).join("<br>") } : null);
@@ -371,10 +371,10 @@ function renderLaws() {
   const groups = {}; c.laws.forEach((l) => { (groups[l.g] = groups[l.g] || []).push(l); });
   const pend = pendingCites().length;
   $("#p2").innerHTML = `<div class="sec"><div class="sec-head"><h3>本案三時點</h3><span class="note">法規時效性依此比對</span></div>${tp}</div>
-    <div class="sec"><div class="sec-head"><h3>答辯書引用法條查核</h3><span class="note">逐條比對法規庫（法規全文＋修正狀態）${pend ? `　・<span style="color:var(--seal)">${pend} 則待補</span>` : ""}</span></div><div class="box2">${cites}</div></div>
+    <div class="sec"><div class="sec-head"><h3>答辯書引用法條查核</h3><span class="note">逐條比對法規庫（法規全文＋修正狀態）${pend ? `　・<span style="color:var(--seal)">${pend} 則未收錄</span>` : ""}</span></div><div class="box2">${cites}</div></div>
     ${alert ? `<div class="sec"><div class="sec-head"><h3>${alert.title}</h3><span class="note">影響決定書合法性，請優先處理</span></div><div class="alert"><span class="mk">！</span><p>${alert.text}</p></div></div>` : ""}
     ${Object.entries(groups).map(([g, list]) => `<div class="sec"><div class="sec-head"><h3>${g}</h3><span class="note">${list.length} 筆</span></div><div class="box2">${list.map((l) => { const v = versionCheck(l.lib); return `<div class="law"><div class="ttl"><span class="n">${esc(l.n)}</span></div><div class="rel">關聯 ${l.rel}%</div><div class="txt">${esc(l.t)}</div><div class="badges">${l.badges.join("")}</div>${v ? `<div class="ver ${v.warn ? "warn" : "ok"}">${v.warn ? "⚠ " : "✓ "}${esc(v.text)}</div>` : `<div class="ver note">版本：資料集未收錄此法規，無法比對</div>`}</div>`; }).join("")}</div></div>`).join("")}
-    <p class="foot-note">「待補」表示決定書慣常援引但資料集未收錄之函釋或裁量基準（如環保署函、裁罰準則）；結案時自動列入法規庫待補清單，補齊後納入下一案查核。</p>`;
+    <p class="foot-note">「未收錄」表示決定書慣常援引但法規庫尚未收錄之函釋或裁量基準（如環保署函、裁罰準則）；函釋無統一 API，須由承辦人確認後人工入庫。</p>`;
 }
 function oldLaw(fn) { const y = parseInt(fn, 10); const L = LAWLIB.find((x) => fn.includes(x.n.replace("污", "汙")) || fn.includes(x.n)); if (!L) return null; const ay = parseInt(L.date, 10); if (!y || !ay) return null; if (y < ay) return `${L.n} ${L.date} 修正前`; if (y === ay) return `${L.n} 修法同年，援引前請確認該案決定日`; return null; }
 function renderSims() {
@@ -459,7 +459,7 @@ function openClose() {
   const opts = $$("#finalVerdict option").map((o) => o.textContent); $("#finalVerdict").value = opts.includes(cp.verdict) ? cp.verdict : (cp.verdict.includes("撤銷") ? "原處分撤銷" : cp.verdict.includes("不受理") ? "訴願不受理" : "訴願駁回");
   $("#finalDate").value = c.final?.date || today(); $("#finalNo").value = c.final?.no || "";
   const stN = { appellant: "採訴願人", agency: "採機關", open: "待議" };
-  $("#deid").innerHTML = [["訴願人", `${esc(c.fields[0]?.a[0] || "")} → <span class="m">［訴願人］</span>`], ["身分證／地址／電話", `<span class="m">全數移除</span>`], ["案由／條款", `${esc(c.subj)}／${esc(cp.art)}`], ["爭點與表態", c.issues.map((it, i) => `${i + 1}:${stN[S.stances[it.id]]}`).join("　")], ["證據組合", [...new Set(c.docs.filter((d) => d.include !== false).map((d) => d.tag))].join("、")], ["AI 判定／最終結論", `${esc(judgePlan().verdict)} → <span id="deidVerdict">${esc($("#finalVerdict").value)}</span>`], ["承辦人修改", `${S.paras.filter((p) => p.src === "human").length} 段人工編輯・${S.objections.length} 次異議`], ["法規庫待補", pendingCites().length ? `${pendingCites().length} 則引用查核待補 → 結案後加入法規庫待補清單` : "無"]].map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join("");
+  $("#deid").innerHTML = [["訴願人", `${esc(c.fields[0]?.a[0] || "")} → <span class="m">［訴願人］</span>`], ["身分證／地址／電話", `<span class="m">全數移除</span>`], ["案由／條款", `${esc(c.subj)}／${esc(cp.art)}`], ["爭點與表態", c.issues.map((it, i) => `${i + 1}:${stN[S.stances[it.id]]}`).join("　")], ["證據組合", [...new Set(c.docs.filter((d) => d.include !== false).map((d) => d.tag))].join("、")], ["AI 判定／最終結論", `${esc(judgePlan().verdict)} → <span id="deidVerdict">${esc($("#finalVerdict").value)}</span>`], ["承辦人修改", `${S.paras.filter((p) => p.src === "human").length} 段人工編輯・${S.objections.length} 次異議`], ["引用查核", pendingCites().length ? `${pendingCites().length} 則引用之函釋／準則未收錄於法規庫` : "全部已驗證"]].map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join("");
   $("#finalVerdict").onchange = () => { $("#deidVerdict").textContent = $("#finalVerdict").value; };
   $("#closeModal").classList.add("on");
 }
@@ -472,7 +472,6 @@ $("#closeSend").addEventListener("click", () => {
   S.status = "已結案";
   c.docs = c.docs.filter((d) => d.id !== "final"); c.docs.push({ id: "final", title: "訴願決定書（委員會結論）", stdName: `決定書_${S.final.date}`, tag: "決定書", src: "本局", kind: "pdf", pages: 3, file: S.final.file, include: true, origName: finalPick.name }); c.refs["doc-final"] = ["final", "doc"];
   const fp = c.final?.paras || {}; S.finalDiff = S.paras.filter((q) => fp[q.id] !== undefined && plain(q.text) !== plain(fp[q.id])).map((q) => ({ label: paraLabel(q), html: diffHtml(plain(fillDates(q.text)), plain(fp[q.id])) }));
-  pendingCites().forEach((x) => { if (!LAWPEND.some((p) => p.n === x.n)) LAWPEND.push({ n: x.n, from: c.no, where: x.where, addedAt: today(), status: "pending" }); }); try { localStorage.setItem("ssz.lawpend", JSON.stringify(LAWPEND)); } catch (e) {}
   pushVersion(`結案歸檔（最終決定：${S.final.verdict}）`, "承辦人"); S.audit.push({ ts: now(), who: "hu", para: "案件", action: `登錄委員會結論 ${S.final.no || ""} 並結案歸檔` });
   $("#closeModal").classList.remove("on"); render(); persist(); openDoc("final"); $$(".tab")[4].click();
 });
@@ -497,18 +496,18 @@ function renderLib() {
 ["#fSubj", "#fArt", "#fVerdict", "#fStatus"].forEach((s) => $(s).addEventListener("change", renderLib));
 
 /* ---------- 法規庫 ---------- */
-function lawCounts() { const recent = LAWLIB.filter((l) => { const t = isoT(l.date); return t && Date.now() - t < 366 * DAY * 3; }); return { laws: LAWLIB.length, rul: RULINGS.length + LAWPEND.filter((p) => p.status === "resolved").length, recent, pend: LAWPEND.filter((p) => p.status === "pending").length }; }
-function renderLawCard() { const k = lawCounts(); $("#lawCard").innerHTML = `<div><span class="v num">${k.laws}</span><span class="k">法規（部）</span></div><div><span class="v num">${k.rul}</span><span class="k">函釋（則）</span></div><div><span class="v num" style="font-size:14px">${k.recent.length ? k.recent.map((l) => l.n).join("、") : "—"}</span><span class="k">近期修正</span></div><div><span class="v num" style="color:${k.pend ? "var(--seal)" : "inherit"}">${k.pend}</span><span class="k">待補</span></div><div style="display:grid;place-items:center"><span class="btn" style="font-size:12px;background:var(--amber);border-color:var(--amber)">開啟法規庫 →</span></div>`; }
+function lawCounts() { const recent = LAWLIB.filter((l) => { const t = isoT(l.date); return t && Date.now() - t < 366 * DAY * 3; }); return { laws: LAWLIB.length, rul: RULINGS.length, recent, sync: localStorage.getItem("ssz.lawsync") || "尚未同步" }; }
+function renderLawCard() { const k = lawCounts(); $("#lawCard").innerHTML = `<div><span class="v num">${k.laws}</span><span class="k">法規（部）</span></div><div><span class="v num">${k.rul}</span><span class="k">函釋（則）</span></div><div><span class="v num" style="font-size:14px">${k.recent.length ? k.recent.map((l) => l.n).join("、") : "—"}</span><span class="k">近期修正</span></div><div><span class="v num" style="font-size:14px">${esc(k.sync)}</span><span class="k">上次同步全國法規資料庫</span></div><div style="display:grid;place-items:center"><span class="btn" style="font-size:12px;background:var(--amber);border-color:var(--amber)">開啟法規庫 →</span></div>`; }
 $("#lawCard").addEventListener("click", openLawLib); $("#lawBtn").addEventListener("click", openLawLib);
 let LAWTAB = "law";
 function openLawLib() { persist(); show("s-law"); $("#backBtn").style.display = ""; renderLaw(); }
 function renderLaw() {
-  const k = lawCounts(); $("#lawStat").textContent = `法規 ${k.laws}・函釋 ${k.rul}・待補 ${k.pend}`;
+  const k = lawCounts(); $("#lawStat").textContent = `法規 ${k.laws}・函釋 ${k.rul}`; $("#syncStat").textContent = `上次同步：${k.sync}`;
+  $("#syncBtn").onclick = () => { const b = $("#syncBtn"); b.disabled = true; b.textContent = "同步中…"; $("#syncLog").innerHTML = "連線 law.moj.gov.tw 開放資料（示意）…"; setTimeout(() => { const ts = today() + " " + now().slice(0, 5); localStorage.setItem("ssz.lawsync", ts); b.disabled = false; b.textContent = "同步全國法規資料庫"; $("#syncLog").innerHTML = `✓ ${ts} 同步完成・比對 ${LAWLIB.length} 部法規之最新異動日期：<b>0 部有新修正</b>、12 部版本一致（示意：正式版由後端每日下載官方 XML 全量檔並解析施行日）`; renderLaw(); renderLawCard(); }, 1400); };
   $$("#s-law .rtabs button").forEach((b) => { b.classList.toggle("on", b.dataset.l === LAWTAB); b.onclick = () => { LAWTAB = b.dataset.l; renderLaw(); }; });
   const involved = (n) => LIB.filter((r) => (r.state?.docs || []).length && r.subj && n.startsWith(r.subj.replace("違反", ""))).length;
-  if (LAWTAB === "law") $("#lawTable").innerHTML = `<tr><th>法規</th><th>類型</th><th>最新修正</th><th>條數</th><th>狀態</th><th>來源</th></tr>` + LAWLIB.map((l) => { const t = isoT(l.date), recent = t && Date.now() - t < 366 * DAY * 3; return `<tr><td>${esc(l.n)}</td><td>${l.kind}</td><td class="num">${l.date}${l.effective ? `<div class="note">${l.effective} 施行</div>` : ""}</td><td class="num">${l.arts}</td><td>${recent ? '<span class="st amended">已修正 ⚠</span>' : '<span class="st ok">現行</span>'}</td><td>${esc(l.src)}<div class="note">全國法規資料庫同步（示意）</div></td></tr>`; }).join("");
-  else if (LAWTAB === "rul") $("#lawTable").innerHTML = `<tr><th>函釋</th><th>主題</th><th>發文日</th><th>狀態</th><th>來源</th></tr>` + RULINGS.map((r) => `<tr><td>${esc(r.n)}</td><td>${esc(r.topic)}</td><td class="num">${r.date}</td><td><span class="st ok">有效</span></td><td>${esc(r.src)}</td></tr>`).join("") + LAWPEND.filter((p) => p.status === "resolved").map((p) => `<tr><td>${esc(p.n)}</td><td>${esc(p.where)}</td><td class="num">${p.resolvedAt}</td><td><span class="st ok">有效</span></td><td>案件查核補入（${esc(p.from)}）</td></tr>`).join("");
-  else { const pend = LAWPEND.filter((p) => p.status === "pending"); $("#lawTable").innerHTML = `<tr><th>待補項目</th><th>出現位置</th><th>來源案號</th><th>加入日期</th><th></th></tr>` + (pend.length ? pend.map((p, i) => `<tr><td>${esc(p.n)}</td><td>${esc(p.where)}</td><td class="num">${esc(p.from)}</td><td class="num">${p.addedAt}</td><td><button class="ghost-btn" data-res="${p.n}" style="font-size:11px;padding:2px 8px">標記已補</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty">目前無待補項目；結案時引用查核「待補」之項目會自動列入。</td></tr>`); $$("#lawTable [data-res]").forEach((b) => b.addEventListener("click", () => { const p = LAWPEND.find((x) => x.n === b.dataset.res); if (!p) return; p.status = "resolved"; p.resolvedAt = today(); try { localStorage.setItem("ssz.lawpend", JSON.stringify(LAWPEND)); } catch (e) {} LAWTAB = "rul"; renderLaw(); renderLawCard(); })); }
+  if (LAWTAB === "law") $("#lawTable").innerHTML = `<tr><th>法規</th><th>類型</th><th>最新修正</th><th>條數</th><th>狀態</th><th>來源</th></tr>` + LAWLIB.map((l) => { const t = isoT(l.date), recent = t && Date.now() - t < 366 * DAY * 3; return `<tr><td>${esc(l.n)}</td><td>${l.kind}</td><td class="num">${l.date}${l.effective ? `<div class="note">${l.effective} 施行</div>` : ""}</td><td class="num">${l.arts}</td><td>${recent ? '<span class="st amended">已修正 ⚠</span>' : '<span class="st ok">現行</span>'}</td><td>${esc(l.src)}<div class="note">law.moj.gov.tw 開放資料</div></td></tr>`; }).join("");
+  else $("#lawTable").innerHTML = `<tr><th>函釋</th><th>主題</th><th>發文日</th><th>狀態</th><th>來源</th></tr>` + RULINGS.map((r) => `<tr><td>${esc(r.n)}</td><td>${esc(r.topic)}</td><td class="num">${r.date}</td><td><span class="st ok">有效</span></td><td>${esc(r.src)}<div class="note">人工確認入庫（各部會無統一 API）</div></td></tr>`).join("");
 }
 renderLawCard();
 
