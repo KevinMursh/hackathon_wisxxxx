@@ -3,14 +3,23 @@
 > 日期：2026-09-12　依據：`docs/API-文件歸戶.md`（契約）、`docs/部署方案-後端.md`（基礎設施）
 > 前置已完成：`server/normalize.mjs`（35 案綠）、`server/classify.mjs`（41 檔全對、亂檔名全對、本機 cache）
 > 狀態標記：☐ 待做　☑ 完成　✗ 取消
+> 更新：2026-09-12　後端語言定為 **Node 統一**；Bedrock 改併發；store 層完成
 
 ---
 
 ## 0. 待拍板（未回覆採預設）
 
-- ☐ 建議檔名格式 → 預設：**採前端格式** `{序}-{doc_type}_{114-09-18}.{ext}`（日期帶連字號、不附來源；來源已是分組）
-- ☐ IAM Role 是否建得了 → 你先跑 `aws iam create-role --role-name appeal-ec2 … --profile hackathon`；被拒 → 走臨時憑證路線（§4 第 29 條）
-- ☐ 本機開發用的雲端資源前綴 → 預設：`S3_PREFIX=dev/`、`DDB_TABLE=appeal-cases`（同表，PK 帶 `dev#` 前綴），不另開表
+| 決策 | 結論 | 依據 |
+|---|---|---|
+| 後端語言 | **Node 統一**（選項 C） | 隊友 `src/backend` FastAPI 僅有 health/chat，業務邏輯未實作；兩個 runtime 各持一把 1 RPS 鎖會超限 |
+| 沿用隊友基礎設施 | IAM Role `ntpc-law3-ec2-role`、部署桶、SG（會場四組 IP）、EC2 `i-0317e2f9af300f2bf`、SSM `push.sh` | 已建好可用；region 改為 **us-west-2** |
+| 建議檔名 | `{序}-{doc_type}_{114-09-18}.{真實副檔名}` | 採前端 `STD_NAME` 格式；副檔名以 magic bytes 為準（`其實是jpg.pdf` → `.jpg`），重新命名才有意義 |
+| Bedrock 併發 | 起跑間隔 **2.0s**、同時在途 **3** | 規範限每秒請求數非同時數；實測 case02 91s→62s、零 429；現場異常改 `BEDROCK_CONCURRENCY=1` |
+| 每箱檔數 | **10** | 實測 1/5/10 檔：179s / 128s / 91s；再加大受 20 圖硬上限與 8k 輸出上限擋住，邊際效益低 |
+| 三軸欄位 | `source` 問模型；`nature`（主張/紀錄/證物）查表；`timing` 整案以裁處書日期為界 | 同類文件性質固定；時點需整案視野，單檔問模型會錯 |
+| 來源未知 | 「未知」是正式值，無身分證據不猜 | `05-採證照片彙整頁.pdf` 無抬頭印信文號 → 回未知為正確（已更正 manifest 正解） |
+| 本機隔離 | `S3_PREFIX=dev/` 兼作 DynamoDB PK 命名空間；不另開表 | — |
+| EC2 OS | 現有 AL2023 **沒有 LibreOffice／ffmpeg** | user-data 要補（RPM／static build）或換 Ubuntu；會動到隊友的檔，需先知會 |
 
 ## 1. Store 層 `server/store/`
 

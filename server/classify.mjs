@@ -4,13 +4,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
 import { createHash } from "node:crypto";
+import { converseJson, MODEL, BedrockError } from "./bedrock.mjs";
+export { MODEL };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
-export const MODEL = process.env.MODEL || DEFAULT_MODEL;
-const REGION = process.env.AWS_REGION || "us-east-1";
 
 export const DOC_TYPES = ["訴願書", "訴願委任書", "答辯書", "答辯書檢送函", "卷證目錄", "裁處書", "裁處書送達證書", "陳述意見通知書", "通知書送達證書", "陳述意見書", "檢舉資料", "稽查紀錄", "調查筆錄", "採證照片", "影像放大標註", "採證影片", "車籍資料", "係數計算表", "簽呈", "檢驗報告", "契約書", "委員會決定書", "閱覽卷宗申請書", "言詞辯論申請書", "言詞陳述申請書", "參加訴願申請書", "其他"];
 export const SOURCES = ["訴願人", "原處分機關", "第三方", "本局", "未知"];
@@ -20,7 +18,6 @@ export const FORMS = ["文字PDF", "掃描", "照片", "影片", "系統列印",
 export const BOX = { files: +(process.env.BOX_FILES || 10), images: 20, chars: 120_000 };
 const PAGE_CAP = 3000;           // 每頁文字上限（字）
 const TEXT_CAP = 60_000;         // 每檔文字上限（字）；20 頁合併卷宗約 25k
-const MAX_RETRY = 3;
 
 const SEGMENT_SCHEMA = {
   type: "object",
@@ -110,34 +107,10 @@ async function fileBlocks(n, { imagesFrom = 0, imagesTo } = {}) {
   return blocks;
 }
 
-/* ---------- 呼叫 ---------- */
-const client = new BedrockRuntimeClient({ region: REGION });
-
+/* ---------- 呼叫（經 bedrock.mjs 全域鎖） ---------- */
 async function converse(blocks, { model = MODEL } = {}) {
-  const cmd = new ConverseCommand({
-    modelId: model,
-    system: [{ text: await systemPrompt() }],
-    messages: [{ role: "user", content: blocks }],
-    toolConfig: { tools: [TOOL], toolChoice: { tool: { name: "submit_classification" } } },
-    inferenceConfig: { maxTokens: 8000, temperature: 0 },
-  });
-  let lastErr;
-  for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
-    try {
-      const t0 = Date.now();
-      const res = await client.send(cmd);
-      const use = res.output?.message?.content?.find((c) => c.toolUse)?.toolUse;
-      if (!use) throw Object.assign(new Error("model returned no tool use"), { code: "SCHEMA_INVALID" });
-      return { results: use.input.results, usage: res.usage, ms: Date.now() - t0, stopReason: res.stopReason };
-    } catch (e) {
-      lastErr = e;
-      const throttled = e.name === "ThrottlingException" || e.$metadata?.httpStatusCode === 429;
-      if (!throttled) break;
-      await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
-    }
-  }
-  const code = lastErr.code || (lastErr.name === "ThrottlingException" ? "BEDROCK_THROTTLED" : /AccessDenied|UnrecognizedClient|ExpiredToken|ResourceNotFound/.test(lastErr.name) ? "BEDROCK_UNAVAILABLE" : "BEDROCK_ERROR");
-  throw Object.assign(new Error(lastErr.message), { code, cause: lastErr });
+  const r = await converseJson({ model, system: await systemPrompt(), messages: [{ role: "user", content: blocks }], tool: TOOL, maxTokens: 8000, temperature: 0 });
+  return { results: r.input.results, usage: r.usage, ms: r.ms, stopReason: r.stopReason };
 }
 
 /* ---------- 後處理 ---------- */
@@ -162,10 +135,17 @@ export function annotateTiming(results) {
   return { cutoff: cut, results };
 }
 
+/** 真實副檔名：以 magic bytes 判定的 mime 為準；副檔名說謊時以內容為準（重新命名才有意義） */
+const MIME_EXT = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "jpg", "image/heif": "jpg", "video/mp4": "mp4", "video/quicktime": "mov", "text/plain": "txt" };
+export function trueExt(n) {
+  if (n.kind === "office") return path.extname(n.originalName).slice(1).toLowerCase();   // odt/docx 保留原格式
+  return MIME_EXT[n.mime] || path.extname(n.originalName).slice(1).toLowerCase();
+}
+
+/** 建議檔名：{序}-{doc_type}_{114-09-18}.{ext}（前端 STD_NAME 格式；來源已是分組，不進檔名） */
 export function suggestedName(seg, ext) {
-  const tail = seg.date?.replace(/-/g, "") || seg.doc_no?.match(/\d[\d-]*\d/)?.[0]?.slice(-8) || "";
-  const src = seg.source && seg.source !== "未知" ? `_${seg.source}` : "";
-  return `${seq(seg.doc_type)}-${seg.doc_type}${tail ? `_${tail}` : ""}${src}${ext ? `.${ext}` : ""}`;
+  const tail = seg.date || seg.doc_no?.match(/\d[\d-]*\d/)?.[0]?.slice(-8) || "";
+  return `${seq(seg.doc_type)}-${seg.doc_type}${tail ? `_${tail}` : ""}${ext ? `.${ext}` : ""}`;
 }
 
 function verifyEvidence(seg, n) {
@@ -184,7 +164,7 @@ function postprocess(seg, n) {
   seg.nature = NATURE[seg.doc_type] ?? "未知";
   if (["採證照片", "採證影片", "影像放大標註"].includes(seg.doc_type) && n.kind !== "pdf-text") { /* 來源由模型依證據回；規則層不覆寫 */ }
   verifyEvidence(seg, n);
-  seg.suggestedName = suggestedName(seg, path.extname(n.originalName).replace(".", "").toLowerCase());
+  seg.suggestedName = suggestedName(seg, trueExt(n));
   return seg;
 }
 
@@ -199,9 +179,12 @@ export async function classifyAll(normalized, { perFile = false, model = MODEL, 
     if (!n.ok) results.set(n.fileId, { fileId: n.fileId, originalName: n.originalName, ok: false, error: n.error });
     else if (n.kind === "unsupported") results.set(n.fileId, { fileId: n.fileId, originalName: n.originalName, ok: true, skipped: true, segments: [{ fromPage: 1, toPage: 1, doc_type: "其他", source: "未知", form: "文字PDF", date: null, doc_no: null, party_hint: null, summary: "無法辨識內容", confidence: 1, evidence: "不支援的檔案格式，未送模型", suggestedName: suggestedName({ doc_type: "其他" }, path.extname(n.originalName).slice(1)) }] });
   }
+  let fatal = null;
   const boxes = perFile ? normalized.filter((n) => n.ok && n.kind !== "unsupported" && n.kind !== "zip").map((n) => ({ items: [n], images: n.images?.length ?? 0 })) : pack(normalized);
 
-  for (const [bi, box] of boxes.entries()) {
+  // 箱之間併發（受 bedrock.mjs 起跑節流 + 併發上限節制）；箱內仍是一次呼叫
+  let doneBoxes = 0;
+  await Promise.all(boxes.map(async (box, bi) => {
     const byId = new Map(box.items.map((n) => [n.fileId, n]));
     const settle = (fileId, r) => results.set(fileId, { fileId, originalName: byId.get(fileId)?.originalName, box: bi, ...r });
     try {
@@ -222,22 +205,23 @@ export async function classifyAll(normalized, { perFile = false, model = MODEL, 
         const n = byId.get(r.fileId);
         if (!n || seen.has(r.fileId)) continue;              // 多的丟
         seen.add(r.fileId);
-        settle(r.fileId, { ok: true, segments: r.segments.map((s) => postprocess({ ...s }, n)), ms: out.ms, cached: !!out.cached, usage: seen.size === 1 ? out.usage : undefined });   // 用量只記在箱內第一筆，避免重複加總
+        settle(r.fileId, { ok: true, segments: r.segments.map((s) => postprocess({ ...s }, n)), ms: out.ms, cached: !!out.cached, usage: seen.size === 1 ? out.usage : undefined });
       }
       for (const n of box.items) if (!seen.has(n.fileId)) {   // 少的：單檔補跑一次
         try {
           const one = await converse(await fileBlocks(n), { model });
           const r = one.results?.find((x) => x.fileId === n.fileId) ?? one.results?.[0];
-          if (r) settle(n.fileId, { ok: true, segments: r.segments.map((s) => postprocess(s, n)), ms: one.ms, usage: one.usage, retried: true });
+          if (r) settle(n.fileId, { ok: true, segments: r.segments.map((s) => postprocess({ ...s }, n)), ms: one.ms, usage: one.usage, retried: true });
           else settle(n.fileId, { ok: false, error: { code: "MISSING_IN_RESPONSE", message: "model omitted this file twice" } });
         } catch (e) { settle(n.fileId, { ok: false, error: { code: e.code || "BEDROCK_ERROR", message: e.message } }); }
       }
     } catch (e) {
       for (const n of box.items) settle(n.fileId, { ok: false, error: { code: e.code || "BEDROCK_ERROR", message: e.message } });
-      if (e.code === "BEDROCK_UNAVAILABLE") { onBox?.(bi, boxes.length, results); throw e; }   // 認證/模型不可用：整批停
+      if (e.code === "BEDROCK_UNAVAILABLE") fatal ??= e;
     }
-    onBox?.(bi, boxes.length, results);
-  }
+    onBox?.(++doneBoxes, boxes.length, results);
+  }));
+  if (fatal) throw fatal;
   const out = [...results.values()];
   annotateTiming(out);
   return out;

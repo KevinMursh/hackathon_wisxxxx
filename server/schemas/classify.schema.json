@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "文件歸戶分類輸出",
+  "description": "classify.mjs 經 Bedrock Converse tool-use 強制產出；enum 即封閉清單",
+  "type": "object",
+  "required": [
+    "results"
+  ],
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fileId",
+          "segments"
+        ],
+        "properties": {
+          "fileId": {
+            "type": "string"
+          },
+          "segments": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "fromPage",
+                "toPage",
+                "doc_type",
+                "source",
+                "form",
+                "date",
+                "doc_no",
+                "party_hint",
+                "summary",
+                "confidence",
+                "evidence"
+              ],
+              "properties": {
+                "fromPage": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "toPage": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "doc_type": {
+                  "type": "string",
+                  "enum": [
+                    "訴願書",
+                    "訴願委任書",
+                    "答辯書",
+                    "答辯書檢送函",
+                    "卷證目錄",
+                    "裁處書",
+                    "裁處書送達證書",
+                    "陳述意見通知書",
+                    "通知書送達證書",
+                    "陳述意見書",
+                    "檢舉資料",
+                    "稽查紀錄",
+                    "調查筆錄",
+                    "採證照片",
+                    "影像放大標註",
+                    "採證影片",
+                    "車籍資料",
+                    "係數計算表",
+                    "簽呈",
+                    "檢驗報告",
+                    "契約書",
+                    "委員會決定書",
+                    "閱覽卷宗申請書",
+                    "言詞辯論申請書",
+                    "言詞陳述申請書",
+                    "參加訴願申請書",
+                    "其他"
+                  ]
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "訴願人",
+                    "原處分機關",
+                    "第三方",
+                    "本局",
+                    "未知"
+                  ],
+                  "description": "無身分證據一律「未知」，不得猜測"
+                },
+                "form": {
+                  "type": "string",
+                  "enum": [
+                    "文字PDF",
+                    "掃描",
+                    "照片",
+                    "影片",
+                    "系統列印",
+                    "手寫"
+                  ]
+                },
+                "date": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9]{3}-[0-9]{2}-[0-9]{2}$",
+                  "description": "民國年；送達證書取簽收日"
+                },
+                "doc_no": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "party_hint": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "「○」原樣保留"
+                },
+                "summary": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "evidence": {
+                  "type": "string",
+                  "description": "須引用該檔內可見字樣"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-derived": {
+    "description": "以下欄位由程式產生，不在模型輸出內",
+    "nature": {
+      "enum": [
+        "主張",
+        "紀錄",
+        "證物",
+        "未知"
+      ],
+      "from": "doc_type 查表"
+    },
+    "timing": {
+      "enum": [
+        "處分作成前",
+        "處分作成",
+        "爭訟發生後",
+        "未知"
+      ],
+      "from": "整案以裁處書 date 為界"
+    },
+    "suggestedName": {
+      "from": "{序}-{doc_type}_{date}.{真實副檔名}"
+    },
+    "evidence_unverified": {
+      "type": "boolean",
+      "from": "evidence 引用字樣在該檔文字中找不到 → confidence×0.6"
+    }
+  }
+}

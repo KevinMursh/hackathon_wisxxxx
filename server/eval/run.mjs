@@ -31,7 +31,8 @@ console.log(`model=${MODEL} mode=${perFile ? "per-file" : `batch(files≤${BOX.f
 const t0 = Date.now();
 const normalized = [];
 for (const c of cases) {
-  const r = await normalize(await fs.readFile(resolve(c.path)), messy ? messyName(c.path) : path.basename(c.path), { outDir });
+  // fileId 帶索引：manifest 裡有內容相同的檔（對抗檔是正本的副本），否則 sha256 相同會互相覆蓋
+  const r = await normalize(await fs.readFile(resolve(c.path)), messy ? messyName(c.path) : path.basename(c.path), { outDir, fileId: `f${String(normalized.length + 1).padStart(2, "0")}` });
   r._case = c;
   normalized.push(r);
 }

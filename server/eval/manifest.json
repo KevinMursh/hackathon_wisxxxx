@@ -11,7 +11,7 @@
       "doc_type": "訴願書",
       "source": "訴願人",
       "date": "114-09-22",
-      "suggestedNameMatch": "^01-訴願書_1140922_訴願人\\.pdf$"
+      "suggestedNameMatch": "^01-訴願書_114-09-22\\.pdf$"
     },
     {
       "group": "final",
@@ -40,7 +40,7 @@
       "source": "原處分機關",
       "date": "114-09-16",
       "doc_noContains": "41-114-090351",
-      "suggestedNameMatch": "^10-裁處書_1140916_原處分機關\\.pdf$"
+      "suggestedNameMatch": "^10-裁處書_114-09-16\\.pdf$"
     },
     {
       "group": "final",
@@ -48,7 +48,7 @@
       "doc_type": "裁處書送達證書",
       "source": "原處分機關",
       "date": "114-09-18",
-      "suggestedNameMatch": "^11-裁處書送達證書_1140918_原處分機關\\.jpg$"
+      "suggestedNameMatch": "^11-裁處書送達證書_114-09-18\\.jpg$"
     },
     {
       "group": "final",
@@ -71,8 +71,10 @@
       "doc_type": "採證照片",
       "source": [
         "原處分機關",
-        "第三方"
-      ]
+        "第三方",
+        "未知"
+      ],
+      "note": "彙整頁僅有標題與「來源：民眾檢舉行車紀錄器影片擷取」註記，無機關抬頭／印信／文號；依「無身分證據不猜」規則，回未知為正確"
     },
     {
       "group": "final",
@@ -80,7 +82,7 @@
       "doc_type": "採證照片",
       "source": "未知",
       "noIdentity": true,
-      "suggestedNameMatch": "^15-採證照片(_\\d{7})?\\.jpg$"
+      "suggestedNameMatch": "^15-採證照片(_114-06-27)?\\.jpg$"
     },
     {
       "group": "final",
@@ -312,7 +314,8 @@
       "doc_type": "裁處書送達證書",
       "source": "原處分機關",
       "date": "114-09-18",
-      "suggestedNameMatch": "^11-裁處書送達證書_1140918_原處分機關\\.pdf$"
+      "suggestedNameMatch": "^11-裁處書送達證書_114-09-18\\.jpg$",
+      "note": "副檔名說謊：內容為 JPEG，建議檔名應更正為 .jpg"
     },
     {
       "group": "tune",
