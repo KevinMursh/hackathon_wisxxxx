@@ -445,8 +445,30 @@ function openTagPop(id, anchor) {
   $("#tpType").innerHTML = TYPES.map((t) => `<option ${d.tag === t ? "selected" : ""}>${t}</option>`).join(""); $("#tpSrc").innerHTML = SRC_ORDER.map((t) => `<option ${d.src === t ? "selected" : ""}>${t}</option>`).join("");
   pop.style.left = Math.max(8, Math.min(pane.width - 230, r.left - pane.left - 120)) + "px"; pop.style.top = (r.bottom - pane.top + 4) + "px"; pop.classList.add("on");
   $("#tpCancel").onclick = () => pop.classList.remove("on");
-  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; renderDocs(); if (!S.c.analysisPending) { renderExtract(); renderIssues(); renderDraft(); } persist(); openDoc(id); } pop.classList.remove("on"); };
+  $("#tpSave").onclick = async () => {
+    const t = $("#tpType").value, sr = $("#tpSrc").value;
+    if (t === d.tag && sr === d.src) return pop.classList.remove("on");
+    const prev = { tag: d.tag, src: d.src, stdName: d.stdName };
+    d.tag = t; d.src = sr; renderDocs(); pop.classList.remove("on");           // 樂觀更新：先動畫面
+    if (d.fileId && S.c.caseId) {
+      try {
+        const updated = await Api.patchFile(S.c.caseId, d.fileId, { segIndex: d.segIndex ?? 0, doc_type: t, source: sr, by: "承辦人" });
+        const seg = updated.segments?.[d.segIndex ?? 0];
+        if (seg) { d.stdName = seg.suggestedName; d.nature = seg.nature; d.manual = seg.manual; }
+        S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${prev.tag}／${prev.src} → ${t}／${sr}` });
+        renderDocs();
+      } catch (e) {                                                             // 失敗回滾，不留下前端與後端不一致
+        Object.assign(d, prev); renderDocs();
+        alert(`修正未儲存：${e.code || "ERROR"}　${e.message || ""}`);
+      }
+    } else {
+      S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${prev.tag}／${prev.src} → ${t}／${sr}` });
+    }
+    if (!S.c.analysisPending) { renderExtract(); renderIssues(); renderDraft(); }
+    persist(); openDoc(id);
+  };
 }
+
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
   S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on");
@@ -455,6 +477,7 @@ function openDoc(id, after) {
   const view = $("#docView"), tools = $("#docTools"); tools.innerHTML = "";
   const missing = `<div class="doc-missing">找不到卷宗包檔案：<span class="num">${esc(d.file || "")}</span><br>請自 repo 根目錄開啟 prototype/index.html。</div>`;
   const head = `<div class="doc-meta num" style="margin-bottom:8px">${d.origName ? `原檔名：${esc(d.origName)}　→　` : ""}標籤：${esc(d.stdName || d.title)}<span class="srct ${d.src}">${d.src}</span>${d.srcNote ? `<span class="note">　${esc(d.srcNote)}</span>` : ""}${d.summary ? `<br><span class="note">Claude 判定：${esc(d.summary)}</span>` : ""}</div>`;
+  if (d.fileId) { openLiveDoc(d, view, tools, head); if (after) after(); return; }   // 真上傳／demo 的檔案
   if (d.include === false) { view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "未納入分析。")}</div>`; }
   else if (d.kind === "text") {
     const mode = d.file ? (S.docMode[id] || "pdf") : "text";
