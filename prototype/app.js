@@ -361,7 +361,16 @@ const statusLabel = () => S.status === "已結案" && S.court ? `已結案・法
 /* ---------- 持久化（案件庫） ---------- */
 function persist() {
   if (!S.c) return;
-  const c = S.c, jp = judgePlan();
+  const c = S.c;
+  if (c.analysisPending) {      // 真上傳案件：只有卷宗是真的，判定／草稿尚未接線，不要去算
+    const rec = { libId: S.libId, baseId: c.id, name: c.name, no: c.no, subj: null, art: null, verdict: null,
+      aiVerdict: null, status: S.status, createdAt: today(), closedAt: null, final: null, court: null, updatedAt: today(),
+      analysisPending: true, caseId: c.caseId,
+      state: { docs: c.docs.map((d) => ({ id: d.id, fileId: d.fileId, tag: d.tag, src: d.src, include: d.include, origName: d.origName, stdName: d.stdName, kind: d.kind, title: d.title, summary: d.summary, dup: d.dup })), audit: S.audit } };
+    const k = LIB.findIndex((r) => r.libId === S.libId); if (k >= 0) LIB[k] = rec; else LIB.push(rec);
+    return saveLib();
+  }
+  const jp = judgePlan();
   const rec = { libId: S.libId, baseId: c.id, name: c.name, no: c.no, subj: c.subj, art: currentPlan().art, verdict: S.final ? S.final.verdict : currentPlan().verdict, aiVerdict: jp.verdict, status: S.status, createdAt: (LIB.find((r) => r.libId === S.libId) || {}).createdAt || today(), closedAt: S.status === "已結案" ? ((LIB.find((r) => r.libId === S.libId) || {}).closedAt || today()) : null, final: S.final, court: S.court, updatedAt: today(),
     state: { served: S.served, recv: S.recv, stances: S.stances, plan: S.plan, paras: S.paras, versions: S.versions, audit: S.audit, objections: S.objections, finalDiff: S.finalDiff, docs: c.docs.map((d) => ({ id: d.id, tag: d.tag, src: d.src, include: d.include, origName: d.origName, stdName: d.stdName, kind: d.kind, title: d.title, note: d.note, file: d.file, summary: d.summary, dup: d.dup, unknown: d.unknown })), liveCase: c.live ? c : null } };
   const i = LIB.findIndex((r) => r.libId === S.libId); if (i >= 0) LIB[i] = rec; else LIB.push(rec);
@@ -380,6 +389,11 @@ function openRecord(rec) {
    ========================================================= */
 function render() { ensurePlan(); renderDocs(); renderExtract(); renderIssues(); renderLaws(); renderSims(); renderDraft(); updateChips(); $$(".tab")[0].click(); const first = S.c.docs.find((d) => d.kind !== "missing" && d.include !== false); if (first) openDoc(first.id); asstReset(); }
 function updateChips() {
+  if (S.c?.analysisPending) {     // 尚未有判定可顯示
+    $("#judgeChip").classList.remove("on");
+    const sc0 = $("#statusChip"); sc0.className = "chip status on " + S.status; $("#statusText").textContent = statusLabel();
+    return;
+  }
   const p = currentPlan();
   $("#judgeChip").classList.add("on"); $("#judgeText").textContent = `${p.verdict.length > 12 ? p.verdict.slice(0, 12) + "…" : p.verdict}（${p.art.replace("訴願法 ", "")}）・修正意見 ${S.objections.length} 次`;
   const sc = $("#statusChip"); sc.className = "chip status on " + S.status; $("#statusText").textContent = statusLabel();
@@ -431,7 +445,7 @@ function openTagPop(id, anchor) {
   $("#tpType").innerHTML = TYPES.map((t) => `<option ${d.tag === t ? "selected" : ""}>${t}</option>`).join(""); $("#tpSrc").innerHTML = SRC_ORDER.map((t) => `<option ${d.src === t ? "selected" : ""}>${t}</option>`).join("");
   pop.style.left = Math.max(8, Math.min(pane.width - 230, r.left - pane.left - 120)) + "px"; pop.style.top = (r.bottom - pane.top + 4) + "px"; pop.classList.add("on");
   $("#tpCancel").onclick = () => pop.classList.remove("on");
-  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; renderDocs(); renderExtract(); renderIssues(); renderDraft(); persist(); openDoc(id); } pop.classList.remove("on"); };
+  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; renderDocs(); if (!S.c.analysisPending) { renderExtract(); renderIssues(); renderDraft(); } persist(); openDoc(id); } pop.classList.remove("on"); };
 }
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
