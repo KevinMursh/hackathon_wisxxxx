@@ -307,7 +307,11 @@
   .arow .who { font-size:11px; padding:0 6px; border:1px solid var(--line); } .arow .who.ai { color:var(--accent); border-color:var(--accent); } .arow .who.hu { color:var(--green); border-color:var(--green); }
   .chat-head { display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid var(--line); background:var(--surface-2); font-size:12.5px; }
   .st { display:inline-block; padding:1px 8px; font-size:11px; border:1px solid; white-space:nowrap; }
-  .st.ok { color:var(--green); border-color:var(--green); background:var(--green-soft); } .st.amended { color:var(--amber); border-color:var(--amber); background:var(--amber-soft); } .st.gap { color:var(--ink-3); border-color:var(--line-strong); }
+  .st.ok { color:var(--green); border-color:var(--green); background:var(--green-soft); } .st.amended { color:var(--amber); border-color:var(--amber); background:var(--amber-soft); } .st.gap { color:var(--ink-3); border-color:var(--line-strong); } .st.pending { color:var(--seal); border-color:var(--seal); background:var(--seal-soft); }
+  .tp { display:flex; gap:0; border:1px solid var(--line); background:var(--surface); margin-bottom:14px; flex-wrap:wrap; } .tp > div { flex:1 1 160px; padding:10px 14px; border-right:1px solid var(--line); } .tp > div:last-child { border-right:none; } .tp .k { font-size:11px; color:var(--ink-3); } .tp .v { font-family:var(--mono); font-size:15px; }
+  .ver { grid-column:1/-1; font-size:12px; margin-top:4px; } .ver.ok { color:var(--green); } .ver.warn { color:var(--seal); font-weight:600; }
+  .borrow { margin-top:8px; padding:7px 10px; border-left:3px solid var(--accent); background:var(--accent-soft); font-size:12.5px; } .borrow b { color:var(--accent); }
+  .cite-check tr.pending td { background:var(--seal-soft); }
 
   /* ---------- 案件庫 ---------- */
   .lib { max-width:1120px; margin:0 auto; padding:28px 24px 80px; }
@@ -338,11 +342,12 @@
 
 <header class="topbar">
   <div class="seal-mark">訴</div>
-  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ 原型展示 v5</span></div>
+  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ 原型展示 v6</span></div>
   <div class="chip" id="chip"><span class="eyebrow">承辦中</span><b id="chipName">—</b><span class="num" id="chipNo">—</span></div>
   <div class="chip status" id="statusChip"><b id="statusText">—</b></div>
   <div class="chip judge" id="judgeChip"><span class="eyebrow">AI 判定</span><b id="judgeText">—</b></div>
   <div class="topbar-spacer"></div>
+  <button class="ghost-btn" id="lawBtn">法規庫</button>
   <button class="ghost-btn" id="libBtn">案件庫</button>
   <button class="ghost-btn" id="backBtn" style="display:none">重選案件</button>
 </header>
@@ -388,8 +393,9 @@
     <div class="pick-div">或選擇示範案件</div>
     <div class="case-grid" id="caseGrid"></div>
 
-    <div class="pick-div" style="margin-top:26px">案件庫</div>
+    <div class="pick-div" style="margin-top:26px">案件庫・法規庫</div>
     <div class="libcard" id="libCard"></div>
+    <div class="libcard" id="lawCard" style="margin-top:10px;border-color:var(--amber)"></div>
 
     <div class="disclaimer">
       <b>關於這份原型</b>　純前端展示，未串接後端模型。擷取結果、爭點、AI 判定、引用查核、異議回覆為依真實決定書預先編排之示範資料；貼上文字路徑為瀏覽器端規則運算。<br>
@@ -444,6 +450,16 @@
     </div>
     <table class="libtable" id="libTable"></table>
     <p class="foot-note">案件庫存放結構化紀錄（三方對照、爭點表態、AI 判定、承辦人修改、最終決定、法院結果），不存原始卷宗；原始件留於本局內網。已結案案件之人工歸戶標籤與委員會修改處，為日後分類器與草稿模型之標註資料。</p>
+  </div>
+</section>
+
+<!-- ======== 畫面 5：法規庫 ======== -->
+<section class="screen" id="s-law">
+  <div class="lib">
+    <div class="lib-head"><div><div class="eyebrow">本局法規庫</div><h2>法規、函釋與待補清單</h2></div><div class="note" id="lawStat"></div></div>
+    <div class="filters"><div class="rtabs" style="border:none;background:none;display:flex;gap:4px"><button class="ghost-btn on" data-l="law">法規</button><button class="ghost-btn" data-l="rul">函釋</button><button class="ghost-btn" data-l="pend">待補清單</button></div><span class="note" style="margin-left:auto">來源：命題方提供／自行蒐集／全國法規資料庫（開放資料，示意）／案件查核待補</span></div>
+    <table class="libtable" id="lawTable"></table>
+    <p class="foot-note">法規版本以全國法規資料庫「最新修正日期」為準；每案依行為時／裁處時／決定時三個時點與修正日期比對，修正落在行為時之後者依行政罰法第 5 條為新舊法比較。結案時引用查核「待補」之函釋、準則自動列入待補清單，補齊後即納入下一案之查核字典——這是法規庫的更新機制。</p>
   </div>
 </section>
 

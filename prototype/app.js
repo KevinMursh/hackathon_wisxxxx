@@ -80,7 +80,7 @@ function renderLibCard() {
 }
 $("#libCard").addEventListener("click", openLibrary);
 $("#libBtn").addEventListener("click", openLibrary);
-$("#backBtn").addEventListener("click", () => { persist(); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); });
+$("#backBtn").addEventListener("click", () => { persist(); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
 renderLibCard();
 
 /* =========================================================
@@ -170,7 +170,7 @@ function runCase(c, restore) {
     const existing = LIB.find((r) => r.baseId === c.id && r.status === "承辦中" && !c.live);
     S.libId = existing ? existing.libId : `${c.id}-${Date.now().toString(36)}`;
   }
-  S.doc = null; S.zoom = 1;
+  S.doc = null; S.zoom = 1; S.docMode = {};
   $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = "";
   if (restore) { render(); show("s-work"); return; }
   const steps = [["文件辨識（Claude 判定）", `${c.docs.length} 個檔案 → ${c.docs.filter((d) => d.include !== false).length} 份納入・${c.docs.filter((d) => d.dup).length} 份重複・${c.docs.filter((d) => d.unknown).length} 份無法辨識`, Math.min(2600, 700 + c.docs.length * 110), "classify"], ["欄位擷取（三方對照）", `${c.fields.length} 個欄位，${c.fields.filter((f) => f.conflict).length} 處衝突`, 700], ["爭點比對（訴願書 vs 答辯書 vs 卷證）", `識別 ${c.issues.length} 個爭點`, 760], ["法規檢索與引用查核", `推薦 ${c.laws.length} 筆；查核答辯書引用 ${c.citations.length} 則${c.citations.some((x) => x.status === "amended") ? "，1 則已修正" : ""}`, 840], ["AI 判定與草稿生成", `判定：${judgePlan(c).verdict}（${judgePlan(c).art}）`, 900]];
@@ -269,8 +269,8 @@ function openDoc(id, after) {
   const head = `<div class="doc-meta num" style="margin-bottom:8px">${d.origName ? `原檔名：${esc(d.origName)}　→　` : ""}標籤：${esc(d.stdName || d.title)}<span class="srct ${d.src}">${d.src}</span>${d.srcNote ? `<span class="note">　${esc(d.srcNote)}</span>` : ""}${d.summary ? `<br><span class="note">Claude 判定：${esc(d.summary)}</span>` : ""}</div>`;
   if (d.include === false) { view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "未納入分析。")}</div>`; }
   else if (d.kind === "text") {
-    const mode = S.docMode[id] || (d.file ? "pdf" : "text");
-    const paint = () => { const m = S.docMode[id] || (d.file ? "pdf" : "text"); if (d.file) tools.innerHTML = `<button class="ghost-btn ${m === "pdf" ? "on" : ""}" data-m="pdf">原始 PDF</button><button class="ghost-btn ${m === "text" ? "on" : ""}" data-m="text">擷取文字</button>`; view.innerHTML = m === "pdf" ? `<div style="padding:10px 12px 0">${head}</div><iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>` : `<div class="doc-body">${head}${d.html}</div>`; if (m === "text") bindMarks(); $$("#docTools button").forEach((b) => b.addEventListener("click", () => { S.docMode[id] = b.dataset.m; paint(); })); };
+    const mode = d.file ? (S.docMode[id] || "pdf") : "text";
+    const paint = () => { const m = d.file ? (S.docMode[id] || "pdf") : "text"; if (d.file) tools.innerHTML = `<button class="ghost-btn ${m === "pdf" ? "on" : ""}" data-m="pdf">原始 PDF</button><button class="ghost-btn ${m === "text" ? "on" : ""}" data-m="text">擷取文字</button>`; view.innerHTML = m === "pdf" ? `<div style="padding:10px 12px 0">${head}</div><iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>` : `<div class="doc-body">${head}${d.html}</div>`; if (m === "text") bindMarks(); $$("#docTools button").forEach((b) => b.addEventListener("click", () => { S.docMode[id] = b.dataset.m; paint(); })); };
     S.docMode[id] = mode; paint();
   } else if (d.kind === "image") {
     if (!d.file) { view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b><br>${esc(d.note || "")}</div>`; }
@@ -352,16 +352,34 @@ function renderIssues() {
   $$("#p1 .objlink").forEach((l) => l.addEventListener("click", () => openObjection(l.dataset.obj)));
 }
 
+/* ---------- 三時點比對（零 AI） ---------- */
+function versionCheck(libName) {
+  const c = S.c, L = LAWLIB.find((x) => x.n === libName); if (!L || !c.dates) return null;
+  const amend = isoT(L.effective || L.date), act = isoT(c.dates.act), dec = isoT(c.dates.decide);
+  if (amend && act && amend > act) return { warn: true, text: `修正 ${L.date}${L.effective ? "（" + L.effective + " 施行）" : ""} 落在行為時 ${c.dates.act} 之後 → 須依行政罰法 §5 為新舊法比較` };
+  return { warn: false, text: `最新修正 ${L.date}，早於行為時 ${c.dates.act} → 三時點版本一致` };
+}
+function pendingCites() { return (S.c.citations || []).filter((x) => x.status === "pending"); }
+
 /* ---------- Tab 3／4 ---------- */
 function renderLaws() {
-  const c = S.c, STN = { ok: "已驗證", amended: "該條已修正", missing: "查無此條", repealed: "已廢止", gap: "漏引" };
+  const c = S.c, STN = { ok: "已驗證", amended: "該條已修正", missing: "查無此條", repealed: "已廢止", gap: "漏引", pending: "待補" };
+  const d = c.dates || {}; const tp = `<div class="tp"><div><span class="k">行為時</span><div class="v">${esc(d.act || "—")}</div></div><div><span class="k">裁處時</span><div class="v">${esc(d.disp || "—")}</div></div><div><span class="k">決定時（預定）</span><div class="v">${esc(d.decide || "—")}</div></div><div><span class="k">比對規則</span><div class="note">法規修正日落在行為時之後 → 行政罰法 §5 從新從輕比較</div></div></div>`;
+  const anyWarn = c.laws.some((l) => { const v = versionCheck(l.lib); return v && v.warn; });
+  const alert = c.alert || (anyWarn ? { title: "法規時效性警示（由三時點比對產生）", text: c.laws.filter((l) => versionCheck(l.lib)?.warn).map((l) => `<b>${esc(l.n)}</b>：${esc(versionCheck(l.lib).text)}`).join("<br>") } : null);
   const cites = c.citations.length ? `<table class="cite-check"><tr><th>引用</th><th>出現位置</th><th>狀態</th><th>說明</th></tr>${c.citations.map((x) => `<tr class="${x.status}"><td>${J(x.ref, esc(x.n))}</td><td>${esc(x.where)}</td><td><span class="st ${x.status}">${STN[x.status]}</span></td><td class="note" style="font-size:12px">${esc(x.note)}</td></tr>`).join("")}</table>` : `<div class="doc-missing" style="padding:14px">${esc(c.citationNote || "無引用可查核")}</div>`;
   const groups = {}; c.laws.forEach((l) => { (groups[l.g] = groups[l.g] || []).push(l); });
-  $("#p2").innerHTML = `<div class="sec"><div class="sec-head"><h3>答辯書引用法條查核</h3><span class="note">逐條比對資料集法規全文與修正狀態</span></div><div class="box2">${cites}</div></div>${c.alert ? `<div class="sec"><div class="sec-head"><h3>${c.alert.title}</h3></div><div class="alert"><span class="mk">！</span><p>${c.alert.text}</p></div></div>` : ""}${Object.entries(groups).map(([g, list]) => `<div class="sec"><div class="sec-head"><h3>${g}</h3><span class="note">${list.length} 筆</span></div><div class="box2">${list.map((l) => `<div class="law"><div class="ttl"><span class="n">${esc(l.n)}</span></div><div class="rel">關聯 ${l.rel}%</div><div class="txt">${esc(l.t)}</div><div class="badges">${l.badges.join("")}</div></div>`).join("")}</div></div>`).join("")}`;
+  const pend = pendingCites().length;
+  $("#p2").innerHTML = `<div class="sec"><div class="sec-head"><h3>本案三時點</h3><span class="note">法規時效性依此比對</span></div>${tp}</div>
+    <div class="sec"><div class="sec-head"><h3>答辯書引用法條查核</h3><span class="note">逐條比對法規庫（法規全文＋修正狀態）${pend ? `　・<span style="color:var(--seal)">${pend} 則待補</span>` : ""}</span></div><div class="box2">${cites}</div></div>
+    ${alert ? `<div class="sec"><div class="sec-head"><h3>${alert.title}</h3><span class="note">影響決定書合法性，請優先處理</span></div><div class="alert"><span class="mk">！</span><p>${alert.text}</p></div></div>` : ""}
+    ${Object.entries(groups).map(([g, list]) => `<div class="sec"><div class="sec-head"><h3>${g}</h3><span class="note">${list.length} 筆</span></div><div class="box2">${list.map((l) => { const v = versionCheck(l.lib); return `<div class="law"><div class="ttl"><span class="n">${esc(l.n)}</span></div><div class="rel">關聯 ${l.rel}%</div><div class="txt">${esc(l.t)}</div><div class="badges">${l.badges.join("")}</div>${v ? `<div class="ver ${v.warn ? "warn" : "ok"}">${v.warn ? "⚠ " : "✓ "}${esc(v.text)}</div>` : `<div class="ver note">版本：資料集未收錄此法規，無法比對</div>`}</div>`; }).join("")}</div></div>`).join("")}
+    <p class="foot-note">「待補」表示決定書慣常援引但資料集未收錄之函釋或裁量基準（如環保署函、裁罰準則）；結案時自動列入法規庫待補清單，補齊後納入下一案查核。</p>`;
 }
+function oldLaw(fn) { const y = parseInt(fn, 10); const L = LAWLIB.find((x) => fn.includes(x.n.replace("污", "汙")) || fn.includes(x.n)); if (!L) return null; const ay = parseInt(L.date, 10); if (!y || !ay) return null; if (y < ay) return `${L.n} ${L.date} 修正前`; if (y === ay) return `${L.n} 修法同年，援引前請確認該案決定日`; return null; }
 function renderSims() {
   const c = S.c, total = c.simDist.reduce((a, b) => a + b[1], 0), closed = LIB.filter((r) => r.status === "已結案").length;
-  $("#p3").innerHTML = `<div class="sec"><div class="sec-head"><h3>Top ${c.sims.length} 相似歷史決定書</h3><span class="note">來源：資料集 101 件・本局案件庫已結案 ${closed} 件　點列展開決定書全文</span></div><div class="box2">${c.sims.map((s, i) => { const f = histFile(s.fn); return `<div class="sim ${f ? "exp" : ""}" data-i="${i}"><div class="sim-top"><span class="rank">${i + 1}</span><span class="fn">${esc(s.fn)}<span class="arrow">${f ? "▸ 展開" : ""}</span></span><span class="tag neutral" style="font-size:10px">資料集</span><span class="score">${s.s}%</span></div><div class="simbar"><i style="width:${s.s}%"></i></div><p class="why">${esc(s.why)}</p><div class="chips">${s.chips.map((x) => `<span class="tag ${x === "須注意" || x === "反面案例" ? "seal" : "neutral"}">${esc(x)}</span>`).join("")}</div>${f ? `<div class="body"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="note num">${esc(f.split("/").pop())}</span><a class="ghost-btn" href="${f}" target="_blank" style="text-decoration:none;margin-left:auto">新分頁開啟</a></div><iframe data-src="${f}#toolbar=0&view=FitH" title="${esc(s.fn)}"></iframe></div>` : ""}</div>`; }).join("")}${closed ? LIB.filter((r) => r.status === "已結案" && r.libId !== S.libId).slice(0, 2).map((r) => `<div class="sim"><div class="sim-top"><span class="rank">庫</span><span class="fn">${esc(r.no)}　${esc(r.name)}</span><span class="tag accent" style="font-size:10px">本局案件庫</span><span class="score">—</span></div><p class="why">已結案案件：結論「${esc(r.verdict)}」，${r.court ? "法院結果：" + esc(r.court.res) : "尚無法院結果"}。</p></div>`).join("") : ""}</div></div>
+  $("#p3").innerHTML = `<div class="sec"><div class="sec-head"><h3>Top ${c.sims.length} 相似歷史決定書</h3><span class="note">來源：資料集 101 件・本局案件庫已結案 ${closed} 件　點列展開決定書全文</span></div><div class="box2">${c.sims.map((s, i) => { const f = histFile(s.fn); return `<div class="sim ${f ? "exp" : ""}" data-i="${i}"><div class="sim-top"><span class="rank">${i + 1}</span><span class="fn">${esc(s.fn)}<span class="arrow">${f ? "▸ 展開" : ""}</span></span><span class="tag neutral" style="font-size:10px">資料集</span><span class="score">${s.s}%</span></div><div class="simbar"><i style="width:${s.s}%"></i></div><p class="why">${esc(s.why)}</p><div class="chips">${s.chips.map((x) => `<span class="tag ${x === "須注意" || x === "反面案例" ? "seal" : "neutral"}">${esc(x)}</span>`).join("")}${oldLaw(s.fn) ? `<span class="tag amber">舊法時期：${esc(oldLaw(s.fn))}</span>` : ""}</div>${s.borrow ? `<div class="borrow"><b>可借用</b>　該案${esc(s.borrow.from)} → 本案${esc(paraLabel(S.paras.find((q) => q.id === s.borrow.to)) || s.borrow.to)}：${esc(s.borrow.what)}</div>` : ""}${f ? `<div class="body"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="note num">${esc(f.split("/").pop())}</span><a class="ghost-btn" href="${f}" target="_blank" style="text-decoration:none;margin-left:auto">新分頁開啟</a></div><iframe data-src="${f}#toolbar=0&view=FitH" title="${esc(s.fn)}"></iframe></div>` : ""}</div>`; }).join("")}${closed ? LIB.filter((r) => r.status === "已結案" && r.libId !== S.libId).slice(0, 2).map((r) => `<div class="sim"><div class="sim-top"><span class="rank">庫</span><span class="fn">${esc(r.no)}　${esc(r.name)}</span><span class="tag accent" style="font-size:10px">本局案件庫</span><span class="score">—</span></div><p class="why">已結案案件：結論「${esc(r.verdict)}」，${r.court ? "法院結果：" + esc(r.court.res) : "尚無法院結果"}。</p></div>`).join("") : ""}</div></div>
     <div class="sec"><div class="sec-head"><h3>相似案例之決定結果分布</h3></div><div class="dist">${c.simDist.filter((d) => d[1] > 0).map((d) => `<div style="background:${d[2]};width:${d[1] / total * 100}%">${d[1]}</div>`).join("")}</div><div class="dist-key">${c.simDist.map((d) => `<span><i style="background:${d[2]}"></i>${d[0]} ${d[1]} 件</span>`).join("")}</div></div>
     <p class="foot-note">相似度綜合案由、援引法條、爭點類型與事實敘述四項計算；系統刻意納入結果相反之案例（反面案例）提醒撤銷風險。${esc(c.simsNote || "")}</p>`;
   $$("#p3 .sim.exp").forEach((el) => el.addEventListener("click", (e) => { if (e.target.closest("a")) return; const open = el.classList.toggle("open"); el.querySelector(".arrow").textContent = open ? "▾ 收合" : "▸ 展開"; const fr = el.querySelector("iframe"); if (open && fr && !fr.src) fr.src = fr.dataset.src; }));
@@ -377,7 +395,7 @@ function renderDraft() {
   const life = ["承辦中", "已送審", "已結案"], li = life.indexOf(S.status);
   const last = S.objections[S.objections.length - 1];
   const reply = last ? `<div class="reply"><div class="q">異議 ${S.objections.length}（${esc(last.issue)}）　${last.ts}　承辦人：${esc(last.text)}</div>AI：<b class="${last.result === "accept" ? "a" : last.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[last.result]}</b>　${esc(last.reply)}${last.evidence.length ? `<span class="note">　重新檢視：${last.evidence.map((r) => J(r, refTitle(r) + " ↗")).join("、")}</span>` : ""}</div>` : "";
-  const body = S.paras.map((q) => { if (q.kind === "h4") return `<h4>${q.text}</h4>`; if (q.kind === "meta") return `<div class="meta">${fillDates(q.text)}</div>`; const tools = `<span class="tools" contenteditable="false">${(q.refs || []).map((r) => `<span class="jump" data-jump="${r}">↗ ${esc(refTitle(r))}</span>`).join("")}${q.cite ? `<span title="${esc(q.cite)}">來源</span>` : ""}${ro ? "" : "<span>點擊編輯</span>"}</span>`; return `<p class="para" data-pid="${q.id}" data-src="${q.src}" contenteditable="${ro ? "false" : "true"}" spellcheck="false">${fillDates(q.text)}${tools}</p>`; }).join("");
+  const body = S.paras.map((q) => { if (q.kind === "h4") return `<h4>${q.text}</h4>`; if (q.kind === "meta") return `<div class="meta">${fillDates(q.text)}</div>`; const bfrom = (S.c.sims || []).filter((s) => s.borrow && s.borrow.to === q.id && !/反面/.test(s.borrow.what)); const tools = `<span class="tools" contenteditable="false">${bfrom.map((s) => `<span title="${esc(s.borrow.what)}">借自 ${esc(s.fn.slice(0, 4))}案${esc(s.borrow.from)}</span>`).join("")}${(q.refs || []).map((r) => `<span class="jump" data-jump="${r}">↗ ${esc(refTitle(r))}</span>`).join("")}${q.cite ? `<span title="${esc(q.cite)}">來源</span>` : ""}${ro ? "" : "<span>點擊編輯</span>"}</span>`; return `<p class="para" data-pid="${q.id}" data-src="${q.src}" contenteditable="${ro ? "false" : "true"}" spellcheck="false">${fillDates(q.text)}${tools}</p>`; }).join("");
   $("#p4").innerHTML = `
     <div class="jbar"><span class="jv">AI 判定：${esc(jp.verdict)}</span><span class="jart">${esc(jp.art)}</span>${S.plan && S.plan !== jp.id ? tag("amber", `異議後改為：${esc(cp.verdict)}`) : ""}<span class="jrisk">撤銷風險：${RISK[cp.risk[0]]}　異議 ${S.objections.length} 次</span>
       <div class="acts">${acts}<div class="more"><button class="ghost-btn" id="moreBtn">⋯</button><div class="menu" id="moreMenu"><button id="exportOdf">匯出 ODF 公文格式</button><button id="copyAll">複製全文</button><button id="exportCmp">匯出比較表</button></div></div></div></div>
@@ -441,7 +459,7 @@ function openClose() {
   const opts = $$("#finalVerdict option").map((o) => o.textContent); $("#finalVerdict").value = opts.includes(cp.verdict) ? cp.verdict : (cp.verdict.includes("撤銷") ? "原處分撤銷" : cp.verdict.includes("不受理") ? "訴願不受理" : "訴願駁回");
   $("#finalDate").value = c.final?.date || today(); $("#finalNo").value = c.final?.no || "";
   const stN = { appellant: "採訴願人", agency: "採機關", open: "待議" };
-  $("#deid").innerHTML = [["訴願人", `${esc(c.fields[0]?.a[0] || "")} → <span class="m">［訴願人］</span>`], ["身分證／地址／電話", `<span class="m">全數移除</span>`], ["案由／條款", `${esc(c.subj)}／${esc(cp.art)}`], ["爭點與表態", c.issues.map((it, i) => `${i + 1}:${stN[S.stances[it.id]]}`).join("　")], ["證據組合", [...new Set(c.docs.filter((d) => d.include !== false).map((d) => d.tag))].join("、")], ["AI 判定／最終結論", `${esc(judgePlan().verdict)} → <span id="deidVerdict">${esc($("#finalVerdict").value)}</span>`], ["承辦人修改", `${S.paras.filter((p) => p.src === "human").length} 段人工編輯・${S.objections.length} 次異議`], ["歸戶標籤", `${(c.labelAudit || []).length} 筆人工修正`]].map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join("");
+  $("#deid").innerHTML = [["訴願人", `${esc(c.fields[0]?.a[0] || "")} → <span class="m">［訴願人］</span>`], ["身分證／地址／電話", `<span class="m">全數移除</span>`], ["案由／條款", `${esc(c.subj)}／${esc(cp.art)}`], ["爭點與表態", c.issues.map((it, i) => `${i + 1}:${stN[S.stances[it.id]]}`).join("　")], ["證據組合", [...new Set(c.docs.filter((d) => d.include !== false).map((d) => d.tag))].join("、")], ["AI 判定／最終結論", `${esc(judgePlan().verdict)} → <span id="deidVerdict">${esc($("#finalVerdict").value)}</span>`], ["承辦人修改", `${S.paras.filter((p) => p.src === "human").length} 段人工編輯・${S.objections.length} 次異議`], ["法規庫待補", pendingCites().length ? `${pendingCites().length} 則引用查核待補 → 結案後加入法規庫待補清單` : "無"]].map(([k, v]) => `<div><span>${k}</span><span>${v}</span></div>`).join("");
   $("#finalVerdict").onchange = () => { $("#deidVerdict").textContent = $("#finalVerdict").value; };
   $("#closeModal").classList.add("on");
 }
@@ -454,6 +472,7 @@ $("#closeSend").addEventListener("click", () => {
   S.status = "已結案";
   c.docs = c.docs.filter((d) => d.id !== "final"); c.docs.push({ id: "final", title: "訴願決定書（委員會結論）", stdName: `決定書_${S.final.date}`, tag: "決定書", src: "本局", kind: "pdf", pages: 3, file: S.final.file, include: true, origName: finalPick.name }); c.refs["doc-final"] = ["final", "doc"];
   const fp = c.final?.paras || {}; S.finalDiff = S.paras.filter((q) => fp[q.id] !== undefined && plain(q.text) !== plain(fp[q.id])).map((q) => ({ label: paraLabel(q), html: diffHtml(plain(fillDates(q.text)), plain(fp[q.id])) }));
+  pendingCites().forEach((x) => { if (!LAWPEND.some((p) => p.n === x.n)) LAWPEND.push({ n: x.n, from: c.no, where: x.where, addedAt: today(), status: "pending" }); }); try { localStorage.setItem("ssz.lawpend", JSON.stringify(LAWPEND)); } catch (e) {}
   pushVersion(`結案歸檔（最終決定：${S.final.verdict}）`, "承辦人"); S.audit.push({ ts: now(), who: "hu", para: "案件", action: `登錄委員會結論 ${S.final.no || ""} 並結案歸檔` });
   $("#closeModal").classList.remove("on"); render(); persist(); openDoc("final"); $$(".tab")[4].click();
 });
@@ -476,6 +495,22 @@ function renderLib() {
   $$("#libTable tr[data-id]").forEach((tr) => tr.addEventListener("click", (e) => { if (e.target.closest(".del")) return; const rec = LIB.find((r) => r.libId === tr.dataset.id); if (rec) openRecord(rec); }));
 }
 ["#fSubj", "#fArt", "#fVerdict", "#fStatus"].forEach((s) => $(s).addEventListener("change", renderLib));
+
+/* ---------- 法規庫 ---------- */
+function lawCounts() { const recent = LAWLIB.filter((l) => { const t = isoT(l.date); return t && Date.now() - t < 366 * DAY * 3; }); return { laws: LAWLIB.length, rul: RULINGS.length + LAWPEND.filter((p) => p.status === "resolved").length, recent, pend: LAWPEND.filter((p) => p.status === "pending").length }; }
+function renderLawCard() { const k = lawCounts(); $("#lawCard").innerHTML = `<div><span class="v num">${k.laws}</span><span class="k">法規（部）</span></div><div><span class="v num">${k.rul}</span><span class="k">函釋（則）</span></div><div><span class="v num" style="font-size:14px">${k.recent.length ? k.recent.map((l) => l.n).join("、") : "—"}</span><span class="k">近期修正</span></div><div><span class="v num" style="color:${k.pend ? "var(--seal)" : "inherit"}">${k.pend}</span><span class="k">待補</span></div><div style="display:grid;place-items:center"><span class="btn" style="font-size:12px;background:var(--amber);border-color:var(--amber)">開啟法規庫 →</span></div>`; }
+$("#lawCard").addEventListener("click", openLawLib); $("#lawBtn").addEventListener("click", openLawLib);
+let LAWTAB = "law";
+function openLawLib() { persist(); show("s-law"); $("#backBtn").style.display = ""; renderLaw(); }
+function renderLaw() {
+  const k = lawCounts(); $("#lawStat").textContent = `法規 ${k.laws}・函釋 ${k.rul}・待補 ${k.pend}`;
+  $$("#s-law .rtabs button").forEach((b) => { b.classList.toggle("on", b.dataset.l === LAWTAB); b.onclick = () => { LAWTAB = b.dataset.l; renderLaw(); }; });
+  const involved = (n) => LIB.filter((r) => (r.state?.docs || []).length && r.subj && n.startsWith(r.subj.replace("違反", ""))).length;
+  if (LAWTAB === "law") $("#lawTable").innerHTML = `<tr><th>法規</th><th>類型</th><th>最新修正</th><th>條數</th><th>狀態</th><th>來源</th></tr>` + LAWLIB.map((l) => { const t = isoT(l.date), recent = t && Date.now() - t < 366 * DAY * 3; return `<tr><td>${esc(l.n)}</td><td>${l.kind}</td><td class="num">${l.date}${l.effective ? `<div class="note">${l.effective} 施行</div>` : ""}</td><td class="num">${l.arts}</td><td>${recent ? '<span class="st amended">已修正 ⚠</span>' : '<span class="st ok">現行</span>'}</td><td>${esc(l.src)}<div class="note">全國法規資料庫同步（示意）</div></td></tr>`; }).join("");
+  else if (LAWTAB === "rul") $("#lawTable").innerHTML = `<tr><th>函釋</th><th>主題</th><th>發文日</th><th>狀態</th><th>來源</th></tr>` + RULINGS.map((r) => `<tr><td>${esc(r.n)}</td><td>${esc(r.topic)}</td><td class="num">${r.date}</td><td><span class="st ok">有效</span></td><td>${esc(r.src)}</td></tr>`).join("") + LAWPEND.filter((p) => p.status === "resolved").map((p) => `<tr><td>${esc(p.n)}</td><td>${esc(p.where)}</td><td class="num">${p.resolvedAt}</td><td><span class="st ok">有效</span></td><td>案件查核補入（${esc(p.from)}）</td></tr>`).join("");
+  else { const pend = LAWPEND.filter((p) => p.status === "pending"); $("#lawTable").innerHTML = `<tr><th>待補項目</th><th>出現位置</th><th>來源案號</th><th>加入日期</th><th></th></tr>` + (pend.length ? pend.map((p, i) => `<tr><td>${esc(p.n)}</td><td>${esc(p.where)}</td><td class="num">${esc(p.from)}</td><td class="num">${p.addedAt}</td><td><button class="ghost-btn" data-res="${p.n}" style="font-size:11px;padding:2px 8px">標記已補</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty">目前無待補項目；結案時引用查核「待補」之項目會自動列入。</td></tr>`); $$("#lawTable [data-res]").forEach((b) => b.addEventListener("click", () => { const p = LAWPEND.find((x) => x.n === b.dataset.res); if (!p) return; p.status = "resolved"; p.resolvedAt = today(); try { localStorage.setItem("ssz.lawpend", JSON.stringify(LAWPEND)); } catch (e) {} LAWTAB = "rul"; renderLaw(); renderLawCard(); })); }
+}
+renderLawCard();
 
 /* ---------- 案件問答助手（只讀） ---------- */
 $("#asstBtn").addEventListener("click", asstOpen); $("#asstClose").addEventListener("click", () => $("#asst").classList.remove("on"));
