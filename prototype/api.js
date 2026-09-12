@@ -63,6 +63,27 @@ const Api = {
 
   job: (jobId) => req(`/jobs/${jobId}`),
 
+  /* ---- 分析階段（步驟 2–5／異議／法規庫）：docs/API-分析階段.md ---- */
+  analyze: (caseId) => req(`/cases/${encodeURIComponent(caseId)}/analyze`, { method: "POST" }),
+  analysis: (caseId) => req(`/cases/${encodeURIComponent(caseId)}/analysis`),
+  objection: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/objection`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  lawlib: () => req("/lawlib"),
+  lawSync: () => req("/lawlib/sync", { method: "POST" }),
+  /** 每 interval ms 輪詢 GET analysis，直到 done/failed；onTick(doc) 每次都叫 */
+  pollAnalysis(caseId, onTick, { interval = 3000, timeout = 600000 } = {}) {
+    let stop = false; const t0 = Date.now();
+    const loop = async () => {
+      if (stop) return;
+      let doc = null;
+      try { doc = await Api.analysis(caseId); } catch (e) { if (e.status !== 404) { onTick(null, e); return; } }
+      if (doc) { onTick(doc); if (doc.status?.state === "done" || doc.status?.state === "failed") return; }
+      if (Date.now() - t0 > timeout) return onTick(null, new ApiError("TIMEOUT", "分析超過 10 分鐘未完成"));
+      setTimeout(loop, interval);
+    };
+    loop();
+    return { stop: () => { stop = true; } };
+  },
+
   /** SSE。回一個 {close()}；EventSource 不能帶標頭，重連走 ?lastEventId= */
   streamJob(jobId, handlers = {}, { lastEventId = 0 } = {}) {
     const url = `${API_BASE}/jobs/${jobId}/events${lastEventId ? `?lastEventId=${lastEventId}` : ""}`;

@@ -14,6 +14,7 @@ import { classifyAll, DOC_TYPES, SOURCES, NATURE, suggestedName, trueExt, annota
 import { ping, REGION } from "./bedrock.mjs";
 import * as s3 from "./store/s3.mjs";
 import * as ddb from "./store/ddb.mjs";
+import { mountAnalysisProxy } from "./analysis-proxy.mjs";
 
 const PORT = +(process.env.PORT || 8080);
 const MAX_FILE = 100 * 1024 * 1024;
@@ -40,6 +41,12 @@ app.use((req, res, next) => {
   next();
 });
 
+/* request log：每個請求一行（SSE 在關閉時才記，含持續秒數） */
+app.use((req, res, next) => {
+  const t0 = Date.now();
+  res.on("close", () => { if (!req.path.startsWith("/api/")) return; console.log(`${req.method} ${req.originalUrl} → ${res.statusCode} ${Date.now() - t0}ms`); });
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE, fieldSize: MAX_FILE } });
 
@@ -94,6 +101,7 @@ async function runJob(job) {
   const t0 = Date.now();
   const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "job-"));
   await ddb.updateJob(jobId, { status: "running", startedAt: iso() });
+  console.log(`[job ${jobId}] start case=${caseId} files=${job.files.length} dup=${job.duplicates.length} queue=${queue.length}`);
   await emit(job, "started", { total: job.files.length });
   const counters = { ok: 0, error: 0, duplicate: job.duplicates.length };
   try {
@@ -177,6 +185,7 @@ async function runJob(job) {
     annotateTiming(results);
     await flush(results);            // 補漏（單檔補跑等情況）
 
+    console.log(`[job ${jobId}] done ok=${counters.ok} error=${counters.error} dup=${counters.duplicate} ${Date.now() - t0}ms`);
     await emit(job, "done", { jobId, total: job.files.length, ...counters, ms: Date.now() - t0 });
     await ddb.updateJob(jobId, { status: "done", finishedAt: iso(), counters });
   } catch (e) {
@@ -192,6 +201,19 @@ async function runJob(job) {
 }
 
 const JOBS = new Map();   // jobId → job（含 seq / finished），SSE live 推用
+
+/* 啟動時：上次程序中斷時仍在 running/queued 的 job 已不在記憶體佇列，標 failed 讓前端收到 fatal 而不是永遠等 */
+async function recoverStaleJobs() {
+  try {
+    const stale = await ddb.listJobsByStatus?.(["running", "queued"]) ?? [];
+    for (const j of stale) {
+      console.warn(`[job ${j.jobId}] 上次程序重啟時未完成（${j.status}）→ failed`);
+      await ddb.appendEvent(j.jobId, (j.seq ?? 9000) + 1, "fatal", { code: "SERVER_RESTARTED", message: "後端重新啟動，請重新上傳" });
+      await ddb.updateJob(j.jobId, { status: "failed", finishedAt: iso(), error: { code: "SERVER_RESTARTED", message: "後端重新啟動" } });
+    }
+    if (stale.length) console.log(`[recover] ${stale.length} 個未完成 job 已標 failed`);
+  } catch (e) { console.error("[recover] 失敗", e.message); }
+}
 
 /* =========================================================
    Endpoints
@@ -420,6 +442,9 @@ app.get("/api/health", async (_req, res) => {
 });
 
 /* 靜態前端（與 API 同源；最後才掛） */
+/* 分析階段（步驟 2–5／異議／法規庫）→ 同機 Python :8100；契約 docs/API-分析階段.md */
+mountAnalysisProxy(app);
+
 app.use(express.static(process.env.FRONTEND_DIR || path.join(path.dirname(new URL(import.meta.url).pathname), "..", "prototype")));
 
 app.use((e, _req, res, _next) => {
@@ -428,4 +453,5 @@ app.use((e, _req, res, _next) => {
   err(res, 500, "INTERNAL", e.message);
 });
 
+recoverStaleJobs();
 app.listen(PORT, () => console.log(`listening :${PORT}  region=${REGION} bucket=${s3.BUCKET} table=${ddb.TABLE} prefix=${process.env.S3_PREFIX || "(none)"}`));

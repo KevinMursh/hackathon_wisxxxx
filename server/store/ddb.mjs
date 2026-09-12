@@ -4,7 +4,7 @@
    PK CACHE#{sha}     SK {model}#{promptHash}
    S3_PREFIX 有值時（本機 dev），PK 前面再加 "{prefix}#" 與正式資料隔開 */
 import { DynamoDBClient, DescribeTableCommand } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 const REGION = process.env.AWS_REGION || "us-west-2";
 export const TABLE = process.env.DDB_TABLE;
@@ -33,6 +33,16 @@ export async function updateFile(caseId, fileId, patch) {
 
 /* ---------- Job ---------- */
 export async function putJob(j) { await db.send(new PutCommand({ TableName: TABLE, Item: { PK: pk(`JOB#${j.jobId}`), SK: "META", ...j } })); return j; }
+/** 啟動回復用：scan 所有 JOB META 中 status 屬於 statuses 者（job 數量小，scan 可接受） */
+export async function listJobsByStatus(statuses) {
+  const out = []; let ExclusiveStartKey;
+  do {  // Scan 的 FilterExpression 是每頁讀完才過濾，必須翻到最後一頁
+    const r = await db.send(new ScanCommand({ TableName: TABLE, ExclusiveStartKey, FilterExpression: "begins_with(PK, :p) AND SK = :m AND #s IN (" + statuses.map((_, i) => `:s${i}`).join(",") + ")",
+      ExpressionAttributeNames: { "#s": "status" }, ExpressionAttributeValues: { ":p": pk("JOB#"), ":m": "META", ...Object.fromEntries(statuses.map((s, i) => [`:s${i}`, s])) } }));
+    out.push(...(r.Items || []).map(strip)); ExclusiveStartKey = r.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return out;
+}
 export async function getJob(jobId) { const r = await db.send(new GetCommand({ TableName: TABLE, Key: { PK: pk(`JOB#${jobId}`), SK: "META" } })); return r.Item ? strip(r.Item) : null; }
 export async function updateJob(jobId, patch) {
   const names = {}, values = {}, sets = [];
