@@ -76,8 +76,11 @@ GET  /health                        ← 憑證與外部工具自檢
 
 ### 1.4 suggestedName
 
-目前模板 `{序}-{doc_type}_{date去連字號}_{source}.{ext}`，例 `11-裁處書送達證書_1140918_原處分機關.jpg`；序號依法定順序表，`source=未知` 省略。
-**待拍板**：前端 mock 用 `02-裁處書送達證書_114-09-18`（日期帶連字號、無來源）。定案後只改 `suggestedName()` 一個函式。
+模板 `{序}-{doc_type}_{民國日期}.{副檔名}`，例 `11-裁處書送達證書_114-09-18.jpg`。
+- 序號依**法定順序表**（訴願書→委任書→各式申請書→答辯書檢送函→答辯書→卷證目錄→裁處書→…→簽呈→照片→影片→其他），不依上傳順序
+- 沒有 `date` 時省略日期段；`doc_type=其他` → `27-其他.{ext}`
+- **副檔名以內容為準**：`其實是jpg.pdf`（內容為 JPEG）會得到 `.jpg`
+- S3 key 不會改名，原檔名永遠保留；presigned 下載時才用 `suggestedName` 當檔名
 
 ### 1.5 Error
 
@@ -133,7 +136,7 @@ event: normalized
 data: {"fileId":"a3f9…","kind":"image","pages":1,"warnings":[]}
 
 event: box
-data: {"box":1,"of":3,"fileIds":["a3f9…","0c1d…"]}
+data: {"done":1,"total":3}
 
 event: result
 data: {"fileId":"a3f9…","ok":true,"segments":[{…Segment…}],"ms":41230}
@@ -201,17 +204,22 @@ Response `200`：更新後的 File。
 ### 2.7 `GET /health`
 
 ```json
-{ "ok": true, "bedrock": { "model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0", "reachable":true },
-  "tools": { "pdftotext":true, "pdftoppm":true, "soffice":true, "ffmpeg":true, "file":true },
-  "s3": "appeal-cases-xxxx", "dynamodb": "appeal-cases", "version":"0.1.0" }
+{ "ok": true, "version": "0.1.0", "region": "us-west-2",
+  "bedrock": { "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "reachable": true, "concurrency": 3, "startInterval": 2 },
+  "s3": { "bucket": "ntpc-law3-deploy-229004791954", "prefix": "", "ok": true },
+  "dynamodb": { "table": "appeal-cases", "ok": true },
+  "tools": { "pdftotext": true, "pdftoppm": true, "pdfinfo": true, "file": true, "soffice": true, "ffmpeg": true, "ffprobe": true, "qpdf": true, "unzip": true },
+  "missingRequired": [], "degraded": [] }
 ```
-任一 `false` → HTTP 503。前端開頁先打它；掛了就顯示錯誤，**不退回假資料**。
+`ok=false` → HTTP 503，條件是 **必要工具**（`pdftotext/pdftoppm/pdfinfo/file`）缺少，或 Bedrock／S3／DynamoDB 不通。
+選配工具（soffice／ffmpeg／qpdf／unzip）缺少不影響 `ok`，只會列在 `degraded`，該格式回 `unsupported`。
+前端開頁先打它；掛了就顯示錯誤，**不退回假資料**。
 
 ## 3. 儲存
 
 | 資料 | 位置 | Key |
 |---|---|---|
-| 原檔 | S3 | `cases/{caseId}/raw/{fileId}.{ext}` |
+| 原檔 | S3 | `cases/{caseId}/raw/{fileId}.{ext}`（`S3_PREFIX` 有值時再前置，本機開發用 `dev/`）|
 | 正規化產物 | S3 | `cases/{caseId}/normalized/{fileId}/meta.json`、`p{N}.jpg`、`f{N}.jpg` |
 | File／Segment／人工修正 | DynamoDB `appeal-cases` | PK `CASE#{caseId}`　SK `FILE#{fileId}` |
 | Job | DynamoDB | PK `JOB#{jobId}`　SK `META`；事件 SK `EVT#{seq}` |
