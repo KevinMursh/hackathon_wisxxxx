@@ -69,7 +69,7 @@ def run(case: str, start="s2", images=True, api: str | None = None):
     docs = load_remote(case, api) if api else load_local(case)
     db = lawdb.load()
     order = ["s2", "s3", "s4", "s5", "s6"]
-    todo = order[order.index(start):]
+    todo = order[order.index(start):] if start in order else []  # --from fe：全部讀快取，只重做程式步驟與 adapter
     t0 = time.monotonic()
     log = lambda m: print(m, file=sys.stderr)
 

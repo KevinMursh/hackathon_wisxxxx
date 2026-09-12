@@ -1,0 +1,56 @@
+{
+ "caseId": "case03",
+ "cutoffDate": null,
+ "files": [
+  {
+   "fileId": "9642c06c0a41",
+   "originalName": "訴願書.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "01-訴願書.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "9642c06c0a41#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "訴願書",
+     "source": "訴願人",
+     "form": "文字PDF",
+     "date": null,
+     "doc_no": null,
+     "summary": "",
+     "confidence": 0.9,
+     "timing": "爭訟發生後",
+     "suggestedName": "01-訴願書.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "032cf58571e9",
+   "originalName": "答辯書.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "02-答辯書.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "032cf58571e9#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "答辯書",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": null,
+     "doc_no": null,
+     "summary": "",
+     "confidence": 0.9,
+     "timing": "爭訟發生後",
+     "suggestedName": "03-答辯書.pdf",
+     "manual": null
+    }
+   ]
+  }
+ ]
+}

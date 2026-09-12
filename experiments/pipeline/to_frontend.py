@@ -80,7 +80,10 @@ def build(docs: list[Doc], fields: dict, period: dict, issues: dict, laws_verifi
                         for c in citations]
     for g in laws_extra.get("missing_in_defense", []):
         out["citations"].append({"n": g, "where": "答辯書未引用", "ref": None, "status": "gap", "note": "決定書慣例應引；草稿已列入"})
-    out["alert"] = laws_extra.get("alert") or ({"title": "法規時效性警示（由三時點比對產生）", "text": "；".join(f"{l['n']}：{l['version']['text']}" for l in warns)} if warns else None)
+    seen_lib = {}
+    for l in warns:  # 同一部法只警示一次
+        seen_lib.setdefault(l["lib"], l["version"]["text"])
+    out["alert"] = laws_extra.get("alert") or ({"title": "法規時效性警示（由三時點比對產生）", "text": "；".join(f"{k}：{v}" for k, v in seen_lib.items())} if warns else None)
 
     # Tab 4
     notes = {n["id"]: n for n in sim_notes.get("notes", [])}
@@ -99,7 +102,8 @@ def build(docs: list[Doc], fields: dict, period: dict, issues: dict, laws_verifi
     for n, line in enumerate(l.strip() for l in draft.splitlines() if l.strip()):
         kind = "h4" if line in HEADS or (len(line) <= 6 and line.rstrip("：:") in HEADS) else "p"
         borrows = re.findall(r"〔借自[：:]\s*([^〕]+)〕", line)
-        refs = [rt.add({"file": f, "quote": ""}) for f in re.findall(r"〔([^〕]+)〕", line) if not f.startswith("借自")]
+        files = [x.strip() for f in re.findall(r"〔([^〕]+)〕", line) if not f.startswith("借自") for x in re.split(r"[、，,;；]", f)]
+        refs = [rt.add({"file": f, "quote": ""}) for f in files if f]
         paras.append({"id": f"p{n}", "kind": kind, "text": re.sub(r"〔[^〕]+〕", "", line), "refs": [r for r in refs if r], "borrow": borrows or None})
     m_main = re.search(r"主文\s*\n+\s*(.+)", draft)
     m_art = re.search(r"依訴願法第\s*(\d+)\s*條第\s*(\d+)\s*項", draft)

@@ -62,13 +62,22 @@ def build() -> dict:
 
 
 def version_check(lib: dict, law_name: str, dates: dict) -> dict | None:
-    """dates = {act, disp, decide}（民國 YYY-MM-DD）。回 {warn, amended, text}。"""
+    """dates = {act, disp, decide}。以「全國法規資料庫最新修正日」為準（沒同步過才用資料集日期）；
+    修正落在行為時之後 → 須依行政罰法 §5 比較。"""
     L = next((x for x in lib["laws"] if x["n"] == law_name or law_name.startswith(x["n"])), None)
-    if not L or not dates.get("act") or not L["date"]:
+    if not L or not dates.get("act"):
         return None
-    if L["date"] > dates["act"]:
-        return {"warn": True, "amended": L["date"], "text": f"修正 {L['date']} 落在行為時 {dates['act']} 之後 → 須依行政罰法 §5 為新舊法比較"}
-    return {"warn": False, "amended": L["date"], "text": f"最新修正 {L['date']}，早於行為時 {dates['act']} → 三時點版本一致"}
+    latest = L.get("official") or L["date"]
+    if not latest:
+        return None
+    synced = bool(L.get("official"))
+    src = "全國法規資料庫" if synced else "資料集"
+    if latest > dates["act"]:
+        extra = f"；資料集為 {L['date']} 版（行為時法）" if synced and L.get("official") != L["date"] else ""
+        eff = f"（部分條文 {L['effective']} 生效）" if L.get("effective") else ""
+        return {"warn": True, "amended": latest, "synced": synced,
+                "text": f"{src}最新修正 {latest}{eff} 落在行為時 {dates['act']} 之後 → 須依行政罰法 §5 為新舊法比較{extra}"}
+    return {"warn": False, "amended": latest, "synced": synced, "text": f"{src}最新修正 {latest}，早於行為時 {dates['act']} → 三時點版本一致"}
 
 
 if __name__ == "__main__":

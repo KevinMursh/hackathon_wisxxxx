@@ -67,6 +67,14 @@ out = call_json("s3_issues", Issues, case="case02",
 對照標準答案 7 個論證點：命中 5（構成要件與裁罰依據、卷證事證、附表項次與係數、駁斥訴願主張、維持原處分），
 缺 2：廢清法 §4＋本府公告（管轄權限）、環保署 108 年函（政策說明）——前者可在 s4 prompt 加「處分機關權限依據」一項，後者資料集有函釋資料夾但 pipeline 尚未接。
 
+## 第二輪（2026-09-12 晚）：KB、隊友格式、法規庫、case03
+
+- `python -m pipeline.run_all case02`：ingest 隊友 File/Segment 格式 → s2–s6 → `runs/case02/frontend.json`（鍵名對齊 data.js）。約 6 次呼叫、2–3 分鐘
+- KB：`kb/build_corpus.py`（143 檔）＋ `kb/create_kb.py`（S3 Vectors、cohere v3）＋ `kb/sync_laws.py`（law.moj.gov.tw 官方同步：廢清法 106→115-07-15、民法→115-08-17、裁罰準則補入）
+- case02：駁回 §79 I ✓；引用查核 0 unknown；三時點對廢清法產生真實警示（官方 115 修正落在行為時之後）；相似案例 3 件帶 borrow；草稿 3 段帶「借自」
+- case03（不改 prompt 只加一般審查順序規則後）：**原處分撤銷 §81 I ✓**、時效爭點採訴願人、不附教示 ✓——與標準答案一致
+- `--from fe`：只重做程式步驟與 adapter，不呼叫模型
+
 ## 續跑
 
 ```bash

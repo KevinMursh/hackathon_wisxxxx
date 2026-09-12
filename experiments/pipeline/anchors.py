@@ -54,6 +54,6 @@ class RefTable:
             self.refs[rid] = [d.fileId, "time", int(m.group(1))]
         else:
             self.refs[rid] = [d.fileId, "doc", None]
-            if d.text.strip():
+            if d.text.strip() and q.get("quote"):  # 有引句卻找不到才算未定位；純〔檔名〕標記不算
                 self.unverified.append(q)
         return rid

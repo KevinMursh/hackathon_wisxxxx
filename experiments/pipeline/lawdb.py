@@ -115,8 +115,8 @@ def check_citations(db: dict, text: str, source: str = "") -> list[dict]:
                 law = last_law
             else:
                 law, kind = _clean_law(db, raw)
-                if kind == "unknown":  # 簡稱（如「裁罰準則」）→ 接回前面出現過的全名
-                    for full in fulls:
+                if kind == "unknown":  # 簡稱（如「裁罰準則」）→ 接回前面出現過的全名或字典鍵
+                    for full in list(fulls) + [k for k in db if "（現行）" not in k]:
                         L = next((n for n in range(len(raw), 3, -1) if full.endswith(raw[-n:])), 0)
                         if L:
                             law, kind = full, "sublaw"
