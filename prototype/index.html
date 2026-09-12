@@ -203,6 +203,15 @@
   .cmp tr.conflict td { background:var(--seal-soft); } .cmp tr.conflict td:first-child { color:var(--seal); font-weight:600; } .cmp .why { display:block; font-size:11px; color:var(--seal); margin-top:2px; }
   .clsgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); } .cls { padding:12px 16px; border-right:1px solid var(--line); } .cls:last-child { border-right:none; }
   .cls .lab { font-size:11.5px; color:var(--ink-3); } .cls .val { font-size:15px; font-weight:600; margin-top:3px; line-height:1.5; }
+  .cklist { display:flex; flex-direction:column; }
+  .ck { display:grid; grid-template-columns:28px 52px 1fr 56px 1.4fr auto; gap:10px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--line); font-size:13px; }
+  .ck:last-child { border-bottom:none; } .ck .ckbox { font-size:18px; line-height:1; } .ck .ckart { font-size:11.5px; color:var(--ink-3); }
+  .ck .ckname { font-weight:500; } .ck .ckst { font-size:11.5px; padding:1px 8px; border:1px solid; text-align:center; white-space:nowrap; } .ck .cknote { font-size:12px; color:var(--ink-2); } .ck .cksrc { font-size:11.5px; color:var(--ink-3); white-space:nowrap; }
+  .ck.pass .ckbox, .ck.pass .ckst { color:var(--green); border-color:var(--green); } .ck.pass .ckst { background:var(--green-soft); }
+  .ck.fail { background:var(--seal-soft); } .ck.fail .ckbox, .ck.fail .ckst, .ck.fail .cknote { color:var(--seal); border-color:var(--seal); font-weight:600; }
+  .ck.warn { background:var(--amber-soft); } .ck.warn .ckbox, .ck.warn .ckst { color:var(--amber); border-color:var(--amber); }
+  .ck.na { opacity:.55; } .ck.na .ckst { color:var(--ink-3); border-color:var(--line-strong); }
+  @media (max-width:760px) { .ck { grid-template-columns:28px 1fr auto; } .ck .ckart, .ck .cknote, .ck .cksrc { display:none; } }
   .checks { display:grid; grid-template-columns:repeat(auto-fit, minmax(232px, 1fr)); }
   .chk { display:flex; gap:10px; align-items:flex-start; padding:10px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); font-size:12.5px; }
   .chk .mk { font-family:var(--mono); font-size:12px; width:18px; flex:none; text-align:center; margin-top:1px; }
