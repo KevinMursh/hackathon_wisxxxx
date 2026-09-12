@@ -3,3 +3,5 @@
 .gstack/
 .venv/
 __pycache__/
+experiments/inputs/decisions_text/
+experiments/inputs/laws.json
