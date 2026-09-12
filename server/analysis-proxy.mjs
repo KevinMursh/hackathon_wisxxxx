@@ -18,16 +18,20 @@ export function mountAnalysisProxy(app) {
   app.use((req, res, next) => {
     if (!PATHS.some((p) => p.test(req.path))) return next();
     const u = new URL(req.originalUrl, TARGET);
-    const up = http.request({ host: u.hostname, port: u.port, path: u.pathname + u.search, method: req.method,
-      headers: { ...req.headers, host: u.host } }, (r) => {
+    // express.json 已把 body 讀掉（readableEnded=true）：要自己重送序列化後的 body，並重算 content-length——
+    // 否則只轉發原 content-length 卻不送 body，上游會等到逾時（POST objection／chat 全部卡住）
+    const parsed = req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body) && req.readableEnded ? Buffer.from(JSON.stringify(req.body)) : null;
+    const headers = { ...req.headers, host: u.host };
+    if (parsed) { headers["content-type"] = "application/json"; headers["content-length"] = String(parsed.length); delete headers["transfer-encoding"]; }
+    const up = http.request({ host: u.hostname, port: u.port, path: u.pathname + u.search, method: req.method, headers }, (r) => {
       res.writeHead(r.statusCode, r.headers);
       r.pipe(res);
     });
     up.on("error", (e) => { if (!res.headersSent) res.status(502).json({ code: "ANALYSIS_UNAVAILABLE", message: e.message, retryable: true }); else res.end(); });
     // 只有「客戶端中途離開」才中止上游；Node ≥16 的 req 'close' 在 body 讀完就會觸發，不能拿來判斷
     res.on("close", () => { if (!res.writableFinished) up.destroy(); });
-    if (req.readableEnded || req.method === "GET") up.end();
-    else if (req.body && Object.keys(req.body).length) up.end(JSON.stringify(req.body));  // express.json 已吃掉 body
+    if (parsed) up.end(parsed);
+    else if (req.readableEnded || req.method === "GET") up.end();
     else req.pipe(up);
   });
 }
