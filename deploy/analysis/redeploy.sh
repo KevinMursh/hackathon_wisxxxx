@@ -9,6 +9,7 @@ tar -xzf /tmp/analysis.tar.gz -C /opt/app
 [ -d /opt/venv-analysis ] || python3.11 -m venv /opt/venv-analysis
 /opt/venv-analysis/bin/pip install -q -r /opt/app/experiments/requirements.txt
 cp /opt/app/deploy/analysis/analysis.service /etc/systemd/system/analysis.service
+# 保留 CloudWatch 落檔設定（deploy/cloudwatch-setup.sh 建的 drop-in），重佈不覆蓋
 systemctl daemon-reload
 systemctl enable --now analysis
 systemctl restart analysis

@@ -45,3 +45,24 @@ aws ec2 authorize-security-group-ingress --group-id sg-0009d15c615ede2a9 --proto
 
 - CloudFront（HTTPS、`xxx.cloudfront.net` 網址）：origin 指 EC2 public DNS，SG 另開 80 給 prefix list `com.amazonaws.global.cloudfront.origin-facing`
 - Bedrock Knowledge Base：role 已含 `bedrock:Retrieve`，建好 KB 後在 `bedrock.py` 加 `retrieve()` 即可
+
+
+## 看後端 log（不開 port、不用 SSH）
+
+```bash
+./deploy/logs.sh                      # 兩個服務各最近 60 行（走 SSM）
+./deploy/logs.sh analysis 200         # 分析服務
+./deploy/logs.sh app-node 100         # Node 歸戶服務
+./deploy/logs.sh analysis grep '\[s[0-9]\]|Error|Traceback'   # 只看 pipeline 步驟與錯誤
+```
+
+**CloudWatch Logs**（已裝 agent，兩個 service stdout → `/var/log/ntpc/*.log` → log group）：
+
+```bash
+aws logs tail /ntpc-law3/analysis --follow --profile ntpc-hackathon --region us-west-2
+aws logs tail /ntpc-law3/app-node  --since 10m --profile ntpc-hackathon --region us-west-2
+```
+Console：CloudWatch → Log groups → `/ntpc-law3/analysis`、`/ntpc-law3/app-node`（保留 7 天）。
+Live Tail 與 Logs Insights 都能用，例如查某案：`fields @timestamp, @message | filter @message like /final01/`。
+
+重佈署後 drop-in（`/etc/systemd/system/<unit>.service.d/log.conf`）仍在；若換機器，重跑 `deploy/cloudwatch-setup.sh`。

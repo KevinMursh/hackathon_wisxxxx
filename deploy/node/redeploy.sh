@@ -33,6 +33,7 @@ CONF
 fi
 
 cp /opt/app/deploy/node/app.service /etc/systemd/system/app-node.service
+# 保留 CloudWatch 落檔設定（deploy/cloudwatch-setup.sh 建的 drop-in），重佈不覆蓋
 systemctl daemon-reload
 systemctl enable app-node
 systemctl restart app-node || {
