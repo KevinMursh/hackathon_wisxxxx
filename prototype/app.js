@@ -813,9 +813,9 @@ function renderDraft() {
     <p class="foot-note" style="max-width:820px;margin:16px auto 0">草稿僅供承辦人參考，一切法律見解與事實認定仍以承辦人及訴願審議委員會之判斷為準。黃底標示處必須由承辦人補實後始得送審。</p>`;
   $("#moreBtn").addEventListener("click", (e) => { e.stopPropagation(); $("#moreMenu").classList.toggle("on"); }); document.addEventListener("click", () => $("#moreMenu")?.classList.remove("on"), { once: true });
   if (!ro) $$("#draftBody .para").forEach((el) => { el.addEventListener("input", () => { const q = S.paras.find((x) => x.id === el.dataset.pid); const clone = el.cloneNode(true); clone.querySelector(".tools")?.remove(); q.text = clone.innerHTML; q.src = "human"; el.dataset.src = "human"; el.dirty = true; }); el.addEventListener("blur", () => { if (!el.dirty) return; el.dirty = false; const q = S.paras.find((x) => x.id === el.dataset.pid); S.audit.push({ ts: now(), who: "hu", para: paraLabel(q), action: "人工直接編輯" }); S.versions.push({ ts: now(), label: `人工編輯 ${paraLabel(q)}`, by: "承辦人", snap: S.paras.map((x) => ({ ...x })) }); persist(); }); });
-  $("#copyAll").addEventListener("click", () => { const clone = $("#draftBody").cloneNode(true); $$(".tools", clone).forEach((t) => t.remove()); navigator.clipboard?.writeText(clone.innerText); asstSay("已複製全文至剪貼簿。"); });
-  $("#exportOdf").addEventListener("click", () => asstSay("原型未串接公文系統；正式版將以 ODF 範本輸出並帶入委員名單與教示條款。"));
-  $("#exportCmp").addEventListener("click", exportCompare);
+  $("#copyAll").addEventListener("click", async () => { const clone = $("#draftBody").cloneNode(true); $$(".tools", clone).forEach((t) => t.remove()); const ok = await copyText(clone.innerText); toast(ok ? `已複製全文（${clone.innerText.length} 字）至剪貼簿` : "複製失敗：瀏覽器不允許存取剪貼簿", ok ? "ok" : "err"); });
+  $("#exportOdf").addEventListener("click", () => { try { const d = draftFor(S.plan), cp = currentPlan(); const paras = S.paras.map((q) => ({ kind: q.kind === "meta" ? "p" : q.kind, text: q.kind === "meta" ? fillDates(q.text) : q.text })); const name = `訴願決定書草稿_${S.c.no}_${today()}.odt`; ODF.download(ODF.makeOdt({ head: d.head, sub: `案號 ${S.c.no}　${cp.verdict}　（草稿・待承辦人審核）`, paras, meta: { caseNo: S.c.no, exportedAt: today() } }), name); toast(`已輸出 ODF：${name}（LibreOffice／Word 可開；委員名單與教示條款由公文系統帶入）`, "ok", 5000); } catch (e) { toast(`ODF 輸出失敗：${e.message}`, "err"); } });
+  $("#exportCmp").addEventListener("click", () => { const w = exportCompare(); toast(w ? "比較表已在新分頁開啟並送列印" : "瀏覽器封鎖了新視窗，請允許彈出視窗後再試", w ? "ok" : "err"); });
   $("#submitBtn")?.addEventListener("click", () => { if (!confirm("定稿並送訴願審議委員會審議？送審後草稿將唯讀。")) return; S.status = "已送審"; pushVersion("定稿送審", "承辦人"); S.audit.push({ ts: now(), who: "hu", para: "案件", action: "送委員會審議" }); recompute(); renderIssues(); $$(".tab")[4].click(); });
   $("#closeBtn")?.addEventListener("click", openClose);
   $("#courtBtn")?.addEventListener("click", () => $("#courtModal").classList.add("on"));
@@ -897,12 +897,12 @@ async function applyLiveProposal(p) {
 function exportCompare() {
   const c = S.c, jp = judgePlan(), cp = currentPlan(), stN = { appellant: "採訴願人", agency: "採機關", open: "待議" };
   const cols = S.plan !== jp.id ? [["原判定", jp], ["修正後", cp]] : [["AI 判定", jp]];
-  const w = window.open("", "_blank");
+  const w = window.open("", "_blank"); if (!w) return null;
   w.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>方案比較表 ${c.no}</title><style>body{font-family:"BiauKaiTC","PingFang TC",serif;padding:28px;color:#111;font-size:13px}h1{font-size:18px;letter-spacing:.2em;text-align:center}table{border-collapse:collapse;width:100%;margin-top:12px}th,td{border:1px solid #333;padding:6px 8px;vertical-align:top;text-align:left}th{background:#eee}ul{margin:0;padding-left:16px}.note{font-size:11px;color:#555;margin-top:14px}</style></head><body><h1>訴願案件審查結論比較表</h1><p>案號 ${esc(c.no)}　${esc(c.name)}　製表 ${new Date().toLocaleString("zh-TW")}</p>
     <h3>一、爭點表態</h3><table><tr><th>爭點</th><th>AI 判定</th><th>承辦人表態</th></tr>${c.issues.map((it, i) => `<tr><td>${i + 1}. ${esc(it.title)}</td><td>${stN[it.stance || "open"]}</td><td>${stN[S.stances[it.id]]}</td></tr>`).join("")}</table>
     <h3>二、結論比較</h3><table><tr><th></th>${cols.map(([n]) => `<th>${n}</th>`).join("")}</tr><tr><td>主文</td>${cols.map(([, p]) => `<td>${esc(p.verdict)}</td>`).join("")}</tr><tr><td>法條依據</td>${cols.map(([, p]) => `<td><ul>${p.basis.map((b) => `<li>${esc(b)}</li>`).join("")}</ul></td>`).join("")}</tr><tr><td>事實認定</td>${cols.map(([, p]) => `<td><ul>${p.facts.map((b) => `<li>${esc(b)}</li>`).join("")}</ul></td>`).join("")}</tr><tr><td>撤銷風險</td>${cols.map(([, p]) => `<td>${{ low: "低", mid: "中", high: "高" }[p.risk[0]]}　${esc(p.risk[1])}</td>`).join("")}</tr></table>
     ${S.objections.length ? `<h3>三、修改提案紀錄</h3><table><tr><th>項目</th><th>承辦人意見</th><th>AI 回覆</th></tr>${S.objections.map((o) => `<tr><td>${esc(o.issue)}</td><td>${esc(o.text)}</td><td>${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[o.result]}：${esc(o.reply)}</td></tr>`).join("")}</table>` : ""}
-    <p class="note">本表由訴願智審臺原型自動編製，僅供訴願審議委員會參考；一切法律見解與事實認定以委員會決議為準。</p><script>setTimeout(()=>window.print(),300)</script></body></html>`); w.document.close();
+    <p class="note">本表由訴願智審臺原型自動編製，僅供訴願審議委員會參考；一切法律見解與事實認定以委員會決議為準。</p><script>setTimeout(()=>window.print(),300)</script></body></html>`); w.document.close(); return w;
 }
 
 /* ---------- 結案歸檔 ---------- */
@@ -985,12 +985,28 @@ function renderLaw() {
 function openLawLib() { persist(); show("s-law"); Router.set("/law"); $("#backBtn").style.display = ""; renderLaw(); }
 renderLawCard();
 
-/* ---------- 案件問答助手（只讀） ---------- */
+/* ---------- 案件 AI 助理（問答唯讀；修改走提案確認） ---------- */
 $("#asstBtn").addEventListener("click", asstOpen); $("#asstClose").addEventListener("click", () => $("#asst").classList.remove("on"));
+$("#asstClear").addEventListener("click", () => { CHAT_HIST.length = 0; histSave(); asstReset(); toast("已清除本案對話"); });
+$("#asstIn").addEventListener("input", () => { const t = $("#asstIn"); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; });
 function asstOpen() { $("#asst").classList.add("on"); $("#asstIn").focus(); }
 function asstAdd(role, html) { const log = $("#asstLog"); const el = document.createElement("div"); el.className = "msg " + role; el.innerHTML = html; log.appendChild(el); log.scrollTop = log.scrollHeight; return el; }
 function asstSay(t) { asstOpen(); asstAdd("a", esc(t)); }
-function asstReset() { $("#asstLog").innerHTML = ""; histLoad(); CHAT_HIST.forEach((h) => asstAdd(h.role === "user" ? "u" : "a", esc(h.text).replace(/\n/g, "<br>"))); if (CHAT_HIST.length) asstAdd("a", `<span class="note">（以上為本案先前對話；提案卡不重播）</span>`); asstAdd("a", `我是本案助手。<b>問</b>：資料在哪份文件、法條原文、爭點、期間。<b>改</b>：直接說要改什麼，我會先畫出修改後的樣子，您按「確認執行」才會更新。`); asstSuggest(); }
+/* 系統通知走 toast，不進助手對話（助手只放與案件有關的問答與提案） */
+function toast(msg, kind = "ok", ms = 3200) { let box = $("#toasts"); if (!box) { box = document.createElement("div"); box.id = "toasts"; document.body.appendChild(box); } const el = document.createElement("div"); el.className = `toast ${kind}`; el.textContent = msg; box.appendChild(el); requestAnimationFrame(() => el.classList.add("in")); setTimeout(() => { el.classList.remove("in"); setTimeout(() => el.remove(), 300); }, ms); return el; }
+async function copyText(text) { try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch {} /* http 站台沒有 navigator.clipboard：退回 execCommand */ try { const ta = document.createElement("textarea"); ta.value = text; ta.style.cssText = "position:fixed;left:-9999px;top:0"; document.body.appendChild(ta); ta.focus(); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok; } catch { return false; } }
+function asstReset() {
+  $("#asstLog").innerHTML = ""; histLoad();
+  const ro = S.status !== "承辦中"; $("#asstState").textContent = ro ? `本案${S.status}・僅供查詢` : (isLiveCase() ? "已接後端・修改須確認" : "示範資料・修改須確認");
+  $("#asstSub").textContent = ro ? "本案已送審或結案，僅能查詢；修改請先「另存為新草稿」" : "查詢卷宗、法規與分析結果；修改須經您確認才會執行";
+  const w = document.createElement("div"); w.className = "asst-welcome";
+  w.innerHTML = `<b>我是本案的 AI 助理。</b>回答一律附出處；任何修改都會先畫出「改完的樣子」，您按「確認執行」才會更新案件。<div class="two"><div><b>查詢</b><span class="note">　直接問</span><div class="ex"><button class="ghost-btn" data-q="送達日在哪份文件？">送達日在哪份文件？</button><button class="ghost-btn" data-q="行政罰法第 18 條第 1 項">行政罰法第 18 條第 1 項</button><button class="ghost-btn" data-q="本案判定與風險？">本案判定與風險？</button></div></div><div><b>修改</b><span class="note">　說要改什麼</span><div class="ex"><button class="ghost-btn" data-q="爭點 1 改採訴願人，因為">爭點 1 改採訴願人…</button><button class="ghost-btn" data-q="理由二精簡一點">理由二精簡一點</button><button class="ghost-btn" data-q="加引行政罰法第 18 條第 1 項">加引行政罰法 §18 I</button></div></div></div>`;
+  w.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { $("#asstIn").value = b.dataset.q; if (/因為$/.test(b.dataset.q)) $("#asstIn").focus(); else asstSend(); }));
+  $("#asstLog").appendChild(w);
+  CHAT_HIST.forEach((h) => asstAdd(h.role === "user" ? "u" : "a", esc(h.text).replace(/\n/g, "<br>")));
+  if (CHAT_HIST.length) asstAdd("a", `<span class="sysnote">以上為本案先前對話（提案卡不重播）</span>`);
+  asstSuggest();
+}
 /* 建議句由本案狀態＋目前分頁即時產生（規則，零模型呼叫）；正式版可再加一次便宜的模型呼叫補充 */
 function asstSuggest() {
   const c = S.c; if (!c) return; const tab = +($(".tab.on")?.dataset.t || 0), cp = currentPlan(), can = S.status === "承辦中", ask = [], edit = [];
@@ -1145,7 +1161,7 @@ async function addFilesLive(list) {
   } catch (e) { c.docs = c.docs.filter((d) => !d.pending); renderDocs(); alert(`補件失敗：${e.message || e.code}`); }
 }
 function addSupplement(list) {
-  const c = S.c; if (!c) return; if (S.status !== "承辦中") return asstSay(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`);
+  const c = S.c; if (!c) return; if (S.status !== "承辦中") return toast(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`, "err");
   if (c.live && c.caseId) return addFilesLive(list);
   const pend = [];
   list.forEach((f) => {
@@ -1243,7 +1259,7 @@ function fromServerProposal(sp, text) {
   return { id: sp.id, q: sp.message || text || "", items, scope: sp.scope || scopeOf(items), planTo: null, server: sp, summary: sp.summary };
 }
 function asstSend() {
-  const q = $("#asstIn").value.trim(); if (!q || !S.c) return; $("#asstIn").value = ""; asstAdd("u", esc(q));
+  const q = $("#asstIn").value.trim(); if (!q || !S.c) return; $("#asstIn").value = ""; $("#asstIn").style.height = ""; asstAdd("u", esc(q).replace(/\n/g, "<br>"));
   const c = S.c;
   if (isLiveCase()) return asstSendLive(q);
   if (S.status !== "承辦中" && EDIT_RE.test(q)) return asstAdd("a", `本案狀態為「${S.status}」，不可修改。已結案案件請用「另存為新草稿」。`);
@@ -1273,7 +1289,7 @@ let composing = false, composedAt = 0;
 $("#asstIn").addEventListener("compositionstart", () => { composing = true; });
 $("#asstIn").addEventListener("compositionend", () => { composing = false; composedAt = Date.now(); });
 function enterIsSend(e) { return e.key === "Enter" && !e.isComposing && !composing && e.keyCode !== 229 && Date.now() - composedAt > 60; }
-$("#asstIn").addEventListener("keydown", (e) => { if (enterIsSend(e)) { e.preventDefault(); asstSend(); } });
+$("#asstIn").addEventListener("keydown", (e) => { if (e.shiftKey) return; if (enterIsSend(e)) { e.preventDefault(); asstSend(); } });
 
 /* ---------- 字元級 diff ---------- */
 function diffHtml(a, b) {
@@ -1317,7 +1333,7 @@ const Router = {
 /** 直接開 #/case/{caseId}：有分析結果就進工作畫面；分析中就接上進度；只有歸戶結果就先分析 */
 async function resumeLive(caseId) {
   let doc = null;
-  try { doc = await Api.analysis(caseId); } catch (e) { if (e.status !== 404) return asstSay(`讀取案件失敗：${e.message}`); }
+  try { doc = await Api.analysis(caseId); } catch (e) { if (e.status !== 404) return toast(`讀取案件失敗：${e.message}`, "err"); }
   if (doc && doc.status.state === "done") return enterWork(caseId, doc);
   let payload;
   try { payload = await Api.listFiles(caseId); } catch (e) { $("#runSub").textContent = ""; show("s-pick"); Router.set("/"); alert(`找不到案件 ${caseId}`); return; }

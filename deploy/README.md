@@ -2,7 +2,7 @@
 
 ```
 瀏覽器 ──HTTP:80──► EC2 t3.large（us-west-2）
-                      └─ uvicorn：/ 靜態前端（src/frontend）＋ /api/*（src/backend）
+                      └─ Node :80（server/，static prototype/）＋ Python :8100（experiments/，經 analysis-proxy 反代）　※ 舊 FastAPI 骨架 src/ 已於 2026-09-13 刪除
                            └─ Instance Profile → Bedrock Claude Sonnet 4.5（全域鎖 ≤ 1 RPS）
 ```
 
@@ -14,7 +14,13 @@
 | 部署包 bucket | `s3://ntpc-law3-deploy-229004791954/app.tar.gz`（私有） |
 | IAM role | `ntpc-law3-ec2-role`：Bedrock Invoke/Retrieve/Rerank、該 bucket、SSM |
 
-## 日常更新（改完 src/ 之後）
+## 日常更新
+
+- 前端／歸戶：`./deploy/node/push.sh`（打包 server/＋prototype/）
+- 分析／助手／法規庫：`./deploy/analysis/push.sh`（打包 experiments/）
+- `deploy/ec2/` 僅供 `create-infra.sh` 初次開機（user-data）；其 redeploy.sh 為舊 FastAPI 流程，已不使用
+
+## 舊：日常更新（FastAPI 時期，已停用）
 
 ```bash
 ./deploy/push.sh        # 打包 src+deploy → S3 → SSM 叫 EC2 重裝並重啟，約 30 秒
