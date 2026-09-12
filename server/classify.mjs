@@ -130,6 +130,24 @@ async function converse(blocks, { model = MODEL } = {}) {
 const ORDER = ["訴願書", "訴願委任書", "閱覽卷宗申請書", "言詞辯論申請書", "言詞陳述申請書", "參加訴願申請書", "答辯書檢送函", "答辯書", "卷證目錄", "裁處書", "裁處書送達證書", "檢舉資料", "稽查紀錄", "調查筆錄", "採證照片", "影像放大標註", "採證影片", "車籍資料", "陳述意見通知書", "通知書送達證書", "陳述意見書", "係數計算表", "簽呈", "檢驗報告", "契約書", "委員會決定書", "其他"];
 const seq = (t) => String(Math.max(0, ORDER.indexOf(t)) + 1).padStart(2, "0");
 
+/** 性質（主張／紀錄／證物）由 doc_type 查表，不問模型 */
+export const NATURE = {
+  "訴願書": "主張", "訴願委任書": "主張", "答辯書": "主張", "陳述意見書": "主張", "閱覽卷宗申請書": "主張", "言詞辯論申請書": "主張", "言詞陳述申請書": "主張", "參加訴願申請書": "主張", "檢舉資料": "主張",
+  "答辯書檢送函": "紀錄", "卷證目錄": "紀錄", "裁處書": "紀錄", "裁處書送達證書": "紀錄", "陳述意見通知書": "紀錄", "通知書送達證書": "紀錄", "稽查紀錄": "紀錄", "調查筆錄": "紀錄", "車籍資料": "紀錄", "係數計算表": "紀錄", "簽呈": "紀錄", "委員會決定書": "紀錄", "契約書": "紀錄",
+  "採證照片": "證物", "影像放大標註": "證物", "採證影片": "證物", "檢驗報告": "證物",
+  "其他": "未知",
+};
+
+/** 時點：以該案裁處書日期為界（整案後處理，classifyAll 結束後呼叫） */
+export function annotateTiming(results) {
+  const dates = results.flatMap((r) => r.ok ? r.segments.filter((s) => s.doc_type === "裁處書" && s.date).map((s) => s.date) : []);
+  const cut = dates.sort()[0] ?? null;
+  for (const r of results) if (r.ok) for (const s of r.segments) {
+    s.timing = !cut || !s.date ? "未知" : s.doc_type === "裁處書" ? "處分作成" : s.date <= cut ? "處分作成前" : "爭訟發生後";
+  }
+  return { cutoff: cut, results };
+}
+
 export function suggestedName(seg, ext) {
   const tail = seg.date?.replace(/-/g, "") || seg.doc_no?.match(/\d[\d-]*\d/)?.[0]?.slice(-8) || "";
   const src = seg.source && seg.source !== "未知" ? `_${seg.source}` : "";
@@ -149,6 +167,7 @@ function verifyEvidence(seg, n) {
 
 function postprocess(seg, n) {
   if (seg.doc_type === "其他") seg.summary = "無法辨識內容";
+  seg.nature = NATURE[seg.doc_type] ?? "未知";
   if (["採證照片", "採證影片", "影像放大標註"].includes(seg.doc_type) && n.kind !== "pdf-text") { /* 來源由模型依證據回；規則層不覆寫 */ }
   verifyEvidence(seg, n);
   seg.suggestedName = suggestedName(seg, path.extname(n.originalName).replace(".", "").toLowerCase());
@@ -200,7 +219,9 @@ export async function classifyAll(normalized, { perFile = false, model = MODEL, 
     }
     onBox?.(bi, boxes.length, results);
   }
-  return [...results.values()];
+  const out = [...results.values()];
+  annotateTiming(out);
+  return out;
 }
 
 /** 掃描 PDF 超過 20 頁：每 20 頁一次，合併 segments 並平移頁碼 */
