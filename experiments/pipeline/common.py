@@ -16,7 +16,8 @@ from botocore.exceptions import ClientError
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parents[1]
-INPUTS, RUNS, PROMPTS = ROOT / "inputs", ROOT / "runs", ROOT / "prompts"
+INPUTS, PROMPTS = ROOT / "inputs", ROOT / "prompts"
+RUNS = Path(os.getenv("ANALYSIS_RUNS", ROOT / "runs"))  # 雲上放 /var/lib/analysis/runs，重佈不清
 REGION = os.getenv("AWS_REGION", "us-west-2")
 MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 MIN_INTERVAL = 1.1  # 競賽規範 ≤ 1 RPS；本機與 EC2 共用同一額度

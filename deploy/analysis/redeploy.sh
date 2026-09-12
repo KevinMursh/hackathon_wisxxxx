@@ -3,7 +3,7 @@
 set -euo pipefail
 BUCKET="$1"
 aws s3 cp "s3://${BUCKET}/analysis.tar.gz" /tmp/analysis.tar.gz
-mkdir -p /opt/app
+mkdir -p /opt/app /var/lib/analysis/runs
 rm -rf /opt/app/experiments /opt/app/資料集
 tar -xzf /tmp/analysis.tar.gz -C /opt/app
 [ -d /opt/venv-analysis ] || python3.11 -m venv /opt/venv-analysis
