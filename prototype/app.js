@@ -944,19 +944,39 @@ function renderLib() {
 ["#fSubj", "#fArt", "#fVerdict", "#fStatus"].forEach((s) => $(s).addEventListener("change", renderLib));
 
 /* ---------- 法規庫 ---------- */
-function lawCounts() { const recent = LAWLIB.filter((l) => { const t = isoT(l.date); return t && Date.now() - t < 366 * DAY * 3; }); return { laws: LAWLIB.length, rul: RULINGS.length, recent, sync: localStorage.getItem("ssz.lawsync") || "尚未同步" }; }
-function renderLawCard() { const k = lawCounts(), stale = LAWLIB.filter((l) => /資料集 PDF 為/.test(l.src || "")).length; $("#lawCard").innerHTML = `<span><b>法規庫</b>　法規 <b class="num">${k.laws}</b> 部・函釋 <b class="num">${k.rul}</b> 則</span><span>上次同步全國法規資料庫 <b class="num">${esc(k.sync)}</b></span>${stale ? `<span class="warn">${stale} 部資料集版本落後</span>` : ""}<span class="go">開啟法規庫 →</span>`; }
+/* 法規庫：真資料來自 GET /api/lawlib（lawdb＋lawsync 快照）；抓不到才退 data.js 常數 */
+let LAWAPI = null;
+async function loadLawlib() { try { LAWAPI = await Api.lawlib(); } catch (e) { LAWAPI = null; } renderLawCard(); if ($("#s-law").classList.contains("on")) renderLaw(); }
+function lawRows() {
+  if (LAWAPI) return { laws: LAWAPI.laws.map((l) => ({ n: l.n, kind: l.kind, date: l.date, arts: l.arts, cases: l.cases, src: l.src, official: l.official, effective: l.effective, status: l.status, currentArts: l.currentArts })),
+                       ruls: [...(LAWAPI.rulings || []), ...(LAWAPI.judgments || [])], sync: LAWAPI.sync };
+  return { laws: LAWLIB.map((l) => ({ ...l, official: l.official || null, status: /資料集 PDF 為/.test(l.src || "") ? "changed" : null })), ruls: RULINGS, sync: null };
+}
+function lawCounts() { const { laws, ruls, sync } = lawRows(); const recent = laws.filter((l) => { const t = isoT(l.official || l.date); return t && Date.now() - t < 366 * DAY * 3; }); return { laws: laws.length, rul: ruls.length, recent, sync: sync?.checkedAt || localStorage.getItem("ssz.lawsync") || "尚未同步", stale: laws.filter((l) => l.status === "changed").length }; }
+function renderLawCard() { const k = lawCounts(); $("#lawCard").innerHTML = `<span><b>法規庫</b>　法規 <b class="num">${k.laws}</b> 部・函釋判解 <b class="num">${k.rul}</b> 則</span><span>上次同步全國法規資料庫 <b class="num">${esc(k.sync)}</b></span>${k.stale ? `<span class="warn">${k.stale} 部資料集版本落後</span>` : ""}<span class="go">開啟法規庫 →</span>`; }
 $("#lawCard").addEventListener("click", openLawLib); $("#lawBtn").addEventListener("click", openLawLib);
 let LAWTAB = "law";
-function openLawLib() { persist(); show("s-law"); Router.set("/law"); $("#backBtn").style.display = ""; renderLaw(); }
 function renderLaw() {
-  const k = lawCounts(); $("#lawStat").textContent = `法規 ${k.laws}・函釋 ${k.rul}`; $("#syncStat").textContent = `上次同步：${k.sync}`;
-  $("#syncBtn").onclick = () => { const b = $("#syncBtn"); b.disabled = true; b.textContent = "同步中…"; $("#syncLog").innerHTML = "連線 law.moj.gov.tw 開放資料（示意）…"; setTimeout(() => { const ts = today() + " " + now().slice(0, 5); localStorage.setItem("ssz.lawsync", ts); b.disabled = false; b.textContent = "同步全國法規資料庫"; $("#syncLog").innerHTML = `✓ ${ts} 同步完成（law.moj.gov.tw 法律檔 6 MB＋命令檔 25 MB）・比對 ${LAWLIB.length} 部：<b style="color:var(--seal)">2 部資料集版本落後</b>——廢棄物清理法 106-06-14 → 官方 115-07-15（117-07-15 施行）、民法 110-01-20 → 115-08-17；其餘一致。<span class="note">此結果來自 experiments/pipeline/lawsync.py 實際同步（2026-09-12）；前端僅回放。</span>`; renderLaw(); renderLawCard(); }, 1400); };
+  const k = lawCounts(), { laws, ruls, sync } = lawRows(); $("#lawStat").textContent = `法規 ${k.laws}・函釋判解 ${k.rul}${LAWAPI ? "" : "（離線：資料集常數）"}`; $("#syncStat").textContent = `上次同步：${k.sync}`;
+  $("#syncBtn").onclick = async () => {
+    const b = $("#syncBtn"); b.disabled = true; b.textContent = "同步中…（逐部抓 law.moj.gov.tw，約 1–2 分鐘）"; $("#syncLog").innerHTML = `<span class="typing">連線全國法規資料庫，逐部比對修正日期…</span>`;
+    const before = LAWAPI?.sync?.checkedAt;
+    try {
+      await Api.lawSync();
+      for (let i = 0; i < 60; i++) { await new Promise((r) => setTimeout(r, 4000)); const d = await Api.lawlib(); if (d.sync?.checkedAt && d.sync.checkedAt !== before) { LAWAPI = d; break; } }
+      const s = LAWAPI?.sync || {}; const ch = lawRows().laws.filter((l) => l.status === "changed");
+      $("#syncLog").innerHTML = s.checkedAt === before ? `<span style="color:var(--seal)">逾時：同步仍在進行，稍後重新開啟法規庫即可看到結果。</span>` : `✓ ${esc(s.checkedAt)} 同步完成（${esc(s.source || "")}）・比對 ${s.checked} 部：<b style="color:var(--seal)">${s.changed} 部資料集版本落後</b>${ch.length ? "——" + ch.map((l) => `${esc(l.n)} ${l.date} → 官方 ${l.official}${l.effective ? `（${l.effective} 施行）` : ""}`).join("、") : ""}；其餘 ${s.same} 部一致。`;
+      renderLaw(); renderLawCard();
+    } catch (e) { $("#syncLog").innerHTML = `<span style="color:var(--seal)">同步失敗：${esc(e.message || e.code)}</span>`; }
+    b.disabled = false; b.textContent = "同步全國法規資料庫";
+  };
   $$("#s-law .rtabs button").forEach((b) => { b.classList.toggle("on", b.dataset.l === LAWTAB); b.onclick = () => { LAWTAB = b.dataset.l; renderLaw(); }; });
   const involved = (n) => LIB.filter((r) => (r.state?.docs || []).length && r.subj && n.startsWith(r.subj.replace("違反", ""))).length;
-  if (LAWTAB === "law") $("#lawTable").innerHTML = `<tr><th>法規</th><th>類型</th><th>最新修正</th><th>條數</th><th>狀態</th><th>來源</th></tr>` + LAWLIB.map((l) => { const t = isoT(l.date), recent = t && Date.now() - t < 366 * DAY * 3; return `<tr><td>${esc(l.n)}</td><td>${l.kind}</td><td class="num">${l.date}${l.effective ? `<div class="note">${l.effective} 施行</div>` : ""}</td><td class="num">${l.arts}</td><td>${recent ? '<span class="st amended">已修正 ⚠</span>' : '<span class="st ok">現行</span>'}</td><td>${esc(l.src)}<div class="note">law.moj.gov.tw 開放資料</div></td></tr>`; }).join("");
-  else $("#lawTable").innerHTML = `<tr><th>函釋</th><th>主題</th><th>發文日</th><th>狀態</th><th>來源</th></tr>` + RULINGS.map((r) => `<tr><td>${esc(r.n)}</td><td>${esc(r.topic)}</td><td class="num">${r.date}</td><td><span class="st ok">有效</span></td><td>${esc(r.src)}<div class="note">人工確認入庫（各部會無統一 API）</div></td></tr>`).join("");
+  if (LAWTAB === "law") $("#lawTable").innerHTML = `<tr><th>法規</th><th>類型</th><th>資料集版本</th><th>官方最新修正</th><th>條數</th><th>狀態</th><th>涉案</th><th>來源</th></tr>` + laws.map((l) => { const t = isoT(l.official || l.date), recent = t && Date.now() - t < 366 * DAY * 3; return `<tr><td>${esc(l.n)}</td><td>${esc(l.kind)}</td><td class="num">${esc(l.date)}</td><td class="num">${l.official ? esc(l.official) : "—"}${l.effective ? `<div class="note">${esc(l.effective)} 施行</div>` : ""}</td><td class="num">${l.arts}${l.currentArts && l.currentArts !== l.arts ? `<div class="note">現行 ${l.currentArts}</div>` : ""}</td><td>${l.status === "changed" ? '<span class="st pending">資料集版本落後 ⚠</span>' : recent ? '<span class="st amended">近期修正</span>' : '<span class="st ok">一致</span>'}</td><td class="num">${l.cases ?? involved(l.n)}</td><td>${esc(l.src)}${l.official ? '<div class="note">全國法規資料庫同步</div>' : ""}</td></tr>`; }).join("");
+  else $("#lawTable").innerHTML = `<tr><th>函釋／判解</th><th>主題</th><th>發文日</th><th>相關法規</th><th>來源</th></tr>` + ruls.map((r) => `<tr><td>${esc(r.n)}</td><td>${esc(r.topic || "")}</td><td class="num">${esc(r.date || "—")}</td><td>${esc(r.law || "")}</td><td>${esc(r.src)}<div class="note">人工確認入庫（各部會無統一 API）</div></td></tr>`).join("");
+  if (!$("#syncLog").innerHTML && sync) $("#syncLog").innerHTML = `<span class="note">最近一次同步 ${esc(sync.checkedAt)}：比對 ${sync.checked} 部，${sync.changed} 部資料集版本落後、${sync.same} 部一致（${esc(sync.source || "")}）。</span>`;
 }
+function openLawLib() { persist(); show("s-law"); Router.set("/law"); $("#backBtn").style.display = ""; renderLaw(); }
 renderLawCard();
 
 /* ---------- 案件問答助手（只讀） ---------- */
@@ -1300,3 +1320,4 @@ async function resumeLive(caseId) {
 }
 window.addEventListener("hashchange", () => Router.go());
 Router.go();
+loadLawlib();
