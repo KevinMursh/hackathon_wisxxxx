@@ -44,7 +44,7 @@ function renderFiles() {
   $$(".rm", box).forEach((b) => b.addEventListener("click", () => { FILES.splice(+b.dataset.i, 1); renderFiles(); }));
   const n = FILES.length, kb = FILES.reduce((a, f) => a + f.kb, 0);
   $("#runBtn").disabled = n === 0;
-  $("#fileHint").textContent = n === 0 ? "尚未加入檔案" : `${n} 個檔案・${(kb / 1024).toFixed(1)} MB・下一步由系統辨識內容`;
+  $("#fileHint").textContent = n === 0 ? "尚未加入檔案" : `${n} 個檔案・${(kb / 1024).toFixed(1)} MB・由 Claude 判定類型與來源後直接分析`;
 }
 function addFiles(list) { Array.from(list).forEach((f) => { if (FILES.some((x) => x.name === f.name)) return; FILES.push({ name: f.name, kb: Math.max(1, Math.round((f.size || 0) / 1024)), docId: undefined, base: "B" }); }); renderFiles(); }
 const drop = $("#drop"), fileInput = $("#file");
@@ -61,26 +61,7 @@ function loadPack(messy) {
 $("#packBtn").addEventListener("click", () => loadPack(false));
 $("#messyBtn").addEventListener("click", () => loadPack(true));
 $("#clearBtn").addEventListener("click", () => { FILES = []; renderFiles(); });
-$("#runBtn").addEventListener("click", () => openLabelScreen());
-
-/* ---------- QR（示範） ---------- */
-function drawQR() {
-  const cv = $("#qrCanvas"), ctx = cv.getContext("2d"), N = 41; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, N, N);
-  let seed = Date.now() % 100000; const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-  ctx.fillStyle = "#000"; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (rnd() > 0.55) ctx.fillRect(x, y, 1, 1);
-  const finder = (ox, oy) => { ctx.fillStyle = "#fff"; ctx.fillRect(ox - 1, oy - 1, 9, 9); ctx.fillStyle = "#000"; ctx.fillRect(ox, oy, 7, 7); ctx.fillStyle = "#fff"; ctx.fillRect(ox + 1, oy + 1, 5, 5); ctx.fillStyle = "#000"; ctx.fillRect(ox + 2, oy + 2, 3, 3); };
-  finder(0, 0); finder(N - 7, 0); finder(0, N - 7);
-  const code = Array.from({ length: 6 }, () => "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(rnd() * 31)]).join(""); $("#qrCode").textContent = code.slice(0, 3) + "-" + code.slice(3);
-}
-let phoneFiles = [];
-$("#qrBtn").addEventListener("click", () => { drawQR(); phoneFiles = []; $("#phoneFeed").innerHTML = ""; $("#phoneState").textContent = "等待掃碼…"; $("#qrDone").disabled = true; $("#qrModal").classList.add("on"); });
-$("#qrClose").addEventListener("click", () => $("#qrModal").classList.remove("on"));
-$("#simScan").addEventListener("click", () => {
-  const feed = $("#phoneFeed"); $("#phoneState").textContent = "iPhone・已連線";
-  const shots = [["IMG_5101.jpg", 1840, "served"], ["IMG_5102.jpg", 2110, "insp"], ["IMG_5103.jpg", 1970, "statement"]]; let t = 0;
-  shots.forEach(([name, kb, docId], i) => { setTimeout(() => { const row = document.createElement("div"); row.innerHTML = `<span class="prog">拍攝 ${esc(name)}　上傳中</span><div class="bar"><i style="width:0"></i></div>`; feed.appendChild(row); feed.scrollTop = feed.scrollHeight; const bar = $("i", row); let p = 0; const iv = setInterval(() => { p = Math.min(100, p + 9 + Math.random() * 14); bar.style.width = p + "%"; if (p >= 100) { clearInterval(iv); row.innerHTML = `<span class="ok">✓ ${esc(name)}　${kb} KB　已上傳（類型於歸戶確認站辨識）</span>`; phoneFiles.push({ name, kb, docId, base: "B" }); if (i === shots.length - 1) { $("#qrDone").disabled = false; $("#phoneState").textContent = "上傳完成"; } } }, 120); }, t); t += 1400; });
-});
-$("#qrDone").addEventListener("click", () => { phoneFiles.forEach((f) => { if (!FILES.some((x) => x.name === f.name)) FILES.push(f); }); renderFiles(); $("#qrModal").classList.remove("on"); });
+$("#runBtn").addEventListener("click", () => runCase(autoClassify()));
 
 /* ---------- 貼上文字 ---------- */
 const pasteBox = $("#pasteBox"), parseBtn = $("#parseBtn"), pasteHint = $("#pasteHint");
@@ -104,75 +85,24 @@ $("#backBtn").addEventListener("click", () => { persist(); show("s-pick"); ["chi
 renderLibCard();
 
 /* =========================================================
-   畫面 1.5：歸戶確認站
+   自動歸戶（Claude 判定・mock）：不經人手，直接建案
    ========================================================= */
-let LABELS = [], LABEL_AUDIT = [];
-function docMeta(base, docId) { const d = base.docs.find((x) => x.id === docId); return d ? { type: d.tag, src: d.src, pages: d.pages, std: STD_NAME[docId] || d.title, kind: d.kind, file: d.file } : null; }
-function openLabelScreen() {
-  LABELS = []; LABEL_AUDIT = [];
-  const seen = new Set();
+function autoClassify() {
+  const base = CASE_B, c = structuredClone(base), seen = new Set(), docs = [];
   FILES.forEach((f, i) => {
-    const base = CASE_B, ext = (f.name.match(/\.[a-z0-9]+$/i) || [""])[0].toLowerCase();
+    const ext = (f.name.match(/\.[a-z0-9]+$/i) || [""])[0].toLowerCase();
     const docId = f.docId !== undefined ? f.docId : classifyByName(f.name);
-    const m = docId ? docMeta(base, docId) : null;
-    const row = { i, name: f.name, kb: f.kb, ext, docId, aiType: m ? m.type : "", aiSrc: m ? m.src : "", type: m ? m.type : "", src: m ? m.src : "", std: m ? m.std + ext : "", pages: m ? m.pages : 1, kind: m ? m.kind : (/\.(jpg|jpeg|png)$/.test(ext) ? "image" : /\.(mp4|mov)$/.test(ext) ? "video" : "pdf"), file: m ? m.file : null, status: "auto", include: true, sel: false };
-    if (docId && seen.has(docId)) { row.status = "dup"; row.include = false; }
-    else if (!m) { row.status = "needs"; row.wasNeeds = true; row.type = ""; row.src = ""; row.std = ""; }
-    else if (m.type === "採證照片" || m.type === "影像放大") { row.status = "needs"; row.wasNeeds = true; row.type = ""; row.src = ""; row.std = ""; }
-    if (docId) seen.add(docId);
-    LABELS.push(row);
-  });
-  LABELS.sort((a, b) => (a.status === "needs" ? 0 : 1) - (b.status === "needs" ? 0 : 1) || a.i - b.i);
-  $("#bulkType").innerHTML = '<option value="">批次設定類型…</option>' + TYPES.map((t) => `<option>${t}</option>`).join("");
-  renderLabels(); show("s-label");
-}
-function stdFor(row) { if (row.docId && STD_NAME[row.docId]) return STD_NAME[row.docId] + row.ext; const n = TYPES.indexOf(row.type); return row.type ? `${String(n + 1).padStart(2, "0")}-${row.type}${row.ext}` : ""; }
-function renderLabels() {
-  const thumb = (r) => r.kind === "image" && r.file ? `<img class="thumb" src="${r.file}" alt="">` : `<span class="thumb">${r.kind === "video" ? "MP4" : "PDF"}</span>`;
-  const STN = { auto: "自動", confirmed: "已確認", needs: "需確認", dup: "重複", skip: "不納入" };
-  $("#ltable").innerHTML = `<tr><th><input type="checkbox" id="selAllRow"></th><th>原檔名</th><th>縮圖</th><th>判定類型</th><th>來源</th><th>建議檔名（標籤）</th><th>頁數</th><th>狀態</th></tr>` + LABELS.map((r, k) => `
-    <tr class="${r.status}" data-k="${k}">
-      <td><input type="checkbox" class="rsel" data-k="${k}" ${r.sel ? "checked" : ""}></td>
-      <td><span class="orig" data-k="${k}" title="開啟原檔">${esc(r.name)}</span><div class="note">${r.kb} KB</div></td>
-      <td>${thumb(r)}</td>
-      <td><select class="rtype" data-k="${k}"><option value="">— 請選擇 —</option>${TYPES.map((t) => `<option ${r.type === t ? "selected" : ""}>${t}</option>`).join("")}</select></td>
-      <td><select class="rsrc" data-k="${k}"><option value="">— 請選擇 —</option>${SRC_ORDER.map((t) => `<option ${r.src === t ? "selected" : ""}>${t}</option>`).join("")}</select></td>
-      <td><input type="text" class="rstd" data-k="${k}" value="${esc(r.std)}" placeholder="依類型自動產生"></td>
-      <td class="num">${r.pages}</td>
-      <td><span class="st ${r.status}">${STN[r.status]}</span>${r.status === "dup" ? `<div class="note">與另一份內容相同</div>` : ""}</td>
-    </tr>`).join("");
-  const needs = LABELS.filter((r) => r.status === "needs" && r.include).length, inc = LABELS.filter((r) => r.include).length;
-  $("#labelStat").innerHTML = `${LABELS.length} 份・納入 ${inc}・需確認 <b style="color:var(--amber)">${needs}</b>・重複 ${LABELS.filter((r) => r.status === "dup").length}`;
-  $("#labelGo").disabled = needs > 0; $("#labelHint").textContent = needs > 0 ? `還有 ${needs} 份需確認類型與來源` : `${inc} 份將納入分析`;
-  $("#selN").textContent = LABELS.filter((r) => r.sel).length;
-  $$(".rsel").forEach((cb) => cb.addEventListener("change", () => { LABELS[+cb.dataset.k].sel = cb.checked; $("#selN").textContent = LABELS.filter((r) => r.sel).length; }));
-  $("#selAllRow").addEventListener("change", (e) => { LABELS.forEach((r) => { r.sel = e.target.checked; }); renderLabels(); });
-  const setField = (k, field, v) => { const r = LABELS[k]; const before = r[field]; r[field] = v; if (field === "type") r.std = stdFor(r); if (r.type && r.src && r.include && r.status !== "dup") r.status = (!r.wasNeeds && r.type === r.aiType && r.src === r.aiSrc) ? "auto" : "confirmed"; if (before !== v) LABEL_AUDIT.push({ ts: now(), who: "hu", para: r.name, action: `${field === "type" ? "類型" : field === "src" ? "來源" : "檔名"}：${before || "（空）"} → ${v || "（空）"}` }); };
-  $$(".rtype").forEach((s) => s.addEventListener("change", () => { setField(+s.dataset.k, "type", s.value); renderLabels(); }));
-  $$(".rsrc").forEach((s) => s.addEventListener("change", () => { setField(+s.dataset.k, "src", s.value); renderLabels(); }));
-  $$(".rstd").forEach((s) => s.addEventListener("change", () => { setField(+s.dataset.k, "std", s.value); }));
-  $$(".orig").forEach((s) => s.addEventListener("click", () => { const r = LABELS[+s.dataset.k]; if (r.file) window.open(r.file, "_blank"); else alert("原型未保存使用者上傳之原檔內容（demo 檔案可直接開啟）。"); }));
-}
-$("#selAll").addEventListener("change", (e) => { LABELS.forEach((r) => { r.sel = e.target.checked; }); renderLabels(); });
-$("#bulkSrc").addEventListener("change", (e) => { if (!e.target.value) return; LABELS.filter((r) => r.sel).forEach((r) => { const b = r.src; r.src = e.target.value; if (r.type && r.src && r.include && r.status !== "dup") r.status = (!r.wasNeeds && r.type === r.aiType && r.src === r.aiSrc) ? "auto" : "confirmed"; if (b !== r.src) LABEL_AUDIT.push({ ts: now(), who: "hu", para: r.name, action: `來源（批次）：${b || "（空）"} → ${r.src}` }); }); e.target.value = ""; renderLabels(); });
-$("#bulkType").addEventListener("change", (e) => { if (!e.target.value) return; LABELS.filter((r) => r.sel).forEach((r) => { const b = r.type; r.type = e.target.value; r.std = stdFor(r); if (r.type && r.src && r.include && r.status !== "dup") r.status = (!r.wasNeeds && r.type === r.aiType && r.src === r.aiSrc) ? "auto" : "confirmed"; if (b !== r.type) LABEL_AUDIT.push({ ts: now(), who: "hu", para: r.name, action: `類型（批次）：${b || "（空）"} → ${r.type}` }); }); e.target.value = ""; renderLabels(); });
-$("#bulkSkip").addEventListener("click", () => { LABELS.filter((r) => r.sel).forEach((r) => { r.include = false; r.status = "skip"; LABEL_AUDIT.push({ ts: now(), who: "hu", para: r.name, action: "標記不納入分析" }); }); renderLabels(); });
-$("#bulkInclude").addEventListener("click", () => { LABELS.filter((r) => r.sel).forEach((r) => { r.include = true; r.status = (r.type && r.src) ? "confirmed" : "needs"; }); renderLabels(); });
-$("#labelBack").addEventListener("click", () => show("s-pick"));
-$("#labelGo").addEventListener("click", () => {
-  const base = CASE_B, c = structuredClone(base);
-  const known = new Set(base.docs.map((d) => d.id));
-  const docs = [];
-  LABELS.forEach((r) => {
-    if (r.docId && known.has(r.docId) && r.status !== "dup") { const d = structuredClone(base.docs.find((x) => x.id === r.docId)); d.origName = r.name; d.stdName = r.std; d.tag = r.type || d.tag; d.src = r.src || d.src; d.include = r.include; if (!r.include) d.kind = d.kind; docs.push(d); }
-    else if (r.status !== "dup") docs.push({ id: "x-" + r.i, title: r.std || r.name, origName: r.name, stdName: r.std, tag: r.type || "其他", src: r.src || "原處分機關", kind: "missing", include: r.include, note: r.include ? "本原型未內建此類文件之解析，已納入卷宗但不進三方對照。" : "承辦人標記不納入分析。" });
+    const d0 = docId ? base.docs.find((x) => x.id === docId) : null;
+    if (d0 && seen.has(docId)) { docs.push({ id: "dup-" + i, title: f.name, origName: f.name, stdName: f.name, tag: d0.tag, src: d0.src, kind: "missing", include: false, dup: true, summary: `與「${STD_NAME[docId] || d0.title}」內容相同，已排除`, note: "重複檔案，已自動排除。" }); return; }
+    if (d0) { const d = structuredClone(d0); d.origName = f.name; d.stdName = (STD_NAME[docId] || d0.title) + ext; d.include = true; docs.push(d); seen.add(docId); }
+    else docs.push({ id: "x-" + i, title: f.name, origName: f.name, stdName: f.name, tag: "其他", src: "原處分機關", kind: /\.(jpg|jpeg|png)$/.test(ext) ? "image" : "missing", file: null, include: true, unknown: true, summary: "無法辨識內容（mock：不在對照表）", note: "Claude 判定：無法辨識此文件內容，已列入卷宗但不進三方對照。" });
   });
   const order = base.docs.map((d) => d.id); docs.sort((a, b) => (order.indexOf(a.id) < 0 ? 99 : order.indexOf(a.id)) - (order.indexOf(b.id) < 0 ? 99 : order.indexOf(b.id)));
   c.docs = docs.length ? docs : base.docs.slice();
-  c.labelAudit = LABEL_AUDIT.slice(); c.labelCount = LABELS.filter((r) => r.include).length;
-  c.uploadNote = `承辦人已確認 ${c.labelCount} 份歸戶`;
-  runCase(c);
-});
+  c.autoCount = c.docs.filter((d) => d.include !== false).length;
+  c.uploadNote = `Claude 判定 ${c.docs.length} 個檔案，${c.autoCount} 份納入分析`;
+  return c;
+}
 
 /* =========================================================
    即時解析（貼上文字）
@@ -237,16 +167,16 @@ function runCase(c, restore) {
   S.c = c; S.live = !!c.live;
   if (!restore) {
     S.served = c.period.served; S.recv = c.period.recv; S.stances = {}; c.issues.forEach((i) => { S.stances[i.id] = i.stance || "open"; });
-    S.status = "承辦中"; S.plan = null; S.paras = []; S.versions = []; S.audit = (c.labelAudit || []).slice(); S.objections = []; S.final = null; S.court = null; S.finalDiff = null; S.sel = null;
+    S.status = "承辦中"; S.plan = null; S.paras = []; S.versions = []; S.audit = []; S.objections = []; S.final = null; S.court = null; S.finalDiff = null; S.sel = null;
     const existing = LIB.find((r) => r.baseId === c.id && r.status === "承辦中" && !c.live);
     S.libId = existing ? existing.libId : `${c.id}-${Date.now().toString(36)}`;
   }
   S.doc = null; S.zoom = 1;
   $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = "";
   if (restore) { render(); show("s-work"); return; }
-  const steps = [["文件歸戶", c.labelCount ? `承辦人已確認 ${c.labelCount} 份歸戶` : `${c.docs.length} 個檔案 → ${new Set(c.docs.map((d) => d.tag)).size} 種類型`, 1300, "classify"], ["欄位擷取（三方對照）", `${c.fields.length} 個欄位，${c.fields.filter((f) => f.conflict).length} 處衝突`, 700], ["爭點比對（訴願書 vs 答辯書 vs 卷證）", `識別 ${c.issues.length} 個爭點`, 760], ["法規檢索與引用查核", `推薦 ${c.laws.length} 筆；查核答辯書引用 ${c.citations.length} 則${c.citations.some((x) => x.status === "amended") ? "，1 則已修正" : ""}`, 840], ["AI 判定與草稿生成", `判定：${judgePlan(c).verdict}（${judgePlan(c).art}）`, 900]];
+  const steps = [["文件辨識（Claude 判定）", `${c.docs.length} 個檔案 → ${c.docs.filter((d) => d.include !== false).length} 份納入・${c.docs.filter((d) => d.dup).length} 份重複・${c.docs.filter((d) => d.unknown).length} 份無法辨識`, Math.min(2600, 700 + c.docs.length * 110), "classify"], ["欄位擷取（三方對照）", `${c.fields.length} 個欄位，${c.fields.filter((f) => f.conflict).length} 處衝突`, 700], ["爭點比對（訴願書 vs 答辯書 vs 卷證）", `識別 ${c.issues.length} 個爭點`, 760], ["法規檢索與引用查核", `推薦 ${c.laws.length} 筆；查核答辯書引用 ${c.citations.length} 則${c.citations.some((x) => x.status === "amended") ? "，1 則已修正" : ""}`, 840], ["AI 判定與草稿生成", `判定：${judgePlan(c).verdict}（${judgePlan(c).art}）`, 900]];
   $("#runSub").textContent = c.live ? c.name : `${c.name}　・　案號 ${c.no}${c.uploadNote ? "　・　" + c.uploadNote : ""}`;
-  $("#stepList").innerHTML = steps.map((s, i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${s[0]}</div><div class="out" id="so${i}"></div>${s[3] ? `<div class="classify" id="cls${i}">${c.docs.map((d) => `<span>${esc(d.stdName || d.title)}　<b>${d.tag}</b><span class="srct ${d.src}">${d.src}</span></span>`).join("")}</div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
+  $("#stepList").innerHTML = steps.map((s, i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${s[0]}</div><div class="out" id="so${i}"></div>${s[3] ? `<div class="classify" id="cls${i}" style="flex-direction:column;gap:3px">${c.docs.map((d) => `<span style="display:flex;gap:8px;align-items:center;${d.include === false ? "opacity:.55" : ""}"><span class="num" style="color:var(--ink-3);min-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(d.origName || d.title)}</span><span>→</span><b style="white-space:nowrap">${d.tag}</b><span class="srct ${d.src}" style="flex:none">${d.src}</span><span style="color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(d.summary || "")}</span></span>`).join("")}</div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
   $("#runBar").style.width = "0"; show("s-run");
   let t = 0;
   steps.forEach((s, i) => { setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.add("active"); $("#runBar").style.width = ((i + 1) / steps.length * 100) + "%"; if (s[3]) $$("#cls" + i + " > span").forEach((sp, k) => setTimeout(() => sp.classList.add("in"), 80 + k * (1000 / Math.max(1, c.docs.length)))); }, t); t += s[2]; setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.remove("active"); el.classList.add("done"); $("#so" + i).textContent = s[1]; $("#sm" + i).textContent = s[2] + " ms"; }, t); });
@@ -273,14 +203,14 @@ function persist() {
   if (!S.c) return;
   const c = S.c, jp = judgePlan();
   const rec = { libId: S.libId, baseId: c.id, name: c.name, no: c.no, subj: c.subj, art: currentPlan().art, verdict: S.final ? S.final.verdict : currentPlan().verdict, aiVerdict: jp.verdict, status: S.status, createdAt: (LIB.find((r) => r.libId === S.libId) || {}).createdAt || today(), closedAt: S.status === "已結案" ? ((LIB.find((r) => r.libId === S.libId) || {}).closedAt || today()) : null, final: S.final, court: S.court, updatedAt: today(),
-    state: { served: S.served, recv: S.recv, stances: S.stances, plan: S.plan, paras: S.paras, versions: S.versions, audit: S.audit, objections: S.objections, finalDiff: S.finalDiff, docs: c.docs.map((d) => ({ id: d.id, tag: d.tag, src: d.src, include: d.include, origName: d.origName, stdName: d.stdName, kind: d.kind, title: d.title, note: d.note, file: d.file })), liveCase: c.live ? c : null } };
+    state: { served: S.served, recv: S.recv, stances: S.stances, plan: S.plan, paras: S.paras, versions: S.versions, audit: S.audit, objections: S.objections, finalDiff: S.finalDiff, docs: c.docs.map((d) => ({ id: d.id, tag: d.tag, src: d.src, include: d.include, origName: d.origName, stdName: d.stdName, kind: d.kind, title: d.title, note: d.note, file: d.file, summary: d.summary, dup: d.dup, unknown: d.unknown })), liveCase: c.live ? c : null } };
   const i = LIB.findIndex((r) => r.libId === S.libId); if (i >= 0) LIB[i] = rec; else LIB.push(rec);
   saveLib();
 }
 function openRecord(rec) {
   const base = rec.state.liveCase ? rec.state.liveCase : CASES.find((x) => x.id === rec.baseId); if (!base) return;
   const c = structuredClone(base);
-  if (rec.state.docs && rec.state.docs.length) { const byId = Object.fromEntries(base.docs.map((d) => [d.id, d])); c.docs = rec.state.docs.map((sd) => { const d = byId[sd.id] ? structuredClone(byId[sd.id]) : { id: sd.id, title: sd.title, kind: sd.kind || "missing", note: sd.note, file: sd.file }; Object.assign(d, { tag: sd.tag || d.tag, src: sd.src || d.src, include: sd.include !== false, origName: sd.origName, stdName: sd.stdName }); if (sd.id === "final") { d.kind = "pdf"; d.file = sd.file; } return d; }); }
+  if (rec.state.docs && rec.state.docs.length) { const byId = Object.fromEntries(base.docs.map((d) => [d.id, d])); c.docs = rec.state.docs.map((sd) => { const d = byId[sd.id] ? structuredClone(byId[sd.id]) : { id: sd.id, title: sd.title, kind: sd.kind || "missing", note: sd.note, file: sd.file }; Object.assign(d, { tag: sd.tag || d.tag, src: sd.src || d.src, include: sd.include !== false, origName: sd.origName, stdName: sd.stdName, summary: sd.summary || d.summary, dup: sd.dup, unknown: sd.unknown }); if (sd.id === "final") { d.kind = "pdf"; d.file = sd.file; } return d; }); }
   Object.assign(S, { libId: rec.libId, status: rec.status, served: rec.state.served, recv: rec.state.recv, stances: rec.state.stances, plan: rec.state.plan, paras: rec.state.paras, versions: rec.state.versions, audit: rec.state.audit, objections: rec.state.objections || [], final: rec.final, court: rec.court, finalDiff: rec.state.finalDiff });
   runCase(c, true);
 }
@@ -295,9 +225,7 @@ function updateChips() {
   const sc = $("#statusChip"); sc.className = "chip status on " + S.status; $("#statusText").textContent = statusLabel();
   $$(".tab")[1].classList.toggle("warn", Object.values(S.stances).includes("open"));
   $$(".tab")[2].classList.toggle("warn", S.c.citations.some((x) => x.status !== "ok"));
-  $$(".tab")[4].classList.toggle("warn", mismatch().length > 0);
 }
-function mismatch() { const accepted = new Set(S.objections.filter((o) => o.result !== "reject").map((o) => o.issueId)); return S.c.issues.filter((i) => !accepted.has(i.id) && (i.stance || "open") !== S.stances[i.id] && S.stances[i.id] !== "open"); }
 function recompute() { renderExtract(); renderIssues(); renderDraft(); updateChips(); persist(); }
 $$(".tab").forEach((b) => b.addEventListener("click", () => { $$(".tab").forEach((x) => x.classList.toggle("on", x === b)); $$(".tabpage").forEach((p, i) => p.classList.toggle("on", i === +b.dataset.t)); $("#panel").scrollTop = 0; }));
 
@@ -316,26 +244,40 @@ $$(".tab").forEach((b) => b.addEventListener("click", () => { $$(".tab").forEach
 
 /* ---------- 卷宗瀏覽器 ---------- */
 const KIND = { text: "文字", image: "掃描/照片", pdf: "PDF", video: "影片", missing: "—" };
+S.docMode = {};
 function renderDocs() {
   const c = S.c; $("#docCount").textContent = `${c.docs.length} 件`;
   const groups = SRC_ORDER.map((src) => [src, c.docs.filter((d) => (d.src || "原處分機關") === src)]).filter(([, l]) => l.length);
-  $("#docList").innerHTML = groups.map(([src, list]) => `<div class="grp" data-g="${src}"><span class="tri">▾</span><span class="srct ${src}" style="margin:0">${src}</span><span>${src === "第三方" ? "獨立證據" : src === "本局" ? "受理機關" : ""}</span><span class="n">${list.length}</span></div><div class="items">${list.map((d) => `<div class="item ${d.include === false ? "skip" : ""}" data-doc="${d.id}" title="${esc(d.origName ? "原檔名：" + d.origName : d.title)}"><i></i><span class="t">${esc(d.stdName || d.title)}</span><span class="m">${d.pages || 1} 頁・${KIND[d.kind] || ""}</span><span class="tag neutral" style="font-size:10px">${d.tag}</span></div>`).join("")}</div>`).join("");
+  $("#docList").innerHTML = groups.map(([src, list]) => `<div class="grp" data-g="${src}"><span class="tri">▾</span><span class="srct ${src}" style="margin:0">${src}</span><span>${src === "第三方" ? "獨立證據" : src === "本局" ? "受理機關" : ""}</span><span class="n">${list.length}</span></div><div class="items">${list.map((d) => `<div class="item ${d.include === false ? "skip" : ""}" data-doc="${d.id}" title="${esc(d.origName ? "原檔名：" + d.origName : d.title)}"><i></i><span class="t">${esc(d.stdName || d.title)}</span><span class="m">${d.pages || 1} 頁・${KIND[d.kind] || ""}</span><span class="tag neutral tagbtn" data-edit="${d.id}" title="修正類型／來源" style="font-size:10px">${d.tag} ✎</span><span class="sum">${esc(d.summary || "")}</span></div>`).join("")}</div>`).join("");
   $$("#docList .grp").forEach((g) => g.addEventListener("click", () => { g.classList.toggle("closed"); g.querySelector(".tri").textContent = g.classList.contains("closed") ? "▸" : "▾"; }));
   $$("#docList .item").forEach((b) => b.addEventListener("click", () => openDoc(b.dataset.doc)));
+  $$("#docList .tagbtn").forEach((t) => t.addEventListener("click", (e) => { e.stopPropagation(); openTagPop(t.dataset.edit, t); }));
+}
+function openTagPop(id, anchor) {
+  const d = S.c.docs.find((x) => x.id === id), pop = $("#tagPop"), pane = $("#docPane").getBoundingClientRect(), r = anchor.getBoundingClientRect();
+  $("#tpType").innerHTML = TYPES.map((t) => `<option ${d.tag === t ? "selected" : ""}>${t}</option>`).join(""); $("#tpSrc").innerHTML = SRC_ORDER.map((t) => `<option ${d.src === t ? "selected" : ""}>${t}</option>`).join("");
+  pop.style.left = Math.max(8, Math.min(pane.width - 230, r.left - pane.left - 120)) + "px"; pop.style.top = (r.bottom - pane.top + 4) + "px"; pop.classList.add("on");
+  $("#tpCancel").onclick = () => pop.classList.remove("on");
+  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; renderDocs(); renderExtract(); renderIssues(); renderDraft(); persist(); openDoc(id); } pop.classList.remove("on"); };
 }
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
-  S.doc = id; S.zoom = 1;
+  S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on");
   $$("#docList .item").forEach((b) => { const on = b.dataset.doc === id; b.classList.toggle("on", on); if (on) { const g = b.closest(".items").previousElementSibling; if (g.classList.contains("closed")) { g.classList.remove("closed"); g.querySelector(".tri").textContent = "▾"; } b.scrollIntoView({ block: "nearest" }); } });
   $("#curDocName").textContent = d.stdName || d.title;
   const view = $("#docView"), tools = $("#docTools"); tools.innerHTML = "";
   const missing = `<div class="doc-missing">找不到卷宗包檔案：<span class="num">${esc(d.file || "")}</span><br>請自 repo 根目錄開啟 prototype/index.html。</div>`;
-  const head = d.origName ? `<div class="doc-meta num" style="margin-bottom:8px">原檔名：${esc(d.origName)}　→　標籤：${esc(d.stdName || "")}<span class="srct ${d.src}">${d.src}</span>${d.srcNote ? `<span class="note">　${esc(d.srcNote)}</span>` : ""}</div>` : "";
-  if (d.include === false) { view.innerHTML = `<div class="doc-missing"><b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>承辦人已標記「不納入分析」，未進三方對照與判定。</div>`; }
-  else if (d.kind === "text") { view.innerHTML = `<div class="doc-body">${head}${d.html}</div>`; if (d.file) { tools.innerHTML = `<button class="ghost-btn" id="rawBtn">原始 PDF</button>`; $("#rawBtn").addEventListener("click", () => { const on = $("#rawBtn").classList.toggle("on"); view.innerHTML = on ? `<iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH"></iframe>` : `<div class="doc-body">${head}${d.html}</div>`; if (!on) bindMarks(); }); } bindMarks(); }
-  else if (d.kind === "image") {
+  const head = `<div class="doc-meta num" style="margin-bottom:8px">${d.origName ? `原檔名：${esc(d.origName)}　→　` : ""}標籤：${esc(d.stdName || d.title)}<span class="srct ${d.src}">${d.src}</span>${d.srcNote ? `<span class="note">　${esc(d.srcNote)}</span>` : ""}${d.summary ? `<br><span class="note">Claude 判定：${esc(d.summary)}</span>` : ""}</div>`;
+  if (d.include === false) { view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "未納入分析。")}</div>`; }
+  else if (d.kind === "text") {
+    const mode = S.docMode[id] || (d.file ? "pdf" : "text");
+    const paint = () => { const m = S.docMode[id] || (d.file ? "pdf" : "text"); if (d.file) tools.innerHTML = `<button class="ghost-btn ${m === "pdf" ? "on" : ""}" data-m="pdf">原始 PDF</button><button class="ghost-btn ${m === "text" ? "on" : ""}" data-m="text">擷取文字</button>`; view.innerHTML = m === "pdf" ? `<div style="padding:10px 12px 0">${head}</div><iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>` : `<div class="doc-body">${head}${d.html}</div>`; if (m === "text") bindMarks(); $$("#docTools button").forEach((b) => b.addEventListener("click", () => { S.docMode[id] = b.dataset.m; paint(); })); };
+    S.docMode[id] = mode; paint();
+  } else if (d.kind === "image") {
+    if (!d.file) { view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b><br>${esc(d.note || "")}</div>`; }
+    else {
     tools.innerHTML = `<button class="ghost-btn" data-z="-">－</button><button class="ghost-btn" data-z="+">＋</button><button class="ghost-btn" data-z="0">重設</button>`;
-    view.innerHTML = `${head ? `<div style="padding:10px 12px 0">${head}</div>` : ""}<div class="doc-img" id="docImg"><div class="imgwrap"><img src="${d.file}" alt="${esc(d.title)}">${(d.boxes || []).map((b) => `<div class="box" data-ref="${b.ref}" style="left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%"><span class="lb">${esc(b.label)}</span></div>`).join("")}</div></div>`;
+    view.innerHTML = `<div style="padding:10px 12px 0">${head}</div><div class="doc-img" id="docImg"><div class="imgwrap"><img src="${d.file}" alt="${esc(d.title)}">${(d.boxes || []).map((b) => `<div class="box" data-ref="${b.ref}" style="left:${b.x}%;top:${b.y}%;width:${b.w}%;height:${b.h}%"><span class="lb">${esc(b.label)}</span></div>`).join("")}</div></div>`;
     $("#docImg img").addEventListener("error", () => { view.innerHTML = missing; });
     const fit = () => { $("#docImg").style.setProperty("--imgw", Math.round((view.clientWidth - 24) * S.zoom) + "px"); }; fit();
     $$("#docTools button").forEach((b) => b.addEventListener("click", () => { S.zoom = b.dataset.z === "0" ? 1 : Math.min(4, Math.max(.5, S.zoom + (b.dataset.z === "+" ? .4 : -.4))); fit(); }));
@@ -343,7 +285,8 @@ function openDoc(id, after) {
     let drag = null; const el = $("#docImg"); el.addEventListener("mousedown", (e) => { drag = { x: e.clientX, y: e.clientY, sl: view.scrollLeft, st: view.scrollTop }; el.classList.add("drag"); });
     window.addEventListener("mousemove", (e) => { if (!drag) return; view.scrollLeft = drag.sl - (e.clientX - drag.x); view.scrollTop = drag.st - (e.clientY - drag.y); }); window.addEventListener("mouseup", () => { drag = null; el.classList.remove("drag"); });
     $$(".box", view).forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); hitBox(b.dataset.ref); }));
-  } else if (d.kind === "pdf") { tools.innerHTML = `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">新分頁開啟</a>`; view.innerHTML = `${head ? `<div style="padding:10px 12px 0">${head}</div>` : ""}<iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>`; }
+    }
+  } else if (d.kind === "pdf") { tools.innerHTML = `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">新分頁開啟</a>`; view.innerHTML = `<div style="padding:10px 12px 0">${head}</div><iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>`; }
   else if (d.kind === "video") { view.innerHTML = `<div class="doc-video">${head}<video id="vid" controls preload="metadata" src="${d.file}"></video><div class="cues">${(d.cues || []).map((q) => `<button class="ghost-btn" data-t="${q[1]}">${q[2]}</button>`).join("")}</div><p class="note" style="margin-top:8px">來源：${esc(d.srcNote || "檢舉人行車紀錄器")}；時間戳 2025/06/27 12:40:08–19。</p></div>`; $$(".cues button", view).forEach((b) => b.addEventListener("click", () => seek(+b.dataset.t))); $("#vid").addEventListener("error", () => { view.innerHTML = missing; }); }
   else view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "")}</div>`;
   if (after) after();
@@ -353,10 +296,11 @@ function hitBox(ref) { $$("#docView .box").forEach((b) => b.classList.toggle("hi
 function seek(t) { const v = $("#vid"); if (!v) return; const go = () => { v.currentTime = t; v.pause(); }; if (v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true }); }
 function jumpTo(ref) {
   const r = S.c.refs[ref]; if (!r) return; const [docId, kind] = r;
+  if (kind === "mark") S.docMode[docId] = "text";
   const act = () => { if (kind === "mark") { $$("#docView mark").forEach((x) => x.classList.remove("hit", "hit-seal")); const m = $(`#docView mark[data-ref="${ref}"]`); if (m) { m.classList.add(/arg|served|receiver/.test(ref) ? "hit-seal" : "hit"); m.scrollIntoView({ block: "center", behavior: "smooth" }); } } else if (kind === "box") hitBox(ref); else if (kind === "time") { const d = S.c.docs.find((x) => x.id === docId); const cue = (d.cues || []).find((q) => q[0] === ref); if (cue) seek(cue[1]); } };
-  if (S.doc !== docId) openDoc(docId, () => setTimeout(act, 60)); else act();
+  if (S.doc !== docId || (kind === "mark" && !$("#docView mark"))) openDoc(docId, () => setTimeout(act, 60)); else act();
 }
-document.addEventListener("click", (e) => { const j = e.target.closest("[data-jump]"); if (j) { e.preventDefault(); jumpTo(j.dataset.jump); } });
+document.addEventListener("click", (e) => { const j = e.target.closest("[data-jump]"); if (j) { e.preventDefault(); jumpTo(j.dataset.jump); } if (!e.target.closest("#tagPop") && !e.target.closest(".tagbtn")) $("#tagPop")?.classList.remove("on"); });
 function srcOf(ref) { const r = S.c.refs[ref]; if (!r) return ""; const d = S.c.docs.find((x) => x.id === r[0]); return d ? d.src : ""; }
 const SJ = (ref, text) => ref ? `${J(ref, text)}<span class="srct ${srcOf(ref)}">${srcOf(ref)}</span>` : text;
 
@@ -390,18 +334,19 @@ function renderExtract() {
 
 /* ---------- Tab 2 ---------- */
 function renderIssues() {
-  const c = S.c, ro = !editable();
-  const st = (id, v) => S.stances[id] === v ? "on" : "";
+  const c = S.c, stN = { agency: "採機關", appellant: "採訴願人", open: "待議" };
   const verdictOf = (pid) => { const p = c.plans.find((x) => x.id === pid); return p ? p.verdict : "—"; };
-  $("#p1").innerHTML = `<div class="sec"><div class="sec-head"><h3>雙方癥結點</h3><span class="note">訴願人主張 ／ 機關答辯 ／ 卷證顯示 ／ 法律素材　表態與 AI 判定不同時，可於草稿頁提出異議</span></div>
-    ${c.issues.map((it, i) => { const ai = it.stance || "open"; const diff = S.stances[it.id] !== ai && S.stances[it.id] !== "open"; return `
+  $("#p1").innerHTML = `<div class="sec"><div class="sec-head"><h3>雙方癥結點</h3><span class="note">訴願人主張 ／ 機關答辯 ／ 卷證顯示 ／ AI 認定與依據　不同意請點「對此有異議」</span></div>
+    ${c.issues.map((it, i) => { const ai = it.stance || "open"; const cur = S.stances[it.id] || ai; const obj = S.objections.find((o) => o.issueId === it.id && o.result !== "reject"); return `
       <div class="issue" id="iss-${it.id}"><div class="issue-head"><span class="n">爭點 ${i + 1}</span><h3>${esc(it.title)}</h3>
-        <div class="stance"><label class="${st(it.id, "appellant")}"><input type="radio" name="st-${it.id}" value="appellant" ${S.stances[it.id] === "appellant" ? "checked" : ""} ${ro ? "disabled" : ""}>採訴願人</label><label class="${st(it.id, "agency")}"><input type="radio" name="st-${it.id}" value="agency" ${S.stances[it.id] === "agency" ? "checked" : ""} ${ro ? "disabled" : ""}>採機關</label><label class="${st(it.id, "open")}"><input type="radio" name="st-${it.id}" value="open" ${S.stances[it.id] === "open" ? "checked" : ""} ${ro ? "disabled" : ""}>待議</label></div></div>
+        ${obj ? `<span class="ailab obj">異議後：${stN[cur]}</span><span class="note">原 AI 認定：${stN[ai]}</span>` : `<span class="ailab">AI 認定：${stN[ai]}</span>`}
+        ${editable() ? `<span class="objlink" data-obj="${it.id}">對此有異議</span>` : ""}</div>
         <div class="issue-grid"><div><div class="lab">訴願人主張</div>${J(it.a[1], esc(it.a[0]))}</div><div><div class="lab">機關答辯</div>${J(it.d[1], esc(it.d[0]))}</div><div><div class="lab">卷證顯示</div><div class="ev">${it.e.map((e) => e[1] ? `<span class="tag accent jump" data-jump="${e[1]}">${esc(e[0])}<span class="srct ${srcOf(e[1])}">${srcOf(e[1])}</span></span>` : `<span class="tag neutral">${esc(e[0])}</span>`).join("")}</div></div></div>
+        <div class="basis"><b>依據</b>${esc(it.ai || "")}</div>
         <div class="issue-foot"><span class="lab" style="font-size:10.5px;color:var(--ink-3)">法律素材</span>${it.law.map((l) => `<span>${esc(l)}</span>`).join("")}</div>
-        <div class="lead"><span class="ai">AI 採${ai === "agency" ? "機關" : ai === "appellant" ? "訴願人" : "待議"} → 結論：${esc(verdictOf(c.judge))}</span><span>採機關 → ${esc(verdictOf(it.lead.agency[0]))}</span><span>採訴願人 → ${esc(verdictOf(it.lead.appellant[0]))}</span>${diff ? `<span class="diff">⚠ 您的表態與 AI 判定不同，建議於草稿頁提出異議</span>` : ""}</div></div>`; }).join("")}</div>
-    <p class="foot-note">爭點由三方對照之衝突列與答辯書逐點回應段落配對產生。表態不會直接改寫草稿；不同意 AI 判定請於草稿頁「我有異議」說明理由，AI 將重新引證。</p>`;
-  if (!ro) $$("#p1 input[type=radio]").forEach((r) => r.addEventListener("change", () => { const id = r.name.slice(3); S.stances[id] = r.value; S.audit.push({ ts: now(), who: "hu", para: "爭點 " + id, action: `表態：${{ appellant: "採訴願人", agency: "採機關", open: "待議" }[r.value]}` }); renderIssues(); renderDraft(); updateChips(); persist(); $$(".tab")[1].click(); $("#iss-" + id)?.scrollIntoView({ block: "center" }); }));
+        <div class="lead"><span class="ai">→ 結論：${esc(verdictOf(obj && obj.plan ? obj.plan : c.judge))}</span><span class="note">採機關 → ${esc(verdictOf(it.lead.agency[0]))}　採訴願人 → ${esc(verdictOf(it.lead.appellant[0]))}</span></div></div>`; }).join("")}</div>
+    <p class="foot-note">爭點由三方對照之衝突列與答辯書逐點回應段落配對產生；AI 認定僅附一句依據，不附信心度。承辦人的立場只透過「異議」表達：AI 重新引證後回覆採納／部分採納／無法採納。</p>`;
+  $$("#p1 .objlink").forEach((l) => l.addEventListener("click", () => openObjection(l.dataset.obj)));
 }
 
 /* ---------- Tab 3／4 ---------- */
@@ -417,53 +362,50 @@ function renderSims() {
     <div class="sec"><div class="sec-head"><h3>相似案例之決定結果分布</h3></div><div class="dist">${c.simDist.filter((d) => d[1] > 0).map((d) => `<div style="background:${d[2]};width:${d[1] / total * 100}%">${d[1]}</div>`).join("")}</div><div class="dist-key">${c.simDist.map((d) => `<span><i style="background:${d[2]}"></i>${d[0]} ${d[1]} 件</span>`).join("")}</div></div>`;
 }
 
-/* ---------- Tab 5：AI 判定、異議、草稿、生命週期 ---------- */
+/* ---------- Tab 5：判定列＋紙張文件＋紀錄 ---------- */
 function paraLabel(p) { if (!p) return "全文"; if (p.kind === "h4") return p.text; if (p.kind === "meta") return "當事人欄"; const m = /^([一二三四五六七八九十]+)、/.exec(plain(p.text)); const sect = p.id.startsWith("r") ? "理由" : p.id.startsWith("fact") ? "事實" : p.id === "main" ? "主文" : "前言"; return m ? `${sect}${m[1]}` : sect; }
 function refTitle(r) { const x = S.c.refs[r]; if (!x) return r; const d = S.c.docs.find((y) => y.id === x[0]); return d ? (d.stdName || d.title) : r; }
 function renderDraft() {
   const c = S.c, jp = judgePlan(), cp = currentPlan(), d = draftFor(S.plan), ro = !editable();
-  const stN = { agency: "採機關", appellant: "採訴願人", open: "待議" };
-  const mm = mismatch();
-  const judge = `<div class="judge"><div class="judge-head"><h3>AI 判定：${esc(jp.verdict)}</h3><span class="art">${esc(jp.art)}</span>${S.plan !== jp.id && S.plan ? tag("amber", `異議後改為：${esc(cp.verdict)}`) : ""}<span class="art" style="margin-left:auto">撤銷風險：${{ low: "低", mid: "中", high: "高" }[cp.risk[0]]}</span></div>
-    <div class="judge-body">${esc(cp.risk[1])}<div class="row">${c.issues.map((it, i) => `<span class="tag ${(it.stance || "open") === "agency" ? "amber" : (it.stance || "open") === "appellant" ? "accent" : "neutral"}">爭點 ${i + 1}：AI ${stN[it.stance || "open"]}</span>`).join("")}${cp.basis.slice(0, 3).map((b) => `<span class="tag neutral">${esc(b)}</span>`).join("")}</div>${mm.length ? `<div style="margin-top:8px;color:var(--seal);font-size:12.5px">⚠ 有 ${mm.length} 個爭點您的表態與 AI 判定不同（${mm.map((x) => x.id).join("、")}），建議提出異議讓 AI 重新引證。</div>` : ""}</div>
-    <div class="judge-foot">${S.status === "承辦中" ? `<button class="ghost-btn" id="objBtn">我有異議</button><button class="btn" id="submitBtn">送委員會審議</button>` : S.status === "已送審" ? `<button class="btn" id="closeBtn">登錄委員會結論並結案</button><span class="note">草稿已定稿送審，等待委員會結論</span>` : `<button class="ghost-btn" id="courtBtn">登錄法院結果</button><button class="ghost-btn" id="forkBtn">另存為新草稿</button>`}<span class="hint">${S.status === "承辦中" ? "同意判定則直接送審；不同意請提出異議" : ""}</span></div></div>`;
-  const objlog = S.objections.map((o, i) => `<div class="objlog"><b>異議 ${i + 1}</b>　${esc(o.issue)}　<span class="note">${o.ts}</span><div style="margin:4px 0">承辦人：${esc(o.text)}${o.ev.length ? `　<span class="note">引用：${o.ev.map((r) => J(r, refTitle(r))).join("、")}</span>` : ""}</div><div>AI：<b class="${o.result === "accept" ? "a" : o.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[o.result]}</b>　${esc(o.reply)}${o.evidence.length ? `<span class="note">　重新檢視：${o.evidence.map((r) => J(r, refTitle(r) + " ↗")).join("、")}</span>` : ""}</div>${o.diff ? `<details style="margin-top:6px"><summary class="note" style="cursor:pointer">與前版差異（${o.diff.length} 段）</summary>${o.diff.map((x) => `<div style="margin-top:6px"><b>${esc(x.label)}</b><div class="diffbox">${x.html}</div></div>`).join("")}</details>` : ""}</div>`).join("");
-  const body = S.paras.map((q) => { if (q.kind === "h4") return `<h4>${q.text}</h4>`; const cite = (q.cite || (q.refs && q.refs.length)) ? `<span class="cite">${q.refs && q.refs.length ? q.refs.map((r) => `<span class="jump" data-jump="${r}">↗ ${esc(refTitle(r))}<span class="srct ${srcOf(r)}">${srcOf(r)}</span></span>`).join("") : ""}${q.cite ? esc(q.cite) : ""}</span>` : ""; return `<p class="para" data-pid="${q.id}" data-src="${q.src}" contenteditable="${ro ? "false" : "true"}" spellcheck="false">${fillDates(q.text)}</p>${cite}`; }).join("");
-  const fills = (S.paras.map((q) => q.text).join("").match(/class=\\?"fill/g) || []).length;
-  const finalDiff = S.finalDiff ? `<div class="sec"><div class="sec-head"><h3>AI 草稿 vs 最終決定（委員會修改處）</h3><span class="note">${S.finalDiff.length ? S.finalDiff.length + " 段有差異" : "委員會未修改"}</span></div><div class="box2" style="padding:12px 14px">${S.finalDiff.length ? S.finalDiff.map((x) => `<div style="margin-bottom:10px"><b>${esc(x.label)}</b><div class="diffbox">${x.html}</div></div>`).join("") : '<span class="note">最終決定與 AI 草稿一致。</span>'}<p class="note" style="margin:8px 0 0">此差異隨結案歸檔進案件庫，作為草稿模型之回饋資料。</p></div></div>` : "";
-  const life = ["承辦中", "已送審", "已結案"]; const li = life.indexOf(S.status);
-  $("#p4").innerHTML = `${judge}${objlog}
-    <div class="sec"><div class="sec-head"><h3>決定書草稿</h3><span class="note">套用「${esc(d.tmpl)}」模板　${ro ? "・唯讀" : "・直接點段落即可編輯"}</span></div><div class="box2">
-      <div class="draft-bar"><button class="btn" id="exportOdf">匯出 ODF 公文格式</button><button class="ghost-btn" id="copyAll">複製全文</button><button class="ghost-btn" id="exportCmp">匯出比較表</button><span class="tag amber">黃底待人工確認 ${fills} 處</span><div class="legend"><span><i style="background:var(--accent-soft)"></i>AI 生成</span><span><i style="background:var(--green)"></i>人工編輯</span><span><i style="background:var(--accent)"></i>異議後重產</span><span><i style="background:var(--amber-soft);border-bottom:1px dashed var(--amber)"></i>待確認</span></div></div>
-      <div class="draft ${ro ? "ro" : ""}" id="draftBody"><div class="draft-title">${esc(d.head)}</div><div class="draft-sub">${esc(d.sub)}</div>${body}<p style="color:var(--ink-3);font-size:12px;margin-top:20px">（訴願審議委員會委員名單、教示條款及發文日期由公文系統自動帶入）</p></div>
-      <div class="lifecycle" style="border-top:1px solid var(--line)"><div class="steps2">${life.map((s, i) => `<span class="${i < li ? "done" : i === li ? "on" : ""}">${s}</span>${i < 2 ? "→" : ""}`).join("")}${S.court ? `→<span class="on">法院：${esc(S.court.res)}</span>` : ""}</div>${S.final ? `<span class="note">最終決定：${esc(S.final.verdict)}　${esc(S.final.date)}　${esc(S.final.no)}　${J("doc-final", "開啟 ↗")}</span>` : ""}</div></div></div>
-    ${finalDiff}
-    <div class="sec"><div class="sec-head"><h3>版本歷史與稽核軌跡</h3><span class="note">每段記錄生成來源、修改者、時間；歸戶標籤修正亦在此</span></div><div class="hist"><div class="box2"><div class="chat-head"><span class="eyebrow">版本</span><span id="vcount"></span></div><div id="vlist"></div></div><div class="box2"><div class="chat-head"><span class="eyebrow">稽核軌跡</span></div><div id="alist" style="max-height:280px;overflow-y:auto"></div></div></div></div>
-    <div class="sec"><div class="sec-head"><h3>本案效益</h3></div><div class="box2 gain">${c.gain.map((g) => `<div><span class="v ${g[2]}">${esc(g[0])}</span><span class="k">${esc(g[1])}</span></div>`).join("")}</div></div>
-    <p class="foot-note">草稿僅供承辦人參考，一切法律見解與事實認定仍以承辦人及訴願審議委員會之判斷為準。系統不會自動送出任何決定書；黃底標示處必須由承辦人補實後始得送審。</p>`;
-  if (!ro) $$("#draftBody .para").forEach((el) => { el.addEventListener("input", () => { const q = S.paras.find((x) => x.id === el.dataset.pid); q.text = el.innerHTML; q.src = "human"; el.dataset.src = "human"; el.dirty = true; }); el.addEventListener("blur", () => { if (!el.dirty) return; el.dirty = false; const q = S.paras.find((x) => x.id === el.dataset.pid); S.audit.push({ ts: now(), who: "hu", para: paraLabel(q), action: "人工直接編輯" }); S.versions.push({ ts: now(), label: `人工編輯 ${paraLabel(q)}`, by: "承辦人", snap: S.paras.map((x) => ({ ...x })) }); renderHist(); persist(); }); });
-  $("#copyAll").addEventListener("click", () => { navigator.clipboard?.writeText($("#draftBody").innerText); asstSay("已複製全文至剪貼簿。"); });
+  const RISK = { low: "低", mid: "中", high: "高" };
+  const acts = S.status === "承辦中" ? `<button class="ghost-btn" id="objBtn">我有異議</button><button class="btn" id="submitBtn">送委員會審議</button>` : S.status === "已送審" ? `<button class="btn" id="closeBtn">登錄委員會結論並結案</button>` : `<button class="ghost-btn" id="courtBtn">登錄法院結果</button><button class="ghost-btn" id="forkBtn">另存為新草稿</button>`;
+  const life = ["承辦中", "已送審", "已結案"], li = life.indexOf(S.status);
+  const body = S.paras.map((q) => { if (q.kind === "h4") return `<h4>${q.text}</h4>`; if (q.kind === "meta") return `<div class="meta">${fillDates(q.text)}</div>`; const tools = `<span class="tools" contenteditable="false">${(q.refs || []).map((r) => `<span class="jump" data-jump="${r}">↗ ${esc(refTitle(r))}</span>`).join("")}${q.cite ? `<span title="${esc(q.cite)}">來源</span>` : ""}${ro ? "" : "<span>點擊編輯</span>"}</span>`; return `<p class="para" data-pid="${q.id}" data-src="${q.src}" contenteditable="${ro ? "false" : "true"}" spellcheck="false">${fillDates(q.text)}${tools}</p>`; }).join("");
+  $("#p4").innerHTML = `
+    <div class="jbar"><span class="jv">AI 判定：${esc(jp.verdict)}</span><span class="jart">${esc(jp.art)}</span>${S.plan && S.plan !== jp.id ? tag("amber", `異議後改為：${esc(cp.verdict)}`) : ""}<span class="jrisk">撤銷風險：${RISK[cp.risk[0]]}　異議 ${S.objections.length} 次</span>
+      <div class="acts">${acts}<div class="more"><button class="ghost-btn" id="moreBtn">⋯</button><div class="menu" id="moreMenu"><button id="exportOdf">匯出 ODF 公文格式</button><button id="copyAll">複製全文</button><button id="exportCmp">匯出比較表</button></div></div></div></div>
+    <div class="lifeline">${life.map((s, i) => `<span class="${i < li ? "done" : i === li ? "on" : ""}">${s}</span>${i < 2 ? "→" : ""}`).join("")}${S.court ? `→<span class="on">法院：${esc(S.court.res)}</span>` : ""}${S.final ? `<span class="fin note">最終決定：${esc(S.final.verdict)}　${esc(S.final.date)}　${J("doc-final", "開啟 ↗")}</span>` : `<span class="fin note">${esc(cp.risk[1])}</span>`}</div>
+    <div class="paper ${ro ? "ro" : ""}" id="draftBody"><div class="pt">${esc(d.head)}</div><div class="ps">${esc(d.sub)}${ro ? "　・唯讀" : ""}</div>${body}<div class="tail">（訴願審議委員會委員名單、教示條款及發文日期由公文系統自動帶入）</div></div>
+    <details class="recs" id="recs"><summary>紀錄　<span class="note">異議 ${S.objections.length}・版本 ${S.versions.length}・稽核 ${S.audit.length}${S.finalDiff ? "・委員會修改 " + S.finalDiff.length : ""}</span></summary>
+      <div class="rtabs"><button class="on" data-r="obj">異議</button><button data-r="ver">版本</button><button data-r="aud">稽核</button>${S.finalDiff ? `<button data-r="fin">委員會修改</button>` : ""}</div>
+      <div class="rpage on" id="r-obj"></div><div class="rpage" id="r-ver"></div><div class="rpage" id="r-aud"></div>${S.finalDiff ? `<div class="rpage" id="r-fin"></div>` : ""}</details>
+    <p class="foot-note" style="max-width:820px;margin:16px auto 0">草稿僅供承辦人參考，一切法律見解與事實認定仍以承辦人及訴願審議委員會之判斷為準。黃底標示處必須由承辦人補實後始得送審。</p>`;
+  $("#moreBtn").addEventListener("click", (e) => { e.stopPropagation(); $("#moreMenu").classList.toggle("on"); }); document.addEventListener("click", () => $("#moreMenu")?.classList.remove("on"), { once: true });
+  if (!ro) $$("#draftBody .para").forEach((el) => { el.addEventListener("input", () => { const q = S.paras.find((x) => x.id === el.dataset.pid); const clone = el.cloneNode(true); clone.querySelector(".tools")?.remove(); q.text = clone.innerHTML; q.src = "human"; el.dataset.src = "human"; el.dirty = true; }); el.addEventListener("blur", () => { if (!el.dirty) return; el.dirty = false; const q = S.paras.find((x) => x.id === el.dataset.pid); S.audit.push({ ts: now(), who: "hu", para: paraLabel(q), action: "人工直接編輯" }); S.versions.push({ ts: now(), label: `人工編輯 ${paraLabel(q)}`, by: "承辦人", snap: S.paras.map((x) => ({ ...x })) }); renderHist(); persist(); }); });
+  $("#copyAll").addEventListener("click", () => { const clone = $("#draftBody").cloneNode(true); $$(".tools", clone).forEach((t) => t.remove()); navigator.clipboard?.writeText(clone.innerText); asstSay("已複製全文至剪貼簿。"); });
   $("#exportOdf").addEventListener("click", () => asstSay("原型未串接公文系統；正式版將以 ODF 範本輸出並帶入委員名單與教示條款。"));
   $("#exportCmp").addEventListener("click", exportCompare);
-  $("#objBtn")?.addEventListener("click", openObjection);
+  $("#objBtn")?.addEventListener("click", () => openObjection());
   $("#submitBtn")?.addEventListener("click", () => { if (!confirm("定稿並送訴願審議委員會審議？送審後草稿將唯讀。")) return; S.status = "已送審"; pushVersion("定稿送審", "承辦人"); S.audit.push({ ts: now(), who: "hu", para: "案件", action: "送委員會審議" }); recompute(); renderIssues(); $$(".tab")[4].click(); });
   $("#closeBtn")?.addEventListener("click", openClose);
   $("#courtBtn")?.addEventListener("click", () => $("#courtModal").classList.add("on"));
   $("#forkBtn")?.addEventListener("click", () => { const c2 = structuredClone(S.c); c2.docs = c2.docs.filter((x) => x.id !== "final"); delete c2.refs["doc-final"]; const src = S.libId, paras = S.paras.map((x) => ({ ...x, src: "ai" })); Object.assign(S, { libId: `${c2.id}-${Date.now().toString(36)}`, status: "承辦中", paras, versions: [], audit: [], objections: [], final: null, court: null, finalDiff: null }); pushVersion(`自已結案案件 ${src} 另存為新草稿`, "承辦人"); runCase(c2, true); persist(); renderLibCard(); });
+  $$("#recs .rtabs button").forEach((b) => b.addEventListener("click", () => { $$("#recs .rtabs button").forEach((x) => x.classList.toggle("on", x === b)); $$("#recs .rpage").forEach((p) => p.classList.toggle("on", p.id === "r-" + b.dataset.r)); }));
   renderHist();
 }
 function renderHist() {
-  $("#vcount").textContent = `${S.versions.length} 版`;
-  $("#vlist").innerHTML = S.versions.map((v, i) => `<div class="vrow ${i === S.versions.length - 1 ? "cur" : ""}"><span class="t">v${i + 1}・${v.ts}</span><span>${esc(v.label)}<span class="note">　${esc(v.by)}</span></span><button class="ghost-btn" data-v="${i}" data-a="diff">與現行比對</button><button class="ghost-btn" data-v="${i}" data-a="restore" ${i === S.versions.length - 1 || !editable() ? "disabled" : ""}>還原</button></div>`).reverse().join("");
-  $("#alist").innerHTML = S.audit.slice().reverse().map((a) => `<div class="arow"><span class="t">${a.ts}</span><span class="who ${a.who}">${a.who === "ai" ? "AI" : "承辦人"}</span><span>${esc(a.para)}：${esc(a.action)}</span></div>`).join("");
-  $$("#vlist button").forEach((b) => b.addEventListener("click", () => { const v = S.versions[+b.dataset.v]; if (b.dataset.a === "restore") { S.paras = v.snap.map((x) => ({ ...x })); S.versions.push({ ts: now(), label: `還原至 v${+b.dataset.v + 1}`, by: "承辦人", snap: S.paras.map((x) => ({ ...x })) }); S.audit.push({ ts: now(), who: "hu", para: "全文", action: `還原至 v${+b.dataset.v + 1}` }); renderDraft(); persist(); return; } const changed = diffParas(v.snap, S.paras); asstOpen(); asstAdd("a", `<b>v${+b.dataset.v + 1} → 現行</b>　${changed.length ? changed.length + " 段有差異" : "無差異"}${changed.map((x) => `<div style="margin-top:6px"><b>${esc(x.label)}</b><div class="diffbox">${x.html}</div></div>`).join("")}`); }));
+  $("#r-obj").innerHTML = S.objections.length ? S.objections.map((o, i) => `<div class="objlog"><b>異議 ${i + 1}</b>　${esc(o.issue)}　<span class="note">${o.ts}</span><div style="margin:4px 0">承辦人：${esc(o.text)}${o.ev.length ? `　<span class="note">引用：${o.ev.map((r) => J(r, refTitle(r))).join("、")}</span>` : ""}</div><div>AI：<b class="${o.result === "accept" ? "a" : o.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[o.result]}</b>　${esc(o.reply)}${o.evidence.length ? `<span class="note">　重新檢視：${o.evidence.map((r) => J(r, refTitle(r) + " ↗")).join("、")}</span>` : ""}</div>${o.diff ? `<details style="margin-top:6px"><summary class="note" style="cursor:pointer">與前版差異（${o.diff.length} 段）</summary>${o.diff.map((x) => `<div style="margin-top:6px"><b>${esc(x.label)}</b><div class="diffbox">${x.html}</div></div>`).join("")}</details>` : ""}</div>`).join("") : `<div class="objlog note">尚無異議。不同意 AI 判定時，按判定列的「我有異議」或爭點分頁的「對此有異議」。</div>`;
+  $("#r-ver").innerHTML = S.versions.map((v, i) => `<div class="vrow ${i === S.versions.length - 1 ? "cur" : ""}"><span class="t">v${i + 1}・${v.ts}</span><span>${esc(v.label)}<span class="note">　${esc(v.by)}</span></span><button class="ghost-btn" data-v="${i}" data-a="diff">與現行比對</button><button class="ghost-btn" data-v="${i}" data-a="restore" ${i === S.versions.length - 1 || !editable() ? "disabled" : ""}>還原</button></div>`).reverse().join("");
+  $("#r-aud").innerHTML = S.audit.slice().reverse().map((a) => `<div class="arow"><span class="t">${a.ts}</span><span class="who ${a.who}">${a.who === "ai" ? "AI" : "承辦人"}</span><span>${esc(a.para)}：${esc(a.action)}</span></div>`).join("");
+  if (S.finalDiff && $("#r-fin")) $("#r-fin").innerHTML = `<div style="padding:10px 14px">${S.finalDiff.length ? S.finalDiff.map((x) => `<div style="margin-bottom:10px"><b>${esc(x.label)}</b><div class="diffbox">${x.html}</div></div>`).join("") : '<span class="note">最終決定與 AI 草稿一致。</span>'}<p class="note" style="margin:8px 0 0">此差異隨結案歸檔進案件庫，作為草稿模型之回饋資料。</p></div>`;
+  $$("#r-ver button").forEach((b) => b.addEventListener("click", () => { const v = S.versions[+b.dataset.v]; if (b.dataset.a === "restore") { S.paras = v.snap.map((x) => ({ ...x })); S.versions.push({ ts: now(), label: `還原至 v${+b.dataset.v + 1}`, by: "承辦人", snap: S.paras.map((x) => ({ ...x })) }); S.audit.push({ ts: now(), who: "hu", para: "全文", action: `還原至 v${+b.dataset.v + 1}` }); renderDraft(); $("#recs").open = true; persist(); return; } const changed = diffParas(v.snap, S.paras); asstOpen(); asstAdd("a", `<b>v${+b.dataset.v + 1} → 現行</b>　${changed.length ? changed.length + " 段有差異" : "無差異"}${changed.map((x) => `<div style="margin-top:6px"><b>${esc(x.label)}</b><div class="diffbox">${x.html}</div></div>`).join("")}`); }));
 }
 function diffParas(oldP, newP) { const out = []; oldP.forEach((q) => { if (q.kind === "h4") return; const cur = newP.find((x) => x.id === q.id); if (!cur) out.push({ label: paraLabel(q), html: `<del>${esc(plain(q.text))}</del>` }); else if (plain(cur.text) !== plain(q.text)) out.push({ label: paraLabel(q), html: diffHtml(plain(q.text), plain(cur.text)) }); }); newP.forEach((q) => { if (q.kind !== "h4" && !oldP.some((x) => x.id === q.id)) out.push({ label: paraLabel(q), html: `<ins>${esc(plain(q.text))}</ins>` }); }); return out; }
 
 /* ---------- 異議 ---------- */
-function openObjection() {
+function openObjection(preId) {
   const c = S.c;
-  $("#objIssue").innerHTML = c.issues.map((it, i) => `<option value="${it.id}">爭點 ${i + 1}：${esc(it.title)}</option>`).join("") + `<option value="other">其他（未列爭點）</option>`;
+  $("#objIssue").innerHTML = c.issues.map((it, i) => `<option value="${it.id}" ${preId === it.id ? "selected" : ""}>爭點 ${i + 1}：${esc(it.title)}</option>`).join("") + `<option value="other" ${preId === "other" ? "selected" : ""}>其他（未列爭點）</option>`;
   $("#objText").value = "";
   const fillEv = () => { const it = c.issues.find((x) => x.id === $("#objIssue").value); const evs = it ? it.e.filter((e) => e[1]) : []; $("#objEv").innerHTML = evs.length ? evs.map((e) => `<label><input type="checkbox" value="${e[1]}">${esc(e[0])}</label>`).join("") : '<span class="note">此項無可勾選之卷證</span>'; $$("#objEv input").forEach((cb) => cb.addEventListener("change", () => cb.parentElement.classList.toggle("on", cb.checked))); };
   $("#objIssue").onchange = fillEv; fillEv();
@@ -482,7 +424,7 @@ $("#objSend").addEventListener("click", () => {
     if (it) S.stances[it.id] = "appellant";
   }
   S.audit.push({ ts: now(), who: "ai", para: label, action: `${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[rule.result]}：${rule.reply.slice(0, 40)}…` });
-  S.objections.push(o); $("#objModal").classList.remove("on"); renderIssues(); renderDraft(); updateChips(); persist(); $$(".tab")[4].click(); window.scrollTo(0, 0);
+  S.objections.push(o); $("#objModal").classList.remove("on"); renderIssues(); renderDraft(); updateChips(); persist(); $$(".tab")[4].click(); const rc = $("#recs"); if (rc) rc.open = true; $("#panel").scrollTop = 0;
 });
 function exportCompare() {
   const c = S.c, jp = judgePlan(), cp = currentPlan(), stN = { appellant: "採訴願人", agency: "採機關", open: "待議" };
