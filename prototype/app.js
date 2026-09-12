@@ -17,7 +17,7 @@ const J = (ref, text) => ref ? `<span class="jump" data-jump="${ref}">${text}</s
 const plain = (h) => String(h ?? "").replace(/<[^>]+>/g, "");
 const PN = { A: "甲", B: "乙", C: "丙", X: "甲" };
 /* 修正歸戶下拉用；與後端 doc_type 封閉清單一致（server/schemas/enums.json） */
-const TYPES = ["訴願書", "訴願委任書", "答辯書", "答辯書檢送函", "卷證目錄", "裁處書", "裁處書送達證書", "陳述意見通知書", "通知書送達證書", "陳述意見書", "檢舉資料", "稽查紀錄", "調查筆錄", "採證照片", "影像放大標註", "採證影片", "車籍資料", "係數計算表", "簽呈", "檢驗報告", "契約書", "委員會決定書", "閱覽卷宗申請書", "言詞辯論申請書", "言詞陳述申請書", "參加訴願申請書", "其他"];
+const TYPES = ["訴願書", "訴願委任書", "補充理由書", "答辯書", "答辯書檢送函", "卷證目錄", "裁處書", "裁處書送達證書", "陳述意見通知書", "通知書送達證書", "陳述意見書", "檢舉資料", "稽查紀錄", "調查筆錄", "採證照片", "影像放大標註", "採證影片", "車籍資料", "係數計算表", "簽呈", "檢驗報告", "契約書", "委員會決定書", "閱覽卷宗申請書", "言詞辯論申請書", "言詞陳述申請書", "參加訴願申請書", "其他"];
 
 /* ---------- 全域狀態 ---------- */
 const S = { c: null, live: false, libId: null, status: "承辦中", served: null, recv: null, stances: {}, plan: null, paras: [], versions: [], audit: [], objections: [], doc: null, zoom: 1, final: null, court: null, finalDiff: null, labels: [] };
@@ -265,24 +265,23 @@ function renderDocs() {
       : `${d.pages || 1} 頁・${KIND[d.kind] || ""}`;
     const badge = d.err ? `<span class="tag err" style="font-size:10px">讀取失敗</span>`
       : d.pending ? `<span class="tag amber" style="font-size:10px">辨識中…</span>`
-      : d.staged ? `<span class="tag ${DOCTAG[d.tag] || "neutral"} tagbtn" data-edit="${d.id}" style="font-size:10px">${esc(d.tag)} ✎</span><span class="tag amber restage" data-restage="${d.id}" style="font-size:10px;cursor:pointer">待併入・提出</span>`
+      : d.staged ? `<span class="tag amber" style="font-size:10px">待匯入</span>`
       : d.dup ? `<span class="tag neutral" style="font-size:10px">重複</span>`
       : d.container ? `<span class="tag neutral" style="font-size:10px">壓縮檔</span>`
-      : `<span class="tag ${DOCTAG[d.tag] || "neutral"} tagbtn" data-edit="${d.id}" title="修正類型／來源" style="font-size:10px">${esc(d.tag)} ✎</span>`;
+      : `${d.imported ? `<span class="tag green" style="font-size:10px" title="補件匯入 ${d.imported}">新</span>` : ""}<span class="tag ${DOCTAG[d.tag] || "neutral"} tagbtn" data-edit="${d.id}" title="修正類型／來源" style="font-size:10px">${esc(d.tag)} ✎</span>`;
     return `<div class="item ${d.include === false ? "skip" : ""} ${bad}" data-doc="${d.id}" title="${esc(d.origName ? "原檔名：" + d.origName : d.title)}"><i></i><span class="t">${esc(d.stdName || d.title)}</span><span class="m">${meta}</span>${badge}<span class="sum">${esc(d.summary || "")}</span></div>`;
   }).join("")}</div>`).join("");
   $$("#docList .grp").forEach((g) => g.addEventListener("click", () => { g.classList.toggle("closed"); g.querySelector(".tri").textContent = g.classList.contains("closed") ? "▸" : "▾"; }));
   $$("#docList .item").forEach((b) => b.addEventListener("click", () => openDoc(b.dataset.doc)));
   $$("#docList .tagbtn").forEach((t) => t.addEventListener("click", (e) => { e.stopPropagation(); openTagPop(t.dataset.edit, t); }));
-  $$("#docList .restage").forEach((t) => t.addEventListener("click", (e) => { e.stopPropagation(); proposeSupplement(); }));
-  $("#addBtn").disabled = S.status !== "承辦中"; $("#addDemo").style.display = c.supplement && !c.supplementApplied && !c.docs.some((d) => d.staged || d.pending) && S.status === "承辦中" ? "" : "none";
+  $("#addBtn").disabled = S.status !== "承辦中"; $("#addDemo").style.display = c.supplement && !c.docs.some((d) => d.staged || d.pending || d.imported) && S.status === "承辦中" ? "" : "none";
 }
 function openTagPop(id, anchor) {
   const d = S.c.docs.find((x) => x.id === id), pop = $("#tagPop"), pane = $("#docPane").getBoundingClientRect(), r = anchor.getBoundingClientRect();
   $("#tpType").innerHTML = TYPES.map((t) => `<option ${d.tag === t ? "selected" : ""}>${t}</option>`).join(""); $("#tpSrc").innerHTML = SRC_ORDER.map((t) => `<option ${d.src === t ? "selected" : ""}>${t}</option>`).join("");
   pop.style.left = Math.max(8, Math.min(pane.width - 230, r.left - pane.left - 120)) + "px"; pop.style.top = (r.bottom - pane.top + 4) + "px"; pop.classList.add("on");
   $("#tpCancel").onclick = () => pop.classList.remove("on");
-  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; if (d.staged) { d.unknown = false; d.summary = `承辦人指定：${t}（${sr}）`; } renderDocs(); renderExtract(); renderIssues(); renderDraft(); persist(); openDoc(id); if (d.staged) proposeSupplement(); } pop.classList.remove("on"); };
+  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; renderDocs(); renderExtract(); renderIssues(); renderDraft(); persist(); openDoc(id); } pop.classList.remove("on"); };
 }
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
@@ -521,15 +520,17 @@ function asstSay(t) { asstOpen(); asstAdd("a", esc(t)); }
 function asstReset() { $("#asstLog").innerHTML = ""; asstAdd("a", `我是本案助手。<b>問</b>：資料在哪份文件、法條原文、爭點、期間。<b>改</b>：直接說要改什麼，我會先畫出修改後的樣子，您按「確認執行」才會更新。`); asstSuggest(); }
 /* 建議句由本案狀態＋目前分頁即時產生（規則，零模型呼叫）；正式版可再加一次便宜的模型呼叫補充 */
 function asstSuggest() {
-  const c = S.c; if (!c) return; const tab = +($(".tab.on")?.dataset.t || 0), cp = currentPlan(), can = S.status === "承辦中", out = [];
-  const stN = { agency: "採機關", appellant: "採訴願人", open: "待議" }, other = (s) => s === "appellant" ? "採機關" : "採訴願人";
-  const conflict = c.fields.find((f) => f.conflict), pend = pendingCites(), altPlan = c.plans.find((p) => p.id !== cp.id && p.id !== "X"), r2 = S.paras.find((p) => /^理由/.test(paraLabel(p)) && p.kind !== "h4");
-  if (tab === 0) { out.push(`送達日在哪份文件？`, `期間有沒有逾期？`); if (conflict && can) out.push(`送達日改 ${(/(\d{3}-\d{2}-\d{2})/.exec(conflict.a[0]) || [])[1] || "114-09-16"}`); if (can) out.push(`應依 77(2) 逾期不受理`); }
-  else if (tab === 1) { c.issues.slice(0, 2).forEach((it, i) => { out.push(`爭點 ${i + 1} 的卷證在哪？`); if (can) out.push(`爭點 ${i + 1} 改${other(S.stances[it.id] || it.stance)}`); }); }
-  else if (tab === 2) { const l = c.laws.find((x) => /行政罰法|訴願法/.test(x.n)) || c.laws[0]; if (l) out.push(l.n.replace(/ /g, "")); pend.slice(0, 1).forEach((x) => out.push(`${x.n.replace(/（.*$/, "").slice(0, 14)}是什麼？`)); if (can) out.push(`加引行政罰法第 5 條`, `加引裁罰準則第 9 條`); }
-  else if (tab === 3) { out.push(`相似案例的結論分布？`, `有沒有撤銷的案例？`); }
-  else { if (can) { if (altPlan) out.push(`結論改為${altPlan.verdict}`); if (r2) out.push(`${paraLabel(r2)}精簡一點`, `${paraLabel(r2)}語氣改平實`); out.push(`從舉證責任分配的角度重寫理由`); const it = c.issues[0]; if (it) out.push(`爭點 1 改${other(S.stances[it.id] || it.stance)}`); } else out.push(`本案判定與風險？`); }
-  $("#asstSug").innerHTML = out.slice(0, 6).map((q) => `<button class="ghost-btn">${esc(q)}</button>`).join(""); $$("#asstSug button").forEach((b) => b.addEventListener("click", () => { $("#asstIn").value = b.textContent; asstSend(); }));
+  const c = S.c; if (!c) return; const tab = +($(".tab.on")?.dataset.t || 0), cp = currentPlan(), can = S.status === "承辦中", ask = [], edit = [];
+  const other = (s) => s === "appellant" ? "採機關" : "採訴願人";
+  const conflict = c.fields.find((f) => f.conflict), pend = pendingCites(), altPlan = c.plans.find((p) => p.id !== cp.id && p.id !== "X"), r2 = S.paras.find((p) => /^理由/.test(paraLabel(p)) && p.kind !== "h4"), hasNew = c.docs.some((d) => d.imported);
+  if (tab === 0) { ask.push(`送達日在哪份文件？`, `期間有沒有逾期？`); if (can) { if (conflict) edit.push(`送達日改 ${(/(\d{3}-\d{2}-\d{2})/.exec(conflict.a[0]) || [])[1] || "114-09-16"}，因為`); edit.push(`應依 77(2) 逾期不受理，因為`); } }
+  else if (tab === 1) { c.issues.slice(0, 2).forEach((it, i) => ask.push(`爭點 ${i + 1} 的卷證在哪？`)); if (can) { if (hasNew) edit.push(`依新補件重新審查爭點 1`); c.issues.slice(0, 2).forEach((it, i) => edit.push(`爭點 ${i + 1} 改${other(S.stances[it.id] || it.stance)}，因為`)); } }
+  else if (tab === 2) { const l = c.laws.find((x) => /行政罰法|訴願法/.test(x.n)) || c.laws[0]; if (l) ask.push(l.n.replace(/ /g, "")); pend.slice(0, 1).forEach((x) => ask.push(`${x.n.replace(/（.*$/, "").slice(0, 14)}是什麼？`)); if (can) edit.push(`加引行政罰法第 5 條`, `加引裁罰準則第 9 條`); }
+  else if (tab === 3) { ask.push(`相似案例的結論分布？`, `有沒有撤銷的案例？`); }
+  else { ask.push(`本案判定與風險？`); if (can) { if (altPlan) edit.push(`結論改為${altPlan.verdict}，因為`); if (r2) edit.push(`${paraLabel(r2)}精簡一點`, `${paraLabel(r2)}語氣改平實`); edit.push(`從舉證責任分配的角度重寫理由`); } }
+  const row = (cls, eb, list, fill) => list.length ? `<div class="sg ${cls}"><span class="eb">${eb}</span>${list.slice(0, 4).map((q) => `<button class="ghost-btn" data-fill="${fill ? 1 : 0}">${fill ? "✎ " : ""}${esc(q)}</button>`).join("")}</div>` : "";
+  $("#asstSug").innerHTML = row("ask", "問", ask, false) + row("edit", "改", edit, true);
+  $$("#asstSug button").forEach((b) => b.addEventListener("click", () => { const t = b.textContent.replace(/^✎ /, ""); $("#asstIn").value = t; if (b.dataset.fill === "1") { $("#asstIn").focus(); $("#asstIn").setSelectionRange(t.length, t.length); } else asstSend(); }));
 }
 function asstIndex() {
   const c = S.c, out = [];
@@ -539,12 +540,12 @@ function asstIndex() {
 const SYN = [["送達日", "送達日期"], ["收文", "收文"], ["煙蒂", "煙蒂"], ["照片", "採證"], ["影片", "12:40"], ["簽收", "簽章"], ["罰鍰", "3,600"], ["係數", "A=3"], ["車主", "車籍"], ["拋棄", "拋擲"]];
 
 /* ---------- 助手：提案 → 確認 → 局部重跑 ---------- */
-const EDIT_RE = /改|修改|加引|引用|援引|加入|新增|移除|刪除|重寫|改寫|潤飾|精簡|縮短|語氣|不受理|進入實體|撤銷|駁回/;
+const EDIT_RE = /改|修改|加引|引用|援引|加入|新增|移除|刪除|重寫|改寫|潤飾|精簡|縮短|語氣|不受理|進入實體|撤銷|駁回|重新審查|重新認定|納入/;
 const ART_TEXT = { "行政罰法 第 5 條": "行為後法律或自治條例有變更者，適用裁處時之法律或自治條例。但裁處前之法律或自治條例有利於受處罰者，適用最有利於受處罰者之規定。", "訴願法 第 14 條第 1 項": "訴願之提起，應自行政處分達到或公告期滿之次日起三十日內為之。", "行政程序法 第 73 條第 1 項": "於應送達處所不獲會晤應受送達人時，得將文書付與有辨別事理能力之同居人、受雇人或應送達處所之接收郵件人員。", "訴願法 第 77 條": "訴願事件有左列各款情形之一者，應為不受理之決定：一、訴願書不合法定程式不能補正或經通知補正逾期不補正者。二、提起訴願逾法定期間或未於第五十七條但書所定期間內補送訴願書者。……" };
 const CN = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
 function lawName(raw) { const s = raw.replace(/^(請|幫我|另外|另|並|再|也|還要|加引|引用|援引|加入|新增|引|移除|刪除|不引|改|加|把)+/, ""); const inCase = (l) => (S.c.laws || []).some((x) => x.n.startsWith(l.n)) || (S.c.citations || []).some((x) => x.n.startsWith(l.n)); const hit = LAWLIB.filter((l) => s.includes(l.n) || (s.length >= 3 && l.n.includes(s))).sort((p, q) => (inCase(q) - inCase(p)) || (q.n.length - p.n.length))[0]; return hit ? hit.n : s; }
 function parseIntent(q) {
-  if (!EDIT_RE.test(q)) return null; const c = S.c, items = [];
+  if (!EDIT_RE.test(q)) return null; const c = S.c, items = []; q = q.replace(/[，,]\s*因為\s*$/, "");
   const reI = /爭點\s*([一二三四五六\d])[^，。；,;]*?(改採訴願人|採訴願人|改採機關|採機關|刪除|移除)/g; let m;
   while ((m = reI.exec(q))) { const n = CN[m[1]] || +m[1], it = c.issues[n - 1]; if (!it) continue; const to = /訴願人/.test(m[2]) ? "appellant" : /機關/.test(m[2]) ? "agency" : "drop"; const seg = q.slice(m.index + m[0].length).split(/[；;。]|另外|另|並|加引|引用/)[0].replace(/^[，,、\s]+/, "").trim(); items.push({ type: "issue", id: it.id, to, why: /^(改|加|引)/.test(seg) ? "" : seg.slice(0, 60) }); }
   const reL = /(移除|刪除|不引|不再引用)?\s*(?:加引|引用|援引|加入|新增|引)?\s*([一-龥]{2,24}?(?:法|條例|準則|規則|辦法))\s*第?\s*(\d+)\s*條(?:\s*第?\s*(\d+)\s*項)?(?:\s*第?\s*(\d+)\s*款)?/g;
@@ -553,12 +554,14 @@ function parseIntent(q) {
   if (/進入實體/.test(q)) items.push({ type: "proc", v: "merit" }); else if ((m = /不受理[^。；]*?77\s*[(（第]?\s*(\d)/.exec(q) || /77\s*[(（第]?\s*(\d)[)）款]?[^。；]*?不受理/.exec(q))) items.push({ type: "proc", v: "77-" + m[1] }); else if (/不受理/.test(q) && !/採|爭點/.test(q)) items.push({ type: "proc", v: "77-?" });
   m = /(?:改|結論|判定)[^。；]*?(撤銷|駁回)/.exec(q); if (m && !items.some((i) => i.type === "issue")) { const p = c.plans.find((x) => x.verdict.includes(m[1]) && x.id !== currentPlan().id); if (p) items.push({ type: "verdict", plan: p.id }); }
   m = /(理由[一二三四五六]|主文|事實|前言)[^。；]*?(精簡|縮短|簡化|語氣|平實|潤飾|改寫|重寫|改)/.exec(q); if (m) { const p = S.paras.find((x) => paraLabel(x) === m[1] || (m[1] === "前言" && x.id === "intro") || (m[1] === "主文" && x.id === "main")); if (p) items.push({ type: "text", para: p.id, how: m[2] === "改" ? q.slice(m.index).slice(0, 40) : m[2] }); }
+  m = /(?:依|依據|參酌|納入)(?:新)?(?:補件|補充理由書|新文件|新卷證)[^。；]*?爭點\s*([一二三四五六\d])/.exec(q) || /爭點\s*([一二三四五六\d])[^。；]*?(?:依|依據|參酌|納入)(?:新)?(?:補件|補充理由書|新文件|新卷證)/.exec(q);
+  if (m) { const it = c.issues[(CN[m[1]] || +m[1]) - 1], newDocs = c.docs.filter((d) => d.imported); if (it) { if (!newDocs.length) return { clarify: "本案尚無補件；請先用左欄「＋ 補件」匯入新文件，再要求重新審查。" }; items.length = 0; items.push({ type: "reissue", id: it.id, docs: newDocs }); return { items }; } }
   m = /(?:從|以|用)([^，。；]{2,20}?)(?:的)?(?:角度|切入|觀點)/.exec(q); if (m && !items.some((i) => i.type === "text")) items.push({ type: "frame", angle: m[1] });
   if (!items.length) return { clarify: /好一點|更好|優化|順一點|完善/.test(q) ? "「改好一點」我無法判斷要動哪裡。請指定：哪個爭點要改認定？要加或移除哪條法規？還是哪一段理由要改寫、往哪個方向？" : "我看不出要改的具體對象。可以這樣說：「爭點 2 改採訴願人，因為…」「加引行政罰法第 18 條第 1 項」「送達日改 114-09-16」「理由二精簡一點」。" };
   return { items };
 }
 function periodFor(served) { const st = isoT(served), rt = isoT(S.recv); if (!st) return null; const due = st + 30 * DAY; return { due, over: rt !== null ? rt > due : null, left: rt !== null ? Math.round((due - rt) / DAY) : null }; }
-function stepOf(it) { return { served: 0, proc: 1, issue: 2, law: 3, "law-rm": 3, verdict: 4, frame: 5, text: 5 }[it.type]; }
+function stepOf(it) { return { served: 0, proc: 1, issue: 2, reissue: 2, law: 3, "law-rm": 3, verdict: 4, frame: 5, text: 5 }[it.type]; }
 function scopeOf(items) { const from = Math.min(...items.map(stepOf)); const s = []; for (let i = from; i < 6; i++) s.push(i); if (from === 3 && items.every((i) => stepOf(i) === 3)) return s.filter((i) => i !== 4); if (items.every((i) => i.type === "text")) return [5]; return s; }
 function mockRewrite(text, how) { const t = plain(text); if (/精簡|縮短|簡化/.test(how)) { const ss = t.split(/(?<=。)/); return ss.slice(0, Math.max(1, Math.ceil(ss.length * 0.55))).join("").replace(/[，、]之[^。，]*?(，|。)/g, "$1"); } if (/語氣|平實|潤飾/.test(how)) return t.replace(/難認/g, "不能認為").replace(/洵屬/g, "確屬").replace(/尚非無據/g, "有其依據").replace(/核無違誤/g, "並無錯誤").replace(/殊難採憑/g, "難以採信").replace(/自屬/g, "應屬").replace(/要難/g, "難以"); return t; }
 function buildProposal(items, q) {
@@ -571,6 +574,7 @@ function buildProposal(items, q) {
     else if (it.type === "proc") p.items.push({ ...it, label: it.v === "merit" ? "程序：進入實體審查" : `程序：依訴願法 §77 (${it.v.slice(3)}) 不受理` });
     else if (it.type === "verdict") { const pl = c.plans.find((x) => x.id === it.plan); p.planTo = pl.id; p.items.push({ ...it, verdictTo: pl.verdict, artTo: pl.art, label: `結論：${currentPlan().verdict} → ${pl.verdict}` }); }
     else if (it.type === "text") { const pa = S.paras.find((x) => x.id === it.para); p.items.push({ ...it, lab: paraLabel(pa), before: plain(pa.text), after: mockRewrite(pa.text, it.how), label: `文字：${paraLabel(pa)}（${it.how}）` }); }
+    else if (it.type === "reissue") { const is = c.issues.find((x) => x.id === it.id), sup = c.supplement, hit = sup && sup.issueId === is.id && it.docs.some((d) => sup.docs.some((x) => x.id === d.id)); p.items.push({ ...it, n: c.issues.indexOf(is) + 1, title: is.title, aFrom: is.a[0], aTo: hit ? sup.issueA[0] : is.a[0], eAdd: hit ? sup.issueE : it.docs.map((d) => [d.stdName, null]), note: hit ? sup.issueNote : "", label: `爭點 ${c.issues.indexOf(is) + 1}：納入補件重新審查（${it.docs.length} 份）` }); }
     else if (it.type === "frame") { const pa = S.paras.find((x) => x.id.startsWith("r") && x.kind !== "h4") || S.paras[2]; p.items.push({ ...it, lab: paraLabel(pa), before: plain(pa.text), after: `就${it.angle}而言，` + plain(pa.text), label: `論述角度：${it.angle}` }); }
   });
   if (p.planTo && c.drafts[p.planTo]) { const d = draftFor(p.planTo); p.diff = diffParas(S.paras, d.paras.map((x) => ({ ...x }))).sort((x, y) => (x.label === "主文" ? 0 : /^理由/.test(x.label) ? 1 : 2) - (y.label === "主文" ? 0 : /^理由/.test(y.label) ? 1 : 2)); p.draftTo = d; }
@@ -581,6 +585,7 @@ function renderProposal(p) {
   PENDING[p.id] = p; const c = S.c, jp = currentPlan();
   const item = (it) => {
     if (it.type === "issue") return `<div class="pc-item"><div class="lab">爭點認定<span class="jump" data-tab="1" data-el="iss-${it.id}">查看爭點 ↗</span></div><div class="bd"><div><span class="n" style="font-family:var(--mono);font-size:11px;border:1px solid var(--accent);color:var(--accent);padding:0 6px;margin-right:6px">爭點 ${it.n}</span><b>${esc(it.title)}</b></div><div><span class="ailab">AI 認定：${{ agency: "採機關", appellant: "採訴願人", open: "待議" }[it.from]}</span><span class="arw">→</span>${it.to === "drop" ? `<span class="ailab" style="border-color:var(--seal);color:var(--seal)">刪除此爭點</span>` : `<span class="ailab obj">修正後：${it.to === "appellant" ? "採訴願人" : "採機關"}</span>`}${it.why ? `<span class="note">　理由：${esc(it.why)}</span>` : ""}</div>${it.verdictTo && it.verdictTo !== jp.verdict ? `<div class="mini-jbar"><span class="note">結論</span><span class="jv">${esc(jp.verdict)}</span><span class="arw">→</span><span class="jv">${esc(it.verdictTo)}</span><span class="note">（依爭點導向；AI 重新引證後可能維持原判定）</span></div>` : ""}</div></div>`;
+    if (it.type === "reissue") return `<div class="pc-item"><div class="lab">爭點重新審查（納入補件）<span class="jump" data-tab="1" data-el="iss-${it.id}">查看爭點 ↗</span></div><div class="bd"><div><span class="n" style="font-family:var(--mono);font-size:11px;border:1px solid var(--accent);color:var(--accent);padding:0 6px;margin-right:6px">爭點 ${it.n}</span><b>${esc(it.title)}</b></div><div class="pc-diff diffbox"><span class="pl">訴願人主張（修改前 → 修改後）</span>${diffHtml(it.aFrom, it.aTo)}</div><div><span class="note">卷證顯示新增：</span>${it.eAdd.map((e) => `<span class="tag accent" style="font-size:10px">${esc(e[0])}</span>`).join(" ")}</div>${it.note ? `<div class="note">AI 將補充認定：${esc(it.note)}</div>` : `<div class="note">AI 將依新文件內容重新引證；本 mock 無對應示範資料，認定文字維持</div>`}</div></div>`;
     if (it.type === "law" || it.type === "law-rm") return `<div class="pc-item"><div class="lab">法規引用<span class="jump" data-tab="2">查看法規推薦 ↗</span></div><div class="bd"><div class="mini-law ${it.ok ? "" : "bad"}">${it.type === "law-rm" ? tag("seal", "移除") : it.ok ? tag("green", it.dup ? "已在清單" : "＋新增") : tag("seal", "無法引用")}<span class="nm">${esc(it.key)}</span>${it.lib ? `<span class="vd">${it.lib.date} 版</span>` : ""}<span class="${it.ok ? "st ok" : "st pending"}" style="font-size:10.5px">${esc(it.msg)}</span></div>${it.ok && it.type === "law" ? `<div class="note">條文原文將自法規庫帶入並於草稿理由引用${it.dup ? "（已在推薦清單，僅補入草稿引用）" : ""}</div>` : !it.ok ? `<div class="note" style="color:var(--seal)">此條不會寫入草稿</div>` : ""}</div></div>`;
     if (it.type === "served") return `<div class="pc-item"><div class="lab">訴願期間<span class="jump" data-tab="0">查看期間 ↗</span></div><div class="bd"><div class="mini-tp"><div><span class="k">送達日</span><del>${esc(it.from)}</del> → <b>${esc(it.v)}</b></div><div><span class="k">屆滿日</span><b>${esc(it.due)}</b></div><div><span class="k">結果</span>${it.over === null ? "—" : it.over ? `<b style="color:var(--seal)">逾期 → §77(2) 不受理</b>` : `<b style="color:var(--green)">在期間內，餘 ${it.left} 日</b>`}</div></div><div class="note">三方對照該列將標「承辦人更正」；期間與程序清單重算</div></div></div>`;
     if (it.type === "proc") return `<div class="pc-item"><div class="lab">程序審查<span class="jump" data-tab="0">查看程序清單 ↗</span></div><div class="bd"><div class="ck ${it.v === "merit" ? "pass" : "fail"}" style="padding:6px 0;border:none"><span class="ckbox">${it.v === "merit" ? "☑" : "☒"}</span><span class="ckart">${it.v === "merit" ? "§77 各款" : "§77 (" + it.v.slice(3) + ")"}</span><span class="ckname">${it.v === "merit" ? "全部通過 → 進入實體審查" : "改列不受理事由"}</span><span class="ckst">${it.v === "merit" ? "通過" : "不通過"}</span><span class="cknote">${it.v === "77-?" ? "未指明款次，AI 將反問" : "承辦人指示"}</span></div></div></div>`;
@@ -597,6 +602,7 @@ function renderProposal(p) {
 }
 function aiReply(it) {
   const c = S.c;
+  if (it.type === "reissue") { const is = c.issues.find((x) => x.id === it.id), sup = c.supplement; if (sup && sup.issueId === is.id && it.aTo !== it.aFrom) { Object.assign(c.refs, sup.refs); is.a = sup.issueA; is.e = [...is.e, ...sup.issueE.filter((e) => !is.e.some((x) => x[1] === e[1]))]; is.ai = (is.ai || "") + " 補件後：" + sup.issueNote; return { result: "partial", reply: `已納入補充理由書之主張與截圖為卷證；${sup.issueNote} 維持原認定。`, evidence: sup.issueE.map((e) => e[1]) }; } return { result: "partial", reply: `已將 ${it.docs.length} 份新文件納入爭點 ${it.n} 之卷證重新引證；未見足以推翻原認定之事證，維持原認定。`, evidence: [] }; }
   if (it.type === "issue") { const is = c.issues.find((x) => x.id === it.id); if (it.to === "drop") return { result: "partial", reply: "該爭點為訴願書與答辯書均有論及之事項，依訴願法第 67 條應予論斷；已於理由中併入相鄰爭點簡述，不另立標題。", evidence: [] }; if (it.to === it.from) return { result: "accept", reply: "與 AI 原認定一致，已將承辦人理由補入依據。", evidence: [] }; const r = is.objection || c.objectionOther || CASE_B.objectionOther; return { result: r.result, reply: r.reply.replace(/^(採納|部分採納|無法採納)。/, ""), evidence: r.evidence || [], plan: r.result !== "reject" ? r.plan : null, stance: r.result !== "reject" ? it.to : null }; }
   if (it.type === "law") return it.ok ? { result: "accept", reply: `${it.key} 已加入法規推薦，條文原文自法規庫帶入並於草稿理由引用。`, evidence: [] } : { result: "reject", reply: `${it.msg}。未寫入草稿，以免引用不存在之條文。`, evidence: [] };
   if (it.type === "law-rm") return { result: "accept", reply: `${it.key} 已自草稿引用移除；法規推薦清單保留供參。`, evidence: [] };
@@ -648,51 +654,35 @@ function addFiles(list) {
   const pend = [];
   list.forEach((f) => {
     const dupOf = c.docs.find((d) => (d.origName || d.title) === f.name || (d.stdName === f.name));
-    if (dupOf) { c.docs.push({ id: "dup-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), title: f.name, origName: f.name, stdName: f.name, tag: dupOf.tag, src: dupOf.src, kind: "missing", include: false, dup: true, summary: `與「${dupOf.stdName || dupOf.title}」相同，已排除，不重跑` }); return; }
+    if (dupOf) { c.docs.push({ id: "dup-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), title: f.name, origName: f.name, stdName: f.name, tag: dupOf.tag, src: dupOf.src, kind: "missing", include: false, dup: true, _new: true, summary: `與「${dupOf.stdName || dupOf.title}」相同，已排除，不重跑` }); return; }
     const d = { id: "pend-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), title: f.name, origName: f.name, stdName: f.name, tag: "辨識中", src: "未知", kind: "missing", include: false, pending: true, summary: "Claude 辨識中…（只送這份，不重跑既有文件）", _f: f };
     c.docs.push(d); pend.push(d);
   });
   renderDocs(); S.audit.push({ ts: now(), who: "hu", para: "卷宗", action: `補件上傳 ${list.length} 份（重複 ${list.length - pend.length}）` });
-  if (!pend.length) { asstOpen(); asstAdd("a", `上傳的 ${list.length} 份與既有卷證相同，已排除；未變動任何內容。`); return; }
+  if (!pend.length) { openAddModal(); return; }
   setTimeout(() => {
     pend.forEach((p) => { const i = c.docs.indexOf(p); const d = classifyNew(p._f); c.docs[i] = d; });
-    renderDocs(); proposeSupplement();
+    renderDocs(); openAddModal();
   }, 900 + pend.length * 450);
 }
-function proposeSupplement() {
-  const c = S.c, staged = c.docs.filter((d) => d.staged && !d.include); if (!staged.length) return;
-  const unknown = staged.filter((d) => d.unknown), from = Math.min(...staged.map(docStep)), scope = []; for (let i = from; i < 6; i++) scope.push(i);
-  asstOpen();
-  const el = asstAdd("a card", `<div class="pc-head"><b>補件提案</b><span>新增 ${staged.length} 份・尚未併入，Tab1–5 未變</span></div><div class="pc-body">
-    <div class="pc-item"><div class="lab">新增文件（僅這些檔案經 Claude 辨識）</div><div class="bd"><div>${staged.map((d) => `<div class="pc-doc"><span class="tag ${DOCTAG[d.tag] || "neutral"}" style="font-size:10px">${esc(d.tag)}</span><span><span class="nm">${esc(d.stdName)}</span><span class="srct ${d.src}">${d.src}</span><br><span class="on">原檔名：${esc(d.origName)}　${esc(d.summary || "")}</span></span><span class="jump" data-doc="${d.id}">開啟 ↗</span></div>`).join("")}</div></div></div>
-    ${unknown.length ? `<div class="pc-item" style="border-color:var(--seal)"><div class="lab" style="color:var(--seal)">待指定</div><div class="bd"><span style="color:var(--seal)">${unknown.length} 份無法辨識：請在左欄點該檔的標籤 ✎ 指定類型／來源，我會重新提案。</span></div></div>` : ""}
-    <div class="pc-item"><div class="lab">影響範圍</div><div class="bd"><div class="mini-steps">${RV_STEPS.map((s, i) => `<span class="${scope.includes(i) ? "re" : ""}">${i + 1} ${s}</span>`).join("")}</div><div class="note">${from === 0 ? "含答辯書／裁處書等核心文件 → 欄位擷取與三方對照全部重算" : "僅卷證／照片 → 自爭點起重算，擷取與期間維持"}</div></div></div>
-  </div><div class="pc-foot"><span class="note">確認後才併入案件；未納入的檔案留在清單</span><button class="ghost-btn" data-no>取消</button><button class="btn" data-yes ${unknown.length ? "disabled" : ""}>確認併入</button></div>`);
-  el.querySelectorAll("[data-doc]").forEach((j) => j.addEventListener("click", () => openDoc(j.dataset.doc)));
-  el.querySelector("[data-no]").addEventListener("click", () => { el.classList.add("off"); el.querySelector(".pc-head span").textContent = "已取消・檔案留在清單標「未納入」"; staged.forEach((d) => { d.summary = "未納入案件；點「提出併入」可再提案"; }); renderDocs(); asstAdd("a", "已取消，未變動任何內容。左欄該檔案標「未納入」，隨時可再提出。"); });
-  el.querySelector("[data-yes]").addEventListener("click", () => { el.classList.add("off"); el.querySelector(".pc-head span").textContent = "已確認・執行中"; applySupplement(staged, scope); });
+function openAddModal() {
+  const c = S.c, staged = c.docs.filter((d) => d.staged && !d.include), dups = c.docs.filter((d) => d.dup && d._new); if (!staged.length && !dups.length) return;
+  const rows = staged.map((d) => `<tr data-id="${d.id}" class="${d.unknown ? "unk" : ""}"><td class="num" style="color:var(--ink-3)">${esc(d.origName)}</td><td><b>${esc(d.stdName)}</b></td><td><select class="am-type">${TYPES.map((t) => `<option ${d.tag === t ? "selected" : ""}>${t}</option>`).join("")}</select></td><td><select class="am-src">${SRC_ORDER.map((t) => `<option ${d.src === t ? "selected" : ""}>${t}</option>`).join("")}</select></td><td>${KIND[d.kind] || d.kind}・${d.pages || 1} 頁</td><td class="note">${d.unknown ? `<span style="color:var(--seal)">無法辨識，請指定類型／來源</span>` : esc(d.summary || "")}</td></tr>`).join("")
+    + dups.map((d) => `<tr class="dupr"><td class="num" style="color:var(--ink-3)">${esc(d.origName)}</td><td>—</td><td colspan="3"><span class="tag neutral" style="font-size:10px">重複</span></td><td class="note">${esc(d.summary)}</td></tr>`).join("");
+  $("#amBody").innerHTML = rows; $("#amCount").textContent = `辨識 ${staged.length} 份・重複 ${dups.length} 份（僅新檔送 Claude 辨識，既有 ${c.docs.length - staged.length - dups.length} 份未重跑）`;
+  $("#amImport").textContent = `匯入 ${staged.length} 份`; $("#amImport").disabled = !staged.length;
+  $$("#amBody select").forEach((sel) => sel.addEventListener("change", () => { const tr = sel.closest("tr"), d = c.docs.find((x) => x.id === tr.dataset.id); d.tag = tr.querySelector(".am-type").value; d.src = tr.querySelector(".am-src").value; if (d.unknown) { d.unknown = false; d.summary = `承辦人指定：${d.tag}（${d.src}）`; tr.classList.remove("unk"); tr.lastElementChild.textContent = d.summary; } }));
+  $("#addModal").classList.add("on");
 }
-function applySupplement(staged, scope) {
-  const c = S.c, before = S.paras.map((x) => ({ ...x }));
-  staged.forEach((d) => { d.include = true; d.staged = false; });
-  const sup = c.supplement, fromDemo = sup && staged.some((d) => sup.docs.some((x) => x.id === d.id));
-  if (fromDemo && !c.supplementApplied) {
-    Object.assign(c.refs, sup.refs); if (sup.fields) c.fields.forEach((f) => { if (sup.fields[f.k]) f.d = sup.fields[f.k]; });
-    const it = c.issues.find((x) => x.id === (sup.issueId || "I1")) || c.issues[0];
-    if (sup.issueA) it.a = sup.issueA; if (sup.issueD) it.d = sup.issueD; if (sup.issueE) it.e = [...it.e, ...sup.issueE.filter((e) => !it.e.some((x) => x[1] === e[1]))]; if (sup.issueNote) it.ai = (it.ai || "") + " 補件後：" + sup.issueNote;
-    if (sup.citations) { c.citations = sup.citations; c.citationNote = sup.citationNote; }
-    c.supplementApplied = true;
-  }
-  S.audit.push({ ts: now(), who: "ai", para: "卷宗", action: `併入補件 ${staged.length} 份：${staged.map((d) => d.tag).join("、")}` });
-  rerunSteps(scope, () => {
-    if (scope.includes(5)) { pushVersion(`補件後重產（${staged.length} 份・${scope.length} 步）`, "AI"); }
-    S.objections.push({ ts: now(), issue: `補件 ${staged.length} 份`, issueId: "docs", text: staged.map((d) => d.stdName).join("；"), ev: [], result: "accept", reply: "已併入並重新產生受影響步驟。", evidence: [], items: staged.map((d) => ({ label: `併入：${d.stdName}（${d.tag}／${d.src}）`, result: "accept", reply: fromDemo ? "已納入三方對照與爭點證據；答辯書引用已查核。" : "已納入卷宗；三方對照與爭點依新文件重算（mock：本案無對應示範資料，內容維持）。", evidence: [] })), scope, diff: null });
-    render(); show("s-work"); persist(); asstOpen();
-    const el = asstAdd("a card rc", `<div class="pc-head"><b>已併入</b><span>重新產生 ${scope.map((i) => RV_STEPS[i]).join("、")}；其餘維持</span></div><div class="pc-body"><div>${staged.map((d) => `<div class="rc-item"><span class="note">${esc(d.stdName)}</span><br>AI：<b class="a">已納入</b>　${fromDemo ? (sup.citations ? "三方對照「機關答辯」欄已補上、爭點證據新增、引用查核 " + c.citations.length + " 則" : "爭點「訴願人主張」與卷證顯示已更新，AI 認定附補件後說明") : "已納入卷宗分組並可於爭點引用"}</div>`).join("")}</div></div><div class="pc-foot"><span class="note">可於 Tab1 三方對照、Tab3 引用查核檢視變化</span><button class="ghost-btn" data-tab="${sup && sup.citations ? 0 : 1}">${sup && sup.citations ? "看三方對照 ↗" : "看爭點 ↗"}</button></div>`);
-    el.querySelector("[data-tab]").addEventListener("click", (e) => { $$(".tab")[+e.target.dataset.tab].click(); if (+e.target.dataset.tab === 0) $("#panel").scrollTop = $("#panel").scrollHeight; });
-  });
-}
-$("#addBtn").addEventListener("click", () => { if (S.status !== "承辦中") return asstSay(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`); $("#addFile").click(); });
+$("#amX").addEventListener("click", () => $("#amCancel").click());
+$("#amCancel").addEventListener("click", () => { const c = S.c; c.docs = c.docs.filter((d) => !(d.staged && !d.include) && !(d.dup && d._new)); renderDocs(); $("#addModal").classList.remove("on"); });
+$("#amImport").addEventListener("click", () => {
+  const c = S.c, staged = c.docs.filter((d) => d.staged && !d.include); c.docs.forEach((d) => { if (d.dup && d._new) delete d._new; });
+  staged.forEach((d) => { d.include = true; d.staged = false; d.imported = today(); });
+  S.audit.push({ ts: now(), who: "hu", para: "卷宗", action: `補件匯入 ${staged.length} 份：${staged.map((d) => `${d.stdName}（${d.tag}／${d.src}）`).join("、")}` });
+  $("#addModal").classList.remove("on"); renderDocs(); persist(); if (staged[0]) openDoc(staged[0].id); if (S.c.docs.some((d) => d.imported)) asstSuggest();
+});
+$("#addBtn").addEventListener("click", () => { if (S.status !== "承辦中") return alert(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`); $("#addFile").click(); });
 $("#addFile").addEventListener("change", () => { const fs = [...$("#addFile").files].map((f) => ({ name: f.name, size: f.size })); $("#addFile").value = ""; if (fs.length) addFiles(fs); });
 $("#addDemo").addEventListener("click", () => { const sup = S.c?.supplement; if (!sup) return; addFiles(sup.files.map(([name, size], i) => ({ name, size, mock: sup.docs[i] }))); $("#addDemo").style.display = "none"; });
 { const pane = $("#docPane"); ["dragenter", "dragover"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.add("over"); })); ["dragleave", "drop"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.remove("over"); })); pane.addEventListener("drop", (e) => { const fs = [...(e.dataTransfer?.files || [])].map((f) => ({ name: f.name, size: f.size })); if (fs.length) addFiles(fs); }); }
