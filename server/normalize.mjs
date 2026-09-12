@@ -17,7 +17,11 @@ const run = promisify(execFile);
 const SCAN_TEXT_MIN = 50;        // 每頁去空白後少於此字數 → 視為掃描
 const IMG_MAX_EDGE = 1600;
 const JPEG_Q = 85;
-const VIDEO_FRAMES = 3;
+const VIDEO_SEC_PER_FRAME = 5;   // 每 N 秒一幀
+const VIDEO_FRAMES_MIN = 3;
+const VIDEO_FRAMES_MAX = 20;     // Converse 單則訊息的圖片數上限
+const EMBED_MIN_W = 500;         // 內嵌影像大於此尺寸才算「頁面裡壓著照片」（印章/QR 約 400x400）
+const EMBED_MIN_H = 300;
 const MAX_SCAN_PAGES = 200;      // 超過即拒絕（防止把整卷上百頁掃描件丟進來）
 
 export const KINDS = ["pdf-text", "pdf-scan", "image", "video", "office", "text", "unsupported"];
@@ -126,9 +130,15 @@ async function fromPdf(buffer, base, dir) {
     throw new NormalizeError("TOO_MANY_PAGES", `scanned PDF has ${base.pages} pages (> ${MAX_SCAN_PAGES})`);
   if (base.kind === "pdf-text" && noText.length) base.warnings.push(`${noText.length} page(s) have no text layer`);
 
-  // pdf-text 也要把「沒文字層的頁」出圖，否則混合卷宗裡的掃描頁模型看不到
+  // pdf-text 有兩種頁模型看不到內容：沒文字層的頁、以及「有文字層但頁面裡壓著照片」的頁
+  const embedded = base.kind === "pdf-text" ? await pagesWithEmbeddedImages(pdfPath) : [];
   base.scanPages = base.kind === "pdf-text" ? noText : range(1, base.pages);
-  const wanted = base.kind === "pdf-scan" ? range(1, base.pages) : uniq([1, ...noText, base.pages]).sort((a, b) => a - b);
+  base.embeddedImagePages = embedded;
+  base.contentImagePages = base.kind === "pdf-scan" ? range(1, base.pages)
+    : uniq([...noText, ...embedded]).sort((a, b) => a - b);            // 要送模型的頁
+  if (embedded.length) base.warnings.push(`${embedded.length} page(s) contain embedded images`);
+  const wanted = base.kind === "pdf-scan" ? range(1, base.pages)
+    : uniq([1, ...noText, ...embedded, base.pages]).sort((a, b) => a - b);   // 要出圖的頁（含首尾供前端縮圖）
   base.imagePages = wanted;
   for (const p of wanted) base.images.push(await pdfPage(pdfPath, p, dir));
   return base;
@@ -139,6 +149,21 @@ export async function pdfPage(pdfPath, page, dir) {
   const prefix = path.join(dir, `p${page}`);
   await run("pdftoppm", ["-scale-to", String(IMG_MAX_EDGE), "-jpeg", "-jpegopt", `quality=${JPEG_Q}`, "-f", String(page), "-l", String(page), "-singlefile", pdfPath, prefix]);
   return `${prefix}.jpg`;
+}
+
+/** 哪些頁「壓著大圖」：pdfimages -list 的 page/width/height 欄位；印章 QR 之類的小圖不算 */
+async function pagesWithEmbeddedImages(pdfPath) {
+  try {
+    const { stdout } = await run("pdfimages", ["-list", pdfPath]);
+    const pages = new Set();
+    for (const line of stdout.split("\n").slice(2)) {
+      const m = line.trim().split(/\s+/);
+      const [page, , type, w, h] = m;
+      if (!/^\d+$/.test(page) || type !== "image") continue;
+      if (+w >= EMBED_MIN_W && +h >= EMBED_MIN_H) pages.add(+page);
+    }
+    return [...pages].sort((a, b) => a - b);
+  } catch { return []; }      // pdfimages 缺席或解析失敗不影響主流程
 }
 
 async function pdfinfo(pdfPath) {
@@ -196,7 +221,9 @@ async function fromVideo(buffer, base, dir, ext) {
   const d = parseFloat(stdout);
   if (!Number.isFinite(d) || d <= 0) throw new NormalizeError("NORMALIZE_FAILED", "ffprobe: no duration");
   base.duration = Math.round(d * 100) / 100;
-  const ts = VIDEO_FRAMES === 1 ? [0] : Array.from({ length: VIDEO_FRAMES }, (_, i) => Math.min(d - 0.5, (d * i) / (VIDEO_FRAMES - 1)));
+  // 幀數依時長：12 秒的採證影片 3 幀夠用，10 分鐘的監視器影片需要更多
+  const nFrames = Math.min(VIDEO_FRAMES_MAX, Math.max(VIDEO_FRAMES_MIN, Math.ceil(d / VIDEO_SEC_PER_FRAME)));
+  const ts = Array.from({ length: nFrames }, (_, i) => Math.min(d - 0.5, (d * i) / (nFrames - 1)));
   for (const [i, t] of ts.entries()) {
     const out = path.join(dir, `f${i + 1}.jpg`);
     await run("ffmpeg", ["-v", "error", "-y", "-ss", String(Math.max(0, t)), "-i", src, "-frames:v", "1", "-vf", `scale='min(${IMG_MAX_EDGE},iw)':-2`, "-q:v", "3", out]);

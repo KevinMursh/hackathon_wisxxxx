@@ -47,7 +47,8 @@ GET  /health                        ← 憑證與外部工具自檢
 | `rawUrl` | string | presigned GET，原檔（15 分鐘有效；過期回 403，重打 `GET files` 換新）|
 | `textUrl` | string | 逐頁文字端點路徑（見 §2.5b）；無正規化產物時不存在 |
 | `pageImageUrls` | string[] | presigned GET，已產出的頁圖（順序同 `imagePages`） |
-| `imagePages` | int[] | 哪些頁有圖（pdf-text 只有首尾＋掃描頁） |
+| `imagePages` | int[] | 哪些頁出了圖：`pdf-text` 為 首頁＋尾頁＋無文字層的頁＋內嵌大圖的頁；`pdf-scan` 為全部頁 |
+| `contentImagePages` | int[] | 其中**送給模型**的頁（無文字層 ∪ 內嵌大圖）；首尾頁圖只供前端縮圖 |
 | `createdAt` / `updatedAt` | ISO string | |
 
 ### 1.2 Segment（一份文件的判定）
@@ -269,4 +270,6 @@ S3 bucket 全 private，前端一律拿 presigned URL；`Content-Disposition` �
 - 單檔 ≤ 100 MB，整批 ≤ 500 MB；掃描 PDF ≤ 200 頁
 - 影片只抽 3 幀判類型，不分析內容
 - 合併卷宗回多段但**不拆檔**（下游用 `fromPage/toPage` 定位）
+- 影片抽幀數依時長（每 5 秒一幀、3–20 幀），只判類型與時間戳，不做逐幀理解
+- 掃描件沒有文字層 → `GET …/text` 回空陣列；分析階段對掃描件的錨點要用 `doc`／`box` 型，不能用 `text` 型
 - 實測：27 檔（含 20 頁合併卷宗、zip、heic、office）約 85 秒 3 箱；純 case02 18 檔約 62 秒 2 箱

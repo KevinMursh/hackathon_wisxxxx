@@ -57,7 +57,13 @@ async function cachePut(key, val) { if (!CACHE_DIR) return; await fs.mkdir(CACHE
 function cost(n) { return { images: imagesToSend(n).length, chars: Math.min(n.text?.length ?? 0, TEXT_CAP) }; }
 /** 批次模式要送的圖：pdf-text 只送沒文字層的頁；其餘全送 */
 function imagesToSend(n) {
-  if (n.kind === "pdf-text") return (n.scanPages ?? []).map((p) => ({ path: n.images[n.imagePages.indexOf(p)], label: `[p${p} 掃描頁]` })).filter((x) => x.path);
+  if (n.kind === "pdf-text") {
+    const noText = new Set(n.scanPages ?? []);
+    return (n.contentImagePages ?? n.scanPages ?? []).map((p) => ({
+      path: n.images[n.imagePages.indexOf(p)],
+      label: noText.has(p) ? `[p${p} 掃描頁]` : `[p${p} 內含圖片]`,
+    })).filter((x) => x.path);
+  }
   if (n.kind === "office") return [];
   return (n.images ?? []).map((path, i) => ({ path, label: n.kind === "video" ? `[幀 ${i + 1}/${n.images.length} @${n.frameTimes?.[i] ?? "?"}s]` : n.kind === "pdf-scan" ? `[p${i + 1}]` : "[圖]" }));
 }
