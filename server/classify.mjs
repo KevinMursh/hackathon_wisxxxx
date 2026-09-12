@@ -46,7 +46,13 @@ let SYSTEM;
 async function systemPrompt() { return (SYSTEM ??= await fs.readFile(path.join(here, "prompts", "classify.md"), "utf8")); }
 
 /* ---------- 裝箱 ---------- */
-function cost(n) { return { images: n.images?.length ?? 0, chars: Math.min(n.text?.length ?? 0, TEXT_CAP) }; }
+function cost(n) { return { images: imagesToSend(n).length, chars: Math.min(n.text?.length ?? 0, TEXT_CAP) }; }
+/** 批次模式要送的圖：pdf-text 只送沒文字層的頁；其餘全送 */
+function imagesToSend(n) {
+  if (n.kind === "pdf-text") return (n.scanPages ?? []).map((p) => ({ path: n.images[n.imagePages.indexOf(p)], label: `[p${p} 掃描頁]` })).filter((x) => x.path);
+  if (n.kind === "office") return [];
+  return (n.images ?? []).map((path, i) => ({ path, label: n.kind === "video" ? `[幀 ${i + 1}/${n.images.length} @${n.frameTimes?.[i] ?? "?"}s]` : n.kind === "pdf-scan" ? `[p${i + 1}]` : "[圖]" }));
+}
 
 /** 同類型打散：依 kind 輪流取，避免連續多張相似照片相鄰 */
 function interleave(items) {
@@ -86,10 +92,7 @@ async function fileBlocks(n, { imagesFrom = 0, imagesTo } = {}) {
     }
     blocks.push({ text: acc || "（無文字）" });
   }
-  const imgs = (n.images ?? []).slice(imagesFrom, imagesTo);
-  if (n.kind === "pdf-text" || n.kind === "office") { /* 批次模式不送文字 PDF 的頁圖 */ }
-  else for (const [i, p] of imgs.entries()) {
-    const label = n.kind === "video" ? `[幀 ${i + 1}/${imgs.length} @${n.frameTimes?.[i] ?? "?"}s]` : n.kind === "pdf-scan" ? `[p${imagesFrom + i + 1}]` : "[圖]";
+  for (const { path: p, label } of imagesToSend(n).slice(imagesFrom, imagesTo)) {
     blocks.push({ text: label });
     blocks.push({ image: { format: "jpeg", source: { bytes: await fs.readFile(p) } } });
   }
@@ -228,8 +231,9 @@ export async function classifyAll(normalized, { perFile = false, model = MODEL, 
 async function classifyOversize(n, model) {
   const segs = [];
   let ms = 0, usage = { inputTokens: 0, outputTokens: 0 };
-  for (let from = 0; from < n.images.length; from += BOX.images) {
-    const to = Math.min(n.images.length, from + BOX.images);
+  const total = imagesToSend(n).length;
+  for (let from = 0; from < total; from += BOX.images) {
+    const to = Math.min(total, from + BOX.images);
     const out = await converse(await fileBlocks(n, { imagesFrom: from, imagesTo: to }), { model });
     ms += out.ms; usage.inputTokens += out.usage?.inputTokens ?? 0; usage.outputTokens += out.usage?.outputTokens ?? 0;
     const r = out.results?.find((x) => x.fileId === n.fileId) ?? out.results?.[0];

@@ -12,6 +12,9 @@ const group = opt("--group", "tune");
 const perFile = args.includes("--per-file");
 const filter = opt("--filter", null);
 const outFile = opt("--out", null);
+const messy = args.includes("--messy");   // 亂檔名：正規化前把原檔名換成 IMG_/scan_/文件(n)，驗「不看檔名」
+let messyN = 0;
+const messyName = (p) => { const ext = path.extname(p).toLowerCase(); messyN++; return ext === ".jpg" ? `IMG_${3980 + messyN}.jpg` : ext === ".mp4" ? `DASHCAM_${messyN}.mp4` : messyN % 2 ? `scan_${String(messyN).padStart(4, "0")}${ext}` : `文件(${messyN})${ext}`; };
 if (opt("--box")) process.env.BOX_FILES = opt("--box");
 if (opt("--model")) process.env.MODEL = opt("--model");
 const { classifyAll, MODEL, BOX } = await import("../classify.mjs");
@@ -22,13 +25,13 @@ const resolve = (p) => path.resolve(here, p.replace("$pack", spec._pack).replace
 const cases = spec.cases.filter((c) => (group === "all" || c.group === group) && (!filter || c.path.includes(filter)));
 const outDir = await fs.mkdtemp(path.join(os.tmpdir(), "cls-"));
 
-console.log(`model=${MODEL} mode=${perFile ? "per-file" : `batch(files≤${BOX.files})`} group=${group} n=${cases.length}\n`);
+console.log(`model=${MODEL} mode=${perFile ? "per-file" : `batch(files≤${BOX.files})`} group=${group} n=${cases.length}${messy ? " MESSY-NAMES" : ""}\n`);
 
 /* ① 正規化 */
 const t0 = Date.now();
 const normalized = [];
 for (const c of cases) {
-  const r = await normalize(await fs.readFile(resolve(c.path)), path.basename(c.path), { outDir });
+  const r = await normalize(await fs.readFile(resolve(c.path)), messy ? messyName(c.path) : path.basename(c.path), { outDir });
   r._case = c;
   normalized.push(r);
 }
@@ -72,7 +75,7 @@ for (const n of normalized) {
   if (!typeOk) confusion[key] = (confusion[key] || 0) + 1;
   const flag = typeOk && srcOk ? "✓" : "✗";
   const detail = segs.length > 1 ? `${segs.length} segs: ${segs.map((s) => `${s.doc_type}@p${s.fromPage}-${s.toPage}`).join(", ")}` : `${primary.doc_type} / ${primary.source} / ${primary.date ?? "-"} / conf ${primary.confidence}${primary.evidence_unverified ? " ⚠unverified" : ""}`;
-  rows.push(`${flag} ${name}  → ${primary.suggestedName}\n     ${detail}\n     ${primary.summary} ｜ ${primary.evidence}${!typeOk ? `\n     want type ${JSON.stringify(c.doc_type)}` : ""}${!srcOk ? `\n     want source ${JSON.stringify(c.source)}` : ""}`);
+  rows.push(`${flag} ${name}${messy ? `（上傳名 ${n.originalName}）` : ""}  → ${primary.suggestedName}\n     ${detail}\n     ${primary.summary} ｜ ${primary.evidence}${!typeOk ? `\n     want type ${JSON.stringify(c.doc_type)}` : ""}${!srcOk ? `\n     want source ${JSON.stringify(c.source)}` : ""}`);
 }
 console.log(rows.join("\n"));
 const pct = (a, b) => (b ? `${((100 * a) / b).toFixed(0)}% (${a}/${b})` : "n/a");

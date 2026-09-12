@@ -78,13 +78,16 @@ async function fromPdf(buffer, base, dir) {
     base.textPerPage.push(stdout.replace(/\f/g, "").trimEnd());
   }
   base.text = base.textPerPage.join("\n\n");
-  const scanPages = base.textPerPage.filter((t) => t.replace(/\s/g, "").length < SCAN_TEXT_MIN).length;
-  base.kind = scanPages > base.pages / 2 ? "pdf-scan" : "pdf-text";
+  const noText = base.textPerPage.map((t, i) => (t.replace(/\s/g, "").length < SCAN_TEXT_MIN ? i + 1 : 0)).filter(Boolean);
+  base.kind = noText.length > base.pages / 2 ? "pdf-scan" : "pdf-text";
   if (base.kind === "pdf-scan" && base.pages > MAX_SCAN_PAGES)
     throw new NormalizeError("TOO_MANY_PAGES", `scanned PDF has ${base.pages} pages (> ${MAX_SCAN_PAGES})`);
-  if (base.kind === "pdf-text" && scanPages) base.warnings.push(`${scanPages} page(s) have no text layer`);
+  if (base.kind === "pdf-text" && noText.length) base.warnings.push(`${noText.length} page(s) have no text layer`);
 
-  const wanted = base.kind === "pdf-scan" ? range(1, base.pages) : uniq([1, base.pages]);
+  // pdf-text 也要把「沒文字層的頁」出圖，否則混合卷宗裡的掃描頁模型看不到
+  base.scanPages = base.kind === "pdf-text" ? noText : range(1, base.pages);
+  const wanted = base.kind === "pdf-scan" ? range(1, base.pages) : uniq([1, ...noText, base.pages]).sort((a, b) => a - b);
+  base.imagePages = wanted;
   for (const p of wanted) base.images.push(await pdfPage(pdfPath, p, dir));
   return base;
 }
