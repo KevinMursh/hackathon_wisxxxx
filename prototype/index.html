@@ -75,16 +75,10 @@
   .screen { display:none; } .screen.on { display:block; }
 
   /* ---------- 1. 載入 ---------- */
-  .pick { max-width:1120px; margin:0 auto; padding:44px 24px 80px; }
-  .pick-head { margin-bottom:26px; max-width:640px; }
-  .pick-head h1 { font-size:27px; line-height:1.45; margin:10px 0 12px; } .pick-head p { margin:0; color:var(--ink-2); }
-  .stat-row { display:flex; flex-wrap:wrap; border:1px solid var(--line); background:var(--surface); margin-bottom:26px; }
-  .stat { flex:1 1 150px; padding:13px 16px; border-right:1px solid var(--line); } .stat:last-child { border-right:none; }
-  .stat .v { font-size:20px; font-weight:600; display:block; line-height:1.3; } .stat .k { font-size:11px; color:var(--ink-3); }
-  .intake { display:grid; grid-template-columns:1.25fr 1fr; border:1px solid var(--line); background:var(--surface); margin-bottom:14px; }
-  @media (max-width:820px) { .intake { grid-template-columns:1fr; } }
-  .upload { border-right:1px solid var(--line); display:flex; flex-direction:column; }
-  @media (max-width:820px) { .upload { border-right:none; border-bottom:1px solid var(--line); } }
+  .pick { max-width:960px; margin:0 auto; padding:44px 24px 80px; }
+  .pick-head { margin-bottom:22px; max-width:680px; }
+  .pick-head h1 { font-size:27px; line-height:1.45; margin:10px 0 10px; } .pick-head p { margin:0; color:var(--ink-2); font-size:13px; }
+  .upload { border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; margin-bottom:28px; }
   .drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:22px; text-align:center; cursor:pointer; margin:12px 12px 0; border:1px dashed var(--line-strong);
           background:repeating-linear-gradient(45deg, transparent, transparent 9px, var(--surface-2) 9px, var(--surface-2) 18px); transition:background .15s; }
   .drop:hover, .drop.over { background:var(--accent-soft); border-color:var(--accent); }
@@ -95,22 +89,17 @@
   .filerow:last-child { border-bottom:none; } .filerow .fn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .filerow .sz { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
   .filerow .rm { background:none; border:none; color:var(--ink-3); padding:0 4px; font-size:14px; } .filerow .rm:hover { color:var(--seal); }
-  .upload-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:12px; margin-top:auto; } .upload-bar .hint { font-size:11.5px; color:var(--ink-3); margin-left:auto; }
-  .paste { padding:14px 16px; display:flex; flex-direction:column; gap:9px; }
-  .paste textarea { width:100%; min-height:200px; resize:vertical; font-family:var(--sans); font-size:12.5px; line-height:1.85; padding:9px 11px; }
-  .paste-bar { display:flex; align-items:center; gap:9px; flex-wrap:wrap; } .paste-bar .hint { font-size:11.5px; color:var(--ink-3); margin-left:auto; }
-  .live-note { display:flex; gap:10px; padding:10px 14px; margin-bottom:24px; border:1px solid var(--line); border-left:3px solid var(--accent); background:var(--surface-2); font-size:12px; color:var(--ink-2); line-height:1.75; }
-  .live-note b { color:var(--accent); }
+  .upload-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px; margin-top:auto; } .upload-bar .hint { font-size:11.5px; color:var(--ink-3); }
+  .demo-links { margin-left:auto; font-size:11.5px; color:var(--ink-3); display:flex; gap:12px; flex-wrap:wrap; } .demo-links a { color:var(--accent); text-decoration:none; border-bottom:1px solid transparent; } .demo-links a:hover { border-bottom-color:var(--accent); }
   .pick-div { display:flex; align-items:center; gap:14px; margin:0 0 14px; font-size:11.5px; color:var(--ink-3); } .pick-div::after { content:""; flex:1; height:1px; background:var(--line); }
-  .case-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
-  .case-card { text-align:left; background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--line-strong); padding:18px 18px 16px; display:flex; flex-direction:column; gap:10px; transition:border-color .15s, transform .15s, box-shadow .15s; }
+  .case-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+  .case-card { text-align:left; background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--line-strong); padding:14px 16px 12px; display:flex; flex-direction:column; gap:8px; transition:border-color .15s, transform .15s, box-shadow .15s; }
   .case-card:hover { border-color:var(--line-strong); border-top-color:var(--accent); transform:translateY(-2px); box-shadow:var(--shadow); }
-  .case-card .no { font-size:11px; color:var(--ink-3); } .case-card h3 { font-size:15px; line-height:1.55; } .case-card p { margin:0; font-size:12.5px; color:var(--ink-2); line-height:1.65; }
+  .case-card .no { font-size:11px; color:var(--ink-3); } .case-card h3 { font-size:14px; line-height:1.5; margin:0; }
   .case-card .foot { margin-top:auto; padding-top:10px; border-top:1px solid var(--line); display:flex; justify-content:space-between; font-size:11px; color:var(--ink-3); } .case-card .go { color:var(--accent); font-weight:600; }
-  .libcard { border:1px solid var(--accent); background:var(--surface); display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin:26px 0 0; cursor:pointer; }
-  .libcard > div { padding:12px 16px; border-right:1px solid var(--line); } .libcard > div:last-child { border-right:none; }
-  .libcard .v { font-size:20px; font-weight:600; display:block; line-height:1.3; } .libcard .k { font-size:11px; color:var(--ink-3); }
-  .disclaimer { margin-top:30px; padding:14px 16px; border:1px dashed var(--line-strong); background:var(--surface-2); font-size:12px; color:var(--ink-3); line-height:1.75; } .disclaimer b { color:var(--ink-2); }
+  .lawline { margin-top:28px; padding:11px 14px; border:1px solid var(--line); border-left:3px solid var(--amber); background:var(--surface); font-size:12.5px; color:var(--ink-2); display:flex; gap:14px; flex-wrap:wrap; align-items:center; cursor:pointer; }
+  .lawline b { color:var(--ink); } .lawline .go { margin-left:auto; color:var(--amber); font-weight:600; white-space:nowrap; } .lawline .warn { color:var(--seal); font-weight:600; }
+  .disclaimer { margin-top:14px; padding:11px 14px; border:1px dashed var(--line-strong); background:var(--surface-2); font-size:12px; color:var(--ink-3); line-height:1.75; } .disclaimer b { color:var(--ink-2); }
 
   /* ---------- Modal ---------- */
   .modal { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:16px; }
@@ -342,7 +331,7 @@
 
 <header class="topbar">
   <div class="seal-mark">訴</div>
-  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ 原型展示 v6</span></div>
+  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ 原型展示 v7</span></div>
   <div class="chip" id="chip"><span class="eyebrow">承辦中</span><b id="chipName">—</b><span class="num" id="chipNo">—</span></div>
   <div class="chip status" id="statusChip"><b id="statusText">—</b></div>
   <div class="chip judge" id="judgeChip"><span class="eyebrow">AI 判定</span><b id="judgeText">—</b></div>
@@ -357,49 +346,31 @@
   <div class="pick">
     <div class="pick-head">
       <div class="eyebrow">訴願案件審理作業流程之 AI 輔助應用</div>
-      <h1>把承辦人從重複撰擬中解放，<br>專注在真正需要判斷的案件。</h1>
-      <p>上傳整包卷宗，系統看內容辨識每份文件的類型與來源，直接完成三方對照、爭點認定、法規查核、相似案例與決定書草稿；承辦人不同意才提出異議。結案時登錄委員會結論，案件進入案件庫。</p>
+      <h1>上傳卷宗，直接拿到可審的決定書草稿。</h1>
+      <p>系統辨識每份文件的類型與來源，完成程序審查、爭點認定、法規查核、相似案例與草稿；承辦人只在不同意時提出異議。以法制局提供之 101 份決定書、15 部法規、12 則函釋、19 則判解為基礎。</p>
     </div>
-    <div class="stat-row">
-      <div class="stat"><span class="v num">1,566</span><span class="k">114 年全市訴願收案量（110 年為 1,238）</span></div>
-      <div class="stat"><span class="v num">101</span><span class="k">歷史決定書比對庫（110–114 年，本次提供）</span></div>
-      <div class="stat"><span class="v num">70%</span><span class="k">程序不受理占比（71 / 101）</span></div>
-      <div class="stat"><span class="v num">40</span><span class="k">法規、函釋與判解索引</span></div>
-    </div>
-    <div class="intake">
-      <div class="upload">
-        <div class="drop" id="drop" tabindex="0" role="button" aria-label="上傳卷宗檔案">
-          <span class="mk">＋</span>
-          <span><b>拖曳整包卷宗至此，或點選選擇多個檔案</b><span>PDF・JPG・PNG・MP4　檔名不需整理；系統看內容辨識類型與來源，直接分析</span></span>
-          <input type="file" id="file" multiple accept=".pdf,.jpg,.jpeg,.png,.mp4,.mov,.doc,.docx" hidden>
-        </div>
-        <div class="files" id="fileList"></div>
-        <div class="upload-bar">
-          <button class="btn" id="runBtn" disabled>開始分析</button>
-          <button class="ghost-btn" id="packBtn">載入 case02 卷宗包</button>
-          <button class="ghost-btn" id="messyBtn">以亂檔名載入 case02</button>
-          <button class="ghost-btn" id="clearBtn">清除</button>
-          <span class="hint" id="fileHint">尚未加入檔案</span>
-        </div>
+    <div class="upload">
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="上傳卷宗檔案">
+        <span class="mk">＋</span>
+        <span><b>拖曳整包卷宗至此，或點選選擇多個檔案</b><span>PDF・JPG・PNG・MP4　檔名不需整理，系統看內容辨識</span></span>
+        <input type="file" id="file" multiple accept=".pdf,.jpg,.jpeg,.png,.mp4,.mov,.doc,.docx" hidden>
       </div>
-      <div class="paste">
-        <span class="eyebrow">或直接貼上訴願書內容（即時解析）</span>
-        <textarea id="pasteBox" placeholder="貼上訴願書全文。系統會擷取訴願人、原處分機關、文號、送達日與收文日，計算 30 日法定期間，判定案由並檢索相似歷史決定書。"></textarea>
-        <div class="paste-bar"><button class="btn" id="parseBtn" disabled>解析並分析</button><button class="ghost-btn" id="sampleBtn">填入範例文字</button><span class="hint" id="pasteHint">尚未輸入內容</span></div>
+      <div class="files" id="fileList"></div>
+      <div class="upload-bar">
+        <button class="btn" id="runBtn" disabled>開始分析</button>
+        <span class="hint" id="fileHint">尚未加入檔案</span>
+        <span class="demo-links">示範：<a href="#" id="packBtn">載入 case02 卷宗包</a><a href="#" id="messyBtn">以亂檔名載入</a><a href="#" id="clearBtn">清除</a></span>
       </div>
     </div>
-    <div class="live-note"><span><b>貼上文字這條路徑是真的在運算。</b>多檔案上傳路徑之「Claude 判定」以預建對照表模擬（亂檔名 demo 可證明不靠檔名）；卷宗瀏覽器顯示的掃描件、照片與影片均為 case02 卷宗包內的實際檔案。案件狀態與案件庫存於瀏覽器本機。</span></div>
 
     <div class="pick-div">或選擇示範案件</div>
     <div class="case-grid" id="caseGrid"></div>
 
-    <div class="pick-div" style="margin-top:26px">案件庫・法規庫</div>
-    <div class="libcard" id="libCard"></div>
-    <div class="libcard" id="lawCard" style="margin-top:10px;border-color:var(--amber)"></div>
+    <div class="lawline" id="lawCard"></div>
 
     <div class="disclaimer">
-      <b>關於這份原型</b>　純前端展示，未串接後端模型。擷取結果、爭點、AI 判定、引用查核、異議回覆為依真實決定書預先編排之示範資料；貼上文字路徑為瀏覽器端規則運算。<br>
-      <b>資料來源</b>　新北市政府法制局提供之歷史訴願決定書 101 份、相關法規 11 份、行政函釋 10 份、司法院釋字及行政判解 19 份；case02 卷宗包為依真實決定書 1141061379 反推之模擬卷證。姓名與地址依原文遮蔽處理。
+      <b>關於這份原型</b>　純前端展示，未串接後端模型；擷取、爭點、AI 判定、引用查核為依真實決定書預先編排之示範資料。
+      <b>資料來源</b>　新北市政府法制局提供之歷史訴願決定書 101 份、法規與函釋判解；case02 卷宗包為依決定書 1141061379 反推之模擬卷證，姓名地址遮蔽。
     </div>
   </div>
 </section>

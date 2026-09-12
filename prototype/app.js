@@ -57,28 +57,19 @@ function loadPack(messy) {
   FILES = CASE_B.files.map(([name, kb, tagName, docId]) => ({ name: messy ? (MESSY_NAMES[docId] || name) : name, kb, docId, base: "B" }));
   renderFiles();
 }
-$("#packBtn").addEventListener("click", () => loadPack(false));
-$("#messyBtn").addEventListener("click", () => loadPack(true));
-$("#clearBtn").addEventListener("click", () => { FILES = []; renderFiles(); });
+$("#packBtn").addEventListener("click", (e) => { e.preventDefault(); loadPack(false); });
+$("#messyBtn").addEventListener("click", (e) => { e.preventDefault(); loadPack(true); });
+$("#clearBtn").addEventListener("click", (e) => { e.preventDefault(); FILES = []; renderFiles(); });
 $("#runBtn").addEventListener("click", () => runCase(autoClassify()));
 
 /* ---------- 貼上文字 ---------- */
-const pasteBox = $("#pasteBox"), parseBtn = $("#parseBtn"), pasteHint = $("#pasteHint");
-function syncPaste() { const n = pasteBox.value.trim().length; parseBtn.disabled = n < 40; pasteHint.textContent = n === 0 ? "尚未輸入內容" : n < 40 ? `已輸入 ${n} 字，至少需 40 字` : `已輸入 ${n} 字，可解析`; }
-pasteBox.addEventListener("input", syncPaste); syncPaste();
-$("#sampleBtn").addEventListener("click", () => { pasteBox.value = SAMPLE_TEXT; syncPaste(); pasteBox.focus(); });
-parseBtn.addEventListener("click", () => { const raw = pasteBox.value.trim(); if (raw.length >= 40) runCase(buildLive(parseAppeal(raw))); });
+// v7：貼上訴願書文字的即時解析入口自首頁移除；parseAppeal／buildLive 保留供 pipeline 參考
 
 /* ---------- 示範案件卡與案件庫卡 ---------- */
-$("#caseGrid").innerHTML = CASES.map((c, i) => `<button class="case-card" data-i="${i}"><span class="no num">案號 ${c.no}</span><h3>${c.cardTitle}</h3><p>${c.cardDesc}</p><div style="display:flex;flex-wrap:wrap;gap:6px">${c.cardTags.join("")}</div><div class="foot"><span>${c.name}</span><span class="go">開始分析 →</span></div></button>`).join("");
+$("#caseGrid").innerHTML = CASES.map((c, i) => `<button class="case-card" data-i="${i}"><span class="no num">案號 ${c.no}</span><h3>${c.cardTitle}</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${c.cardTags.slice(1, 2).join("")}</div><div class="foot"><span>${c.name}</span><span class="go">開始分析 →</span></div></button>`).join("");
 $$(".case-card").forEach((el) => el.addEventListener("click", () => runCase(structuredClone(CASES[+el.dataset.i]))));
-function renderLibCard() {
-  const n = (st) => LIB.filter((r) => r.status === st).length;
-  const closed = LIB.filter((r) => r.status === "已結案").sort((a, b) => (b.closedAt || "").localeCompare(a.closedAt || ""));
-  const court = LIB.filter((r) => r.court).sort((a, b) => (b.court.at || "").localeCompare(a.court.at || ""));
-  $("#libCard").innerHTML = `<div><span class="v num">${n("承辦中")}</span><span class="k">承辦中</span></div><div><span class="v num">${n("已送審")}</span><span class="k">已送審</span></div><div><span class="v num">${n("已結案")}</span><span class="k">已結案</span></div><div><span class="v num" style="font-size:14px">${closed[0] ? closed[0].closedAt : "—"}</span><span class="k">最近結案</span></div><div><span class="v num" style="font-size:14px">${court[0] ? court[0].court.at : "—"}</span><span class="k">最近法院結果回填</span></div><div style="display:grid;place-items:center"><span class="btn" style="font-size:12px">開啟案件庫 →</span></div>`;
-}
-$("#libCard").addEventListener("click", openLibrary);
+function renderLibCard() {}
+
 $("#libBtn").addEventListener("click", openLibrary);
 $("#backBtn").addEventListener("click", () => { persist(); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
 renderLibCard();
@@ -497,7 +488,7 @@ function renderLib() {
 
 /* ---------- 法規庫 ---------- */
 function lawCounts() { const recent = LAWLIB.filter((l) => { const t = isoT(l.date); return t && Date.now() - t < 366 * DAY * 3; }); return { laws: LAWLIB.length, rul: RULINGS.length, recent, sync: localStorage.getItem("ssz.lawsync") || "尚未同步" }; }
-function renderLawCard() { const k = lawCounts(); $("#lawCard").innerHTML = `<div><span class="v num">${k.laws}</span><span class="k">法規（部）</span></div><div><span class="v num">${k.rul}</span><span class="k">函釋（則）</span></div><div><span class="v num" style="font-size:14px">${k.recent.length ? k.recent.map((l) => l.n).join("、") : "—"}</span><span class="k">近期修正</span></div><div><span class="v num" style="font-size:14px">${esc(k.sync)}</span><span class="k">上次同步全國法規資料庫</span></div><div style="display:grid;place-items:center"><span class="btn" style="font-size:12px;background:var(--amber);border-color:var(--amber)">開啟法規庫 →</span></div>`; }
+function renderLawCard() { const k = lawCounts(), stale = LAWLIB.filter((l) => /資料集 PDF 為/.test(l.src || "")).length; $("#lawCard").innerHTML = `<span><b>法規庫</b>　法規 <b class="num">${k.laws}</b> 部・函釋 <b class="num">${k.rul}</b> 則</span><span>上次同步全國法規資料庫 <b class="num">${esc(k.sync)}</b></span>${stale ? `<span class="warn">${stale} 部資料集版本落後</span>` : ""}<span class="go">開啟法規庫 →</span>`; }
 $("#lawCard").addEventListener("click", openLawLib); $("#lawBtn").addEventListener("click", openLawLib);
 let LAWTAB = "law";
 function openLawLib() { persist(); show("s-law"); $("#backBtn").style.display = ""; renderLaw(); }
