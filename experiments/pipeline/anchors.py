@@ -42,6 +42,14 @@ class RefTable:
         if not q or not q.get("file"):
             return None
         d = self.by_name.get(q["file"]) or next((x for x in self.by_name.values() if q["file"] in x.name or x.name in q["file"]), None)
+        if not d:  # 原檔名或表單標題（圖片檔模型常用標題當檔名）→ bigram 重疊最多者
+            f = q["file"]
+            d = next((x for x in self.by_name.values() if f in x.originalName or x.originalName in f), None)
+            if not d and len(f) >= 3:
+                bg = lambda t: {t[i:i + 2] for i in range(len(t) - 1)}
+                scored = sorted(((len(bg(f) & bg(x.originalName + x.doc_type + x.name)), x) for x in self.by_name.values()), key=lambda t: -t[0])
+                if scored and scored[0][0] >= 2 and (len(scored) == 1 or scored[0][0] > scored[1][0]):
+                    d = scored[0][1]
         if not d:
             self.unverified.append(q); return None
         self._n += 1

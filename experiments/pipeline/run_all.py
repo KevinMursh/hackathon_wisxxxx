@@ -116,7 +116,7 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
         if h["title"] not in seen:
             seen.add(h["title"]); cand_list.append(h)
     if "s4" in todo:
-        law_list = "\n".join(f"- {k}（修正 {v['amended']}）" for k, v in db.items())
+        law_list = "\n".join(f"- {k}｜最新修正 {v['amended']}" for k, v in db.items() if "（現行）" not in k)
         cand_txt = "\n\n".join(f"【{h['kind']}】{h['title']}\n{h['text'][:600]}" for h in cand_list)
         laws = call_json("s4_laws", Laws, case=case, system=SYS + "\n\n" + prompt("s4_laws"),
                          user="可用法規清單：\n" + law_list + "\n\n候選函釋判解（KB 檢索）：\n" + cand_txt +
@@ -126,8 +126,14 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
     else:
         laws = _load(case, "s4_laws")
     verified = []
+    def _canon(name: str) -> str:  # 模型可能把「（修正 …）」或全形括號一起抄進來
+        base = re.split(r"[（(｜|]", name)[0].strip()
+        if base in db:
+            return base
+        return next((k for k in sorted(db, key=len, reverse=True) if "（現行）" not in k and base.startswith(k)), base)
     for r in laws["recommended"]:
         if r["kind"] == "法規":
+            r["name"] = _canon(r["name"])
             hit = lawdb.lookup(db, r["name"], r["article"] or "")
             verified.append({**r, "status": hit["status"], "text": hit["text"][:600], "amended": hit.get("amended", "")})
         else:

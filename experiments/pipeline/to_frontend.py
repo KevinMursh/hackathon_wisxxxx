@@ -15,7 +15,9 @@ def build_paras(draft: str, docs: list[Doc], rt: RefTable | None = None) -> list
     """草稿純文字 → 段落（h4／p）＋〔檔名〕錨點＋〔借自〕標記。"""
     rt = rt or RefTable(docs, prefix="v")
     paras = []
-    for n, line in enumerate(l.strip() for l in draft.splitlines() if l.strip()):
+    lines = [re.sub(r"^\s*#{1,6}\s*|\*\*", "", l).strip() for l in draft.splitlines()]
+    lines = [l for l in lines if l and not re.fullmatch(r"-{3,}|\*{3,}", l)]
+    for n, line in enumerate(lines):
         kind = "h4" if line in HEADS or (len(line) <= 6 and line.rstrip("：:") in HEADS) else "p"
         borrows = re.findall(r"〔借自[：:]\s*([^〕]+)〕", line)
         files = [x.strip() for f in re.findall(r"〔([^〕]+)〕", line) if not f.startswith("借自") for x in re.split(r"[、，,;；]", f)]

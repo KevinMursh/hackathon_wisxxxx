@@ -93,14 +93,14 @@ def _progress_for(job: dict, doc: dict, docs, lib):
 
 
 def _run_analyze(job: dict):
-    case_id = job["caseId"]
+    case_id, start = job["caseId"], job["payload"].get("from", "s2")
     doc = {"caseId": case_id, "status": {"state": "running", "steps": {s: "pending" for s in STEPS}, "startedAt": _now(), "finishedAt": None, "ms": {}, "t": {}},
            "output": {}, "objections": []}
     _save(case_id, doc)
     try:
         docs = load_any(case_id)
         lib = lawlib.build()
-        fe = run_all.run(case_id, "s2", images=True, docs=docs, progress=_progress_for(job, doc, docs, lib))
+        fe = run_all.run(case_id, start, images=True, docs=docs, progress=_progress_for(job, doc, docs, lib))
         doc["output"] = fe
         doc["status"].update(state="done", finishedAt=_now())
         _save(case_id, doc)
@@ -187,12 +187,13 @@ def health():
 
 
 @app.post("/api/cases/{case_id}/analyze", status_code=202)
-def analyze(case_id: str):
+def analyze(case_id: str, from_step: str = "s2"):
+    """?from_step=s4 可從中間步驟續跑（前面步驟讀 runs/ 快取；除錯用）"""
     try:
         load_any(case_id)  # 先確認案件存在（本機或 DDB）
     except FileNotFoundError:
         raise HTTPException(404, {"code": "CASE_NOT_FOUND", "message": case_id, "retryable": False})
-    job = _submit("analyze", case_id)
+    job = _submit("analyze", case_id, {"from": from_step})
     return {"jobId": job["jobId"], "caseId": case_id, "eventsUrl": f"/api/jobs/{job['jobId']}/events", "state": job["state"]}
 
 
