@@ -22,6 +22,12 @@ if command -v dnf >/dev/null; then
     }
   fi
 
+  # AL2023 太精簡，LibreOffice 即使裝好也會因缺 X11 共用函式庫而跑不起來
+  # （實測 oosplash: libXinerama.so.1: cannot open shared object file）
+  dnf install -y libXinerama libXext libX11 libXrender libSM libICE libXrandr \
+                 cups-libs dbus-glib fontconfig freetype mesa-libGL 2>/dev/null \
+    || log "⚠️ X11 相依安裝失敗 → LibreOffice 可能無法執行"
+
   # AL2023 沒有 LibreOffice 套件：用官方 RPM 包
   if ! command -v soffice >/dev/null; then
     # 版本會下架（24.8.x 已不在 stable），從目錄取現有最新版；可用 LO_VER 覆寫
@@ -63,5 +69,20 @@ done
 for t in unzip qpdf ffmpeg ffprobe soffice; do
   P=$(command -v "$t" || true); printf '  [選配] %-10s %s\n' "$t" "${P:-(缺，該格式回 unsupported)}"
 done
+
+# 檔案存在不等於跑得動（LibreOffice 缺共用函式庫時 which 找得到、執行會失敗）
+if command -v soffice >/dev/null; then
+  if OUT=$(timeout 120 soffice --headless --version 2>&1); then
+    log "  soffice 可執行：${OUT}"
+  else
+    log "⚠️ soffice 存在但無法執行 → Office 檔會回 NORMALIZE_FAILED"
+    log "   ${OUT}"
+    log "   缺的函式庫可用 dnf provides 查，例如：dnf provides '*/libXinerama.so.1'"
+  fi
+fi
+if command -v ffmpeg >/dev/null; then
+  ffmpeg -hide_banner -version >/dev/null 2>&1 || log "⚠️ ffmpeg 存在但無法執行"
+fi
+
 [ "$MISSING" = 1 ] && { log "❌ 有必要工具缺少，服務會回 503"; exit 1; }
 log "✅ 必要工具齊全"
