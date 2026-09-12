@@ -152,7 +152,7 @@
       "path": "$pack/卷宗全卷合併.pdf",
       "kind": "pdf-text",
       "pages": 20,
-      "images": 2,
+      "images": 8,
       "mustContain": [
         "訴願",
         "答辯",

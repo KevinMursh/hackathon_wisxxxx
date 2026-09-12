@@ -1,0 +1,332 @@
+{
+  "_comment": "分類驗證正解。doc_type/source 可為陣列 = 任一即可。group 用來分組跑：tune（調 prompt 用）/ final（case02 總驗收）。segmentsMin 用於合併卷宗。 suggestedNameMatch = 建議檔名 regex（驗命名模板＋序號＋來源）。",
+  "_pack": "../../資料集/評測用（勿用於RAG）/case02-廢清法79I駁回/卷宗包",
+  "_samples": "../../docs/訴願書跟答辯書範例",
+  "_own": "../../資料集/自行蒐集",
+  "_dec": "../../資料集/命題方提供/歷史訴願決定書",
+  "cases": [
+    {
+      "group": "final",
+      "path": "$pack/01-訴願書/訴願書_鄭○芳_1140922.pdf",
+      "doc_type": "訴願書",
+      "source": "訴願人",
+      "date": "114-09-22",
+      "suggestedNameMatch": "^01-訴願書_1140922_訴願人\\.pdf$"
+    },
+    {
+      "group": "final",
+      "path": "$pack/02-答辯書/答辯書及檢送函_環保局_1141006.pdf",
+      "doc_type": [
+        "答辯書",
+        "答辯書檢送函"
+      ],
+      "source": "原處分機關",
+      "segmentsMin": 2,
+      "segmentTypes": [
+        "答辯書檢送函",
+        "答辯書"
+      ]
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/00-卷證目錄.pdf",
+      "doc_type": "卷證目錄",
+      "source": "原處分機關"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/01-裁處書正本.pdf",
+      "doc_type": "裁處書",
+      "source": "原處分機關",
+      "date": "114-09-16",
+      "doc_noContains": "41-114-090351",
+      "suggestedNameMatch": "^10-裁處書_1140916_原處分機關\\.pdf$"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/02-裁處書送達證書.jpg",
+      "doc_type": "裁處書送達證書",
+      "source": "原處分機關",
+      "date": "114-09-18",
+      "suggestedNameMatch": "^11-裁處書送達證書_1140918_原處分機關\\.jpg$"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/03-民眾檢舉案件受理單.pdf",
+      "doc_type": "檢舉資料",
+      "source": [
+        "原處分機關",
+        "第三方"
+      ]
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/04-稽查工作紀錄表.jpg",
+      "doc_type": "稽查紀錄",
+      "source": "原處分機關"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/05-採證照片彙整頁.pdf",
+      "doc_type": "採證照片",
+      "source": [
+        "原處分機關",
+        "第三方"
+      ]
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/05-採證照片/採證照片-01_20250627-124009.jpg",
+      "doc_type": "採證照片",
+      "source": "未知",
+      "noIdentity": true,
+      "suggestedNameMatch": "^15-採證照片(_\\d{7})?\\.jpg$"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/05-採證照片/採證照片-02_20250627-124014.jpg",
+      "doc_type": "採證照片",
+      "source": "未知",
+      "noIdentity": true
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/05-採證照片/採證照片-03_20250627-124019.jpg",
+      "doc_type": "採證照片",
+      "source": "未知",
+      "noIdentity": true
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/06-影像放大標註.jpg",
+      "doc_type": "影像放大標註",
+      "source": [
+        "原處分機關",
+        "未知"
+      ]
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/07-車籍查詢結果.pdf",
+      "doc_type": "車籍資料",
+      "source": "原處分機關"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/08-陳述意見通知書.pdf",
+      "doc_type": "陳述意見通知書",
+      "source": "原處分機關",
+      "doc_noContains": "1143451762"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/09-陳述意見通知書送達證書.jpg",
+      "doc_type": "通知書送達證書",
+      "source": "原處分機關"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/10-陳述意見書.jpg",
+      "doc_type": "陳述意見書",
+      "source": "訴願人"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/11-裁罰係數計算表.pdf",
+      "doc_type": "係數計算表",
+      "source": "原處分機關"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/12-裁處簽呈.jpg",
+      "doc_type": "簽呈",
+      "source": "原處分機關"
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/13-採證影片截圖頁.pdf",
+      "doc_type": [
+        "採證影片",
+        "採證照片"
+      ],
+      "source": [
+        "原處分機關",
+        "第三方",
+        "未知"
+      ]
+    },
+    {
+      "group": "final",
+      "path": "$pack/03-卷證/13-採證影片/違規採證影片_20250627-1240.mp4",
+      "doc_type": "採證影片",
+      "source": [
+        "未知",
+        "第三方"
+      ],
+      "noIdentity": true
+    },
+    {
+      "group": "final",
+      "path": "$pack/卷宗全卷合併.pdf",
+      "doc_type": [
+        "訴願書",
+        "答辯書檢送函"
+      ],
+      "source": [
+        "訴願人",
+        "原處分機關"
+      ],
+      "segmentsMin": 10,
+      "segmentTypes": [
+        "訴願書",
+        "答辯書",
+        "裁處書",
+        "裁處書送達證書",
+        "簽呈"
+      ]
+    },
+    {
+      "group": "tune",
+      "path": "$own/訴願書範例官方/訴願書範例(地價稅).pdf",
+      "doc_type": "訴願書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$own/訴願書範例官方/訴願書範例(中低收入戶).pdf",
+      "doc_type": "訴願書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$own/訴願書範例官方/訴願書範例(既成道路).pdf",
+      "doc_type": "訴願書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$own/訴願書範例官方/訴願書範例(廢棄物清理法).pdf",
+      "doc_type": "訴願書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$own/答辯書範例官方/行政院-訴願答辯書範例.pdf",
+      "doc_type": [
+        "答辯書",
+        "答辯書檢送函"
+      ],
+      "source": [
+        "原處分機關",
+        "未知"
+      ]
+    },
+    {
+      "group": "tune",
+      "path": "$samples/訴願委任書.odt",
+      "doc_type": "訴願委任書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$samples/閱覽卷宗申請書.odt",
+      "doc_type": "閱覽卷宗申請書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$samples/言詞辯論申請書.odt",
+      "doc_type": "言詞辯論申請書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$samples/言詞陳述申請書.odt",
+      "doc_type": "言詞陳述申請書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$samples/參加訴願申請書.odt",
+      "doc_type": "參加訴願申請書",
+      "source": [
+        "訴願人",
+        "未知"
+      ]
+    },
+    {
+      "group": "tune",
+      "path": "$samples/訴願書.odt",
+      "doc_type": "訴願書",
+      "source": "訴願人"
+    },
+    {
+      "group": "tune",
+      "path": "$dec/110年/01.110年-社會救助事件-77(1)-逾期不補正-不受理.pdf 的副本.pdf",
+      "doc_type": "委員會決定書",
+      "source": "本局"
+    },
+    {
+      "group": "tune",
+      "path": "$dec/112年/02.112年-違反建築法事件-77(1)-不合法定程式不補正-不受理.pdf 的副本.pdf",
+      "doc_type": "委員會決定書",
+      "source": "本局"
+    },
+    {
+      "group": "tune",
+      "path": "$dec/114年/01.114年-違反噪音管制法事件-77(1)-不合法定程式不補正-不受理.pdf 的副本.pdf",
+      "doc_type": "委員會決定書",
+      "source": "本局"
+    },
+    {
+      "group": "tune",
+      "path": "$own/判解函釋補充/臺北市政府114.03.24府訴一字第1136087417號決定書-空氣污染防制法異味採樣.pdf",
+      "doc_type": "委員會決定書",
+      "source": "第三方"
+    },
+    {
+      "group": "tune",
+      "path": "fixtures/負樣本-風景.jpg",
+      "doc_type": "其他",
+      "source": "未知",
+      "negative": true,
+      "suggestedNameMatch": "^27-其他\\.jpg$"
+    },
+    {
+      "group": "tune",
+      "path": "fixtures/負樣本-空白頁.pdf",
+      "doc_type": "其他",
+      "source": "未知",
+      "negative": true
+    },
+    {
+      "group": "tune",
+      "path": "fixtures/負樣本-英文報告.pdf",
+      "doc_type": "其他",
+      "source": "未知",
+      "negative": true
+    },
+    {
+      "group": "tune",
+      "path": "fixtures/其實是jpg.pdf",
+      "doc_type": "裁處書送達證書",
+      "source": "原處分機關",
+      "date": "114-09-18",
+      "suggestedNameMatch": "^11-裁處書送達證書_1140918_原處分機關\\.pdf$"
+    },
+    {
+      "group": "tune",
+      "path": "fixtures/掃描兩頁.pdf",
+      "doc_type": [
+        "裁處書送達證書",
+        "簽呈"
+      ],
+      "source": "原處分機關",
+      "segmentsMin": 2,
+      "segmentTypes": [
+        "裁處書送達證書",
+        "簽呈"
+      ]
+    }
+  ]
+}

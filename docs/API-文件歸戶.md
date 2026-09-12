@@ -1,0 +1,218 @@
+# 文件歸戶 API 接口文檔
+
+> 版本：v0.1（2026-09-12）　狀態：契約定稿，`server/server.mjs` 依此實作中
+> Base URL：`https://<host>/api`　　Content-Type：JSON（上傳為 multipart/form-data）
+> 認證：黑客松 demo 不做登入；EC2 安全群組限制來源 IP。正式版加 Cognito／IAM。
+
+## 0. 一眼看懂
+
+```
+POST /cases/{caseId}/files          ← 一次丟整批檔案，立刻回 jobId
+GET  /jobs/{jobId}/events           ← SSE：每處理完一箱推一批結果
+GET  /jobs/{jobId}                  ← 同資料，輪詢版
+GET  /cases/{caseId}/files          ← 目前歸戶狀態（含人工修正）
+PATCH /cases/{caseId}/files/{fileId} ← 人工改類型／來源／檔名 → 寫稽核
+GET  /cases/{caseId}/audit          ← 稽核軌跡
+GET  /health                        ← 憑證與外部工具自檢
+```
+
+流程：上傳 → 背景 正規化 → 裝箱 → Bedrock 分類 → 逐箱推結果 → 前端進工作畫面 → 承辦人就地修正。**沒有確認閘門**（v4 拍板）。
+
+## 1. 資料模型
+
+### 1.1 File（每個上傳檔一筆）
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `fileId` | string | sha256 前 12 碼；同內容同 id（去重靠它） |
+| `caseId` | string | |
+| `originalName` | string | 上傳時檔名，**永不改** |
+| `sha256` | string | |
+| `bytes` | int | |
+| `mime` | string\|null | magic bytes 判定 |
+| `kind` | enum | `pdf-text` `pdf-scan` `image` `video` `office` `text` `unsupported` |
+| `pages` | int\|null | 影片為 null |
+| `duration` | number\|null | 影片秒數 |
+| `status` | enum | `queued` `processing` `done` `error` `duplicate` `excluded` |
+| `error` | Error\|null | `status=error` 時 |
+| `duplicateOf` | string\|null | `status=duplicate` 時指向先到的 fileId |
+| `segments` | Segment[] | 分類結果；單一文件一筆，合併卷宗多筆 |
+| `rawUrl` | string | presigned GET，原檔（15 分鐘有效） |
+| `pageImageUrls` | string[] | presigned GET，已產出的頁圖（順序同 `imagePages`） |
+| `imagePages` | int[] | 哪些頁有圖（pdf-text 只有首尾＋掃描頁） |
+| `createdAt` / `updatedAt` | ISO string | |
+
+### 1.2 Segment（一份文件的判定）
+
+| 欄位 | 型別 | 來源 | 說明 |
+|---|---|---|---|
+| `segId` | string | 程式 | `{fileId}#{n}` |
+| `fromPage` / `toPage` | int | 模型 | 1-based，含 |
+| `doc_type` | enum(27) | 模型 | 見 §1.3 |
+| `source` | enum | 模型 | `訴願人` `原處分機關` `第三方` `本局` `未知`。**未知是正式值** |
+| `nature` | enum | 程式查表 | `主張` `紀錄` `證物` `未知`（由 doc_type 推） |
+| `timing` | enum | 程式整案算 | `處分作成前` `處分作成` `爭訟發生後` `未知`（以該案裁處書 date 為界） |
+| `form` | enum | 模型 | `文字PDF` `掃描` `照片` `影片` `系統列印` `手寫` |
+| `date` | string\|null | 模型 | 民國 `114-09-18`；送達證書＝簽收日、函＝發文日、照片＝時間戳 |
+| `doc_no` | string\|null | 模型 | 文號原文 |
+| `party_hint` | string\|null | 模型 | 當事人名，「○」原樣保留 |
+| `summary` | string | 模型 | ≤30 字一句摘要；`其他` 固定「無法辨識內容」 |
+| `confidence` | 0–1 | 模型＋程式 | evidence 回查失敗打 0.6 折 |
+| `evidence` | string | 模型 | 判定依據，引用該檔內字樣 |
+| `evidence_unverified` | bool | 程式 | evidence 引用的字樣在該檔文字裡找不到 |
+| `suggestedName` | string | 程式 | 模板見 §1.4；人工可改 |
+| `manual` | object\|null | 程式 | 人工修正過的欄位 `{doc_type?, source?, suggestedName?, by, at}` |
+
+### 1.3 doc_type 封閉清單
+
+訴願書、訴願委任書、答辯書、答辯書檢送函、卷證目錄、裁處書、裁處書送達證書、陳述意見通知書、通知書送達證書、陳述意見書、檢舉資料、稽查紀錄、調查筆錄、採證照片、影像放大標註、採證影片、車籍資料、係數計算表、簽呈、檢驗報告、契約書、委員會決定書、閱覽卷宗申請書、言詞辯論申請書、言詞陳述申請書、參加訴願申請書、其他
+
+前端顯示可粗分；後端不合併，因為期間計算要區分兩種送達證書、欄位擷取要精確找訴願書。
+
+### 1.4 suggestedName
+
+目前模板 `{序}-{doc_type}_{date去連字號}_{source}.{ext}`，例 `11-裁處書送達證書_1140918_原處分機關.jpg`；序號依法定順序表，`source=未知` 省略。
+**待拍板**：前端 mock 用 `02-裁處書送達證書_114-09-18`（日期帶連字號、無來源）。定案後只改 `suggestedName()` 一個函式。
+
+### 1.5 Error
+
+```json
+{ "code": "BEDROCK_THROTTLED", "message": "…", "retryable": true }
+```
+
+| code | HTTP | 說明 |
+|---|---|---|
+| `UNSUPPORTED_FORMAT` | — | 該檔不送模型，`doc_type=其他`；不是錯誤，`status=done` |
+| `NORMALIZE_FAILED` | — | 工具抽不出內容（壞檔、截斷）；該檔 `status=error`，其餘繼續 |
+| `TOO_MANY_PAGES` | — | 掃描 PDF > 200 頁 |
+| `MISSING_IN_RESPONSE` | — | 模型漏回且單檔補跑仍漏 |
+| `SCHEMA_INVALID` | — | 模型回非法 JSON |
+| `BEDROCK_THROTTLED` | 503 | 重試 3 次仍節流；整箱失敗 |
+| `BEDROCK_UNAVAILABLE` | 503 | 憑證／模型不可用；**整個 job 停** |
+| `S3_WRITE_FAILED` | 500 | |
+| `CASE_NOT_FOUND` / `FILE_NOT_FOUND` / `JOB_NOT_FOUND` | 404 | |
+| `VALIDATION` | 400 | 欄位值不在枚舉、body 格式錯 |
+| `PAYLOAD_TOO_LARGE` | 413 | 單檔 > 100 MB 或整批 > 500 MB |
+
+## 2. Endpoints
+
+### 2.1 `POST /cases/{caseId}/files`
+
+上傳整批。`caseId` 不存在則建立。
+
+Request：`multipart/form-data`，欄位 `files`（可多個）。zip 會展開，每個子檔各自成一筆。
+
+Response `202`：
+```json
+{
+  "jobId": "job_01J8…",
+  "caseId": "1141061379",
+  "files": [
+    { "fileId": "a3f9c2e1b7d4", "originalName": "IMG_3988.jpg", "bytes": 114532, "status": "queued" },
+    { "fileId": "0c1d…",         "originalName": "scan_0007.pdf", "bytes": 1584002, "status": "queued" },
+    { "fileId": "a3f9c2e1b7d4", "originalName": "IMG_3988(1).jpg", "bytes": 114532, "status": "duplicate", "duplicateOf": "a3f9c2e1b7d4" }
+  ],
+  "eventsUrl": "/api/jobs/job_01J8…/events"
+}
+```
+
+同批內 sha256 相同 → 第二份直接 `duplicate`，不進箱。與該案**先前**上傳過的重複 → 同樣 `duplicate`。
+
+### 2.2 `GET /jobs/{jobId}/events`（SSE）
+
+`Content-Type: text/event-stream`。事件：
+
+```
+event: normalized
+data: {"fileId":"a3f9…","kind":"image","pages":1,"warnings":[]}
+
+event: box
+data: {"box":1,"of":3,"fileIds":["a3f9…","0c1d…"]}
+
+event: result
+data: {"fileId":"a3f9…","ok":true,"segments":[{…Segment…}],"ms":41230}
+
+event: result
+data: {"fileId":"0c1d…","ok":false,"error":{"code":"NORMALIZE_FAILED","message":"pdfinfo reports 0 pages"}}
+
+event: done
+data: {"jobId":"job_…","total":18,"ok":16,"error":1,"duplicate":1,"boxes":2,"ms":93120}
+
+event: fatal
+data: {"code":"BEDROCK_UNAVAILABLE","message":"…"}
+```
+
+- `normalized` 每檔一筆，正規化完立刻推（前端可先顯示頁數／格式）
+- `result` **逐箱**推：一箱處理完，箱內每檔各推一筆；case02 = 2 箱 2 波
+- 連線中斷重連：帶 `Last-Event-ID`，補推漏掉的事件
+- `fatal` 後不再有事件，job `status=failed`
+
+### 2.3 `GET /jobs/{jobId}`
+
+```json
+{ "jobId":"…", "caseId":"…", "status":"running|done|failed", "boxes":{"done":1,"total":2},
+  "files":[ …File（含 segments 或 error）… ], "startedAt":"…", "finishedAt":null }
+```
+
+### 2.4 `GET /cases/{caseId}/files`
+
+該案所有檔案（人工修正後的當前狀態）。Query：`?includeExcluded=true` 含不納入者。
+
+```json
+{ "caseId":"…", "cutoffDate":"114-09-16", "files":[ …File… ],
+  "groups": { "訴願人":["a3f9…"], "原處分機關":[…], "第三方":[], "本局":[], "未知":["…"] } }
+```
+
+`groups` 依每檔第一個 segment 的（人工修正後）`source` 分組，直接餵卷宗瀏覽器四＋一組。
+
+### 2.5 `PATCH /cases/{caseId}/files/{fileId}`
+
+人工修正。Body 任一欄位可省；`segIndex` 省略 = 0。
+
+```json
+{ "segIndex": 0, "doc_type": "採證照片", "source": "第三方", "suggestedName": "05-採證照片-02_12-40-14.jpg", "excluded": false, "by": "承辦人A" }
+```
+
+規則：
+- 改 `doc_type`／`source` 而未給 `suggestedName` → 依模板重算
+- `excluded=true` → `status=excluded`，仍列於 `GET files`（灰字），不進下游分析
+- 每個改動欄位寫一筆稽核：`{fileId, segIndex, field, from, to, by, at, origin:"ai"}`
+- `nature` 隨 `doc_type` 重算；`timing` 若改的是裁處書日期相關則整案重算
+
+Response `200`：更新後的 File。
+
+### 2.6 `GET /cases/{caseId}/audit`
+
+```json
+{ "entries": [ { "at":"2026-09-12T08:12:03Z", "fileId":"a3f9…", "segIndex":0, "field":"source", "from":"未知", "to":"第三方", "by":"承辦人A" } ] }
+```
+
+### 2.7 `GET /health`
+
+```json
+{ "ok": true, "bedrock": { "model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0", "reachable":true },
+  "tools": { "pdftotext":true, "pdftoppm":true, "soffice":true, "ffmpeg":true, "file":true },
+  "s3": "appeal-cases-xxxx", "dynamodb": "appeal-cases", "version":"0.1.0" }
+```
+任一 `false` → HTTP 503。前端開頁先打它；掛了就顯示錯誤，**不退回假資料**。
+
+## 3. 儲存
+
+| 資料 | 位置 | Key |
+|---|---|---|
+| 原檔 | S3 | `cases/{caseId}/raw/{fileId}.{ext}` |
+| 正規化產物 | S3 | `cases/{caseId}/normalized/{fileId}/meta.json`、`p{N}.jpg`、`f{N}.jpg` |
+| File／Segment／人工修正 | DynamoDB `appeal-cases` | PK `CASE#{caseId}`　SK `FILE#{fileId}` |
+| Job | DynamoDB | PK `JOB#{jobId}`　SK `META`；事件 SK `EVT#{seq}` |
+| 稽核 | DynamoDB | PK `CASE#{caseId}`　SK `AUDIT#{ISO時間}#{seq}` |
+| 分類 cache | DynamoDB | PK `CACHE#{sha256}`　SK `{model}#{promptHash}` → segments |
+
+S3 bucket 全 private，前端一律拿 presigned URL；`Content-Disposition` 帶 `suggestedName`，下載即得標準檔名，S3 key 不改。
+
+## 4. 限制
+
+- Bedrock ≤ 1 RPS：所有箱序列處理；同時多個 job 排隊（單一 worker）
+- 每箱 ≤ 10 檔 / ≤ 20 圖 / ≤ 120k 字；case02 18 檔約 90–140 秒
+- 單檔 ≤ 100 MB，整批 ≤ 500 MB；掃描 PDF ≤ 200 頁
+- 影片只抽 3 幀判類型，不分析內容
+- 合併卷宗回多段但**不拆檔**（下游用 `fromPage/toPage` 定位）
