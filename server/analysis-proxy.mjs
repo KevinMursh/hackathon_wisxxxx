@@ -22,8 +22,9 @@ export function mountAnalysisProxy(app) {
       res.writeHead(r.statusCode, r.headers);
       r.pipe(res);
     });
-    up.on("error", (e) => res.status(502).json({ code: "ANALYSIS_UNAVAILABLE", message: e.message, retryable: true }));
-    req.on("close", () => up.destroy());
+    up.on("error", (e) => { if (!res.headersSent) res.status(502).json({ code: "ANALYSIS_UNAVAILABLE", message: e.message, retryable: true }); else res.end(); });
+    // 只有「客戶端中途離開」才中止上游；Node ≥16 的 req 'close' 在 body 讀完就會觸發，不能拿來判斷
+    res.on("close", () => { if (!res.writableFinished) up.destroy(); });
     if (req.readableEnded || req.method === "GET") up.end();
     else if (req.body && Object.keys(req.body).length) up.end(JSON.stringify(req.body));  // express.json 已吃掉 body
     else req.pipe(up);

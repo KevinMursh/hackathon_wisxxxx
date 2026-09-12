@@ -62,7 +62,29 @@ fileInput.addEventListener("change", (e) => { addFiles(e.target.files); fileInpu
 ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
 $("#clearBtn").addEventListener("click", (e) => { e.preventDefault(); FILES = []; renderFiles(); });
-$("#runBtn").addEventListener("click", () => runCase(autoClassify()));
+$("#runBtn").addEventListener("click", () => startUpload());
+
+/* ---------- F8：真上傳 ---------- */
+const newCaseId = () => { const d = new Date(), p = (n) => String(n).padStart(2, "0");
+  return `c${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${Math.random().toString(36).slice(2, 6)}`; };
+
+function uploadError(e) {
+  // 沒有 fallback：後端壞了就說壞了，不拿假資料頂替
+  $("#fileHint").innerHTML = `<span style="color:var(--seal)">${esc(e.code || "ERROR")}：${esc(e.message || "")}</span>`;
+  $("#runBtn").disabled = false; $("#runBtn").textContent = "重試";
+}
+
+async function startUpload() {
+  const files = FILES.map((f) => f.file).filter(Boolean);
+  if (!files.length) return uploadError({ code: "NO_FILE", message: "沒有可上傳的檔案（請重新選擇）" });
+  $("#runBtn").disabled = true; $("#runBtn").textContent = "上傳中…";
+  try {
+    const caseId = newCaseId();
+    const r = await Api.upload(caseId, files);
+    runLive(caseId, r);
+  } catch (e) { uploadError(e); }
+  finally { $("#runBtn").textContent = "開始分析"; }
+}
 
 /* ---------- 貼上文字 ---------- */
 // v7：貼上訴願書文字的即時解析入口自首頁移除；parseAppeal／buildLive 保留供 pipeline 參考
@@ -78,17 +100,26 @@ $$("#caseGrid .go").forEach((el) => el.addEventListener("click", () => startDemo
 $$("#caseGrid .alt").forEach((el) => el.addEventListener("click", (e) => { e.stopPropagation(); startDemo(+el.dataset.messy, true); }));
 $$(".case-card").forEach((el) => el.addEventListener("click", (e) => { if (!e.target.closest(".go,.alt")) startDemo(+el.dataset.i, false); }));
 
-/* 目前仍走 mock；F13 會改成打 POST /api/cases/{id}/demo 真跑一次 */
-function startDemo(i, messy) {
-  const c = structuredClone(CASES[i]);
-  if (messy) c.docs = c.docs.map((d) => ({ ...d, origName: MESSY_NAMES[d.id] || d.origName || d.title }));
-  runCase(c);
+/* 示範案件：打 POST /api/cases/{id}/demo，從 S3 預放的卷宗真跑一次（不是查表） */
+async function startDemo(i, messy) {
+  const c = CASES[i];
+  if (!c.hasDemoPack) return;
+  const card = $("#caseGrid .case-card"), go = $("#caseGrid .go");
+  const label = go.textContent; go.textContent = messy ? "亂檔名載入中…" : "載入中…";
+  try {
+    const caseId = newCaseId();
+    const r = await Api.demo(caseId, { pack: "case02", messy });
+    runLive(caseId, r, { title: c.cardTitle, name: c.name, no: c.no, messy });
+  } catch (e) {
+    go.textContent = label;
+    card.insertAdjacentHTML("beforeend", `<p class="cdesc" style="color:var(--seal)">${esc(e.code || "ERROR")}：${esc(e.message || "")}</p>`);
+  }
 }
 
 function renderLibCard() {}
 
 $("#libBtn").addEventListener("click", openLibrary);
-$("#backBtn").addEventListener("click", () => { persist(); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
+$("#backBtn").addEventListener("click", () => { persist(); $("#analysisNote").style.display = "none"; $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; }); show("s-pick"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
 renderLibCard();
 
 /* =========================================================
@@ -180,7 +211,7 @@ function runCase(c, restore) {
   }
   S.doc = null; S.zoom = 1; S.docMode = {};
   $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = "";
-  if (restore) { render(); show("s-work"); return; }
+  if (restore || c.analysis) { if (restore) { render(); show("s-work"); } return; }
   const steps = [["文件辨識（Claude 判定）", `${c.docs.length} 個檔案 → ${c.docs.filter((d) => d.include !== false).length} 份納入・${c.docs.filter((d) => d.dup).length} 份重複・${c.docs.filter((d) => d.unknown).length} 份無法辨識`, Math.min(2600, 700 + c.docs.length * 110), "classify"], ["欄位擷取（三方對照）", `${c.fields.length} 個欄位，${c.fields.filter((f) => f.conflict).length} 處衝突`, 700], ["爭點比對（訴願書 vs 答辯書 vs 卷證）", `識別 ${c.issues.length} 個爭點`, 760], ["法規檢索與引用查核", `推薦 ${c.laws.length} 筆；查核答辯書引用 ${c.citations.length} 則${c.citations.some((x) => x.status === "amended") ? "，1 則已修正" : ""}`, 840], ["AI 判定與草稿生成", `判定：${judgePlan(c).verdict}（${judgePlan(c).art}）`, 900]];
   $("#runSub").textContent = c.live ? c.name : `${c.name}　・　案號 ${c.no}${c.uploadNote ? "　・　" + c.uploadNote : ""}`;
   $("#stepList").innerHTML = steps.map((s, i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${s[0]}</div><div class="out" id="so${i}"></div>${s[3] ? `<div class="classify" id="cls${i}" style="flex-direction:column;gap:3px">${c.docs.map((d) => `<span style="display:flex;gap:8px;align-items:center;${d.include === false ? "opacity:.55" : ""}"><span class="num" style="color:var(--ink-3);min-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(d.origName || d.title)}</span><span>→</span><b style="white-space:nowrap">${d.tag}</b><span class="srct ${d.src}" style="flex:none">${d.src}</span><span style="color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(d.summary || "")}</span></span>`).join("")}</div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
@@ -188,6 +219,202 @@ function runCase(c, restore) {
   let t = 0;
   steps.forEach((s, i) => { setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.add("active"); $("#runBar").style.width = ((i + 1) / steps.length * 100) + "%"; if (s[3]) $$("#cls" + i + " > span").forEach((sp, k) => setTimeout(() => sp.classList.add("in"), 80 + k * (1000 / Math.max(1, c.docs.length)))); }, t); t += s[2]; setTimeout(() => { const el = $("#st" + i); if (!el) return; el.classList.remove("active"); el.classList.add("done"); $("#so" + i).textContent = s[1]; $("#sm" + i).textContent = s[2] + " ms"; }, t); });
   setTimeout(() => { render(); show("s-work"); persist(); }, t + 500);
+}
+
+/* =========================================================
+   F9／F10：真分析中畫面（吃 SSE）→ 工作畫面（吃 GET files）
+   步驟一是真的；步驟 2–5 待分析階段 API（docs/API-分析階段.md）接線
+   ========================================================= */
+const LIVE_STEPS = [
+  ["文件辨識（Claude 判定）", "classify"],
+  ["欄位擷取（三方對照）", "pending"],
+  ["爭點比對（訴願書 vs 答辯書 vs 卷證）", "pending"],
+  ["法規檢索與引用查核", "pending"],
+  ["AI 判定與草稿生成", "pending"],
+];
+
+function runLive(caseId, job, meta = {}) {
+  S.liveCase = { caseId, jobId: job.jobId, total: job.files.length };
+  $("#chip").classList.add("on"); $("#chipName").textContent = meta.name || "新上傳案件";
+  $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = "";
+  $("#runSub").textContent = `${meta.title || `${job.files.length} 個檔案`}　・　${caseId}${meta.messy ? "　・　亂檔名（檔名不參與判定）" : ""}`;
+  $("#stepList").innerHTML = LIVE_STEPS.map(([name, kind], i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${name}</div><div class="out" id="so${i}"></div>${kind === "classify" ? `<div class="classify" id="cls0" style="flex-direction:column;gap:3px"></div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
+  $("#runBar").style.width = "0"; show("s-run");
+  $("#st0").classList.add("active");
+  const q = job.queue || { ahead: 0 };
+  $("#so0").textContent = q.ahead
+    ? `已收 ${job.files.length} 個檔案・排隊中：前面還有 ${q.ahead} 件，約 ${Math.ceil(q.etaMs / 1000)} 秒`
+    : `已收 ${job.files.length} 個檔案，辨識中…`;
+
+  const t0 = Date.now();
+  const seen = new Map(job.files.map((f) => [f.fileId, f.originalName]));
+  let done = 0, dup = 0, bad = 0;
+  const queue = [];                       // result 是逐箱回來的，排隊演成逐檔浮現
+  let draining = false;
+  const drain = () => {
+    if (draining || !queue.length) return;
+    draining = true;
+    const row = queue.shift();
+    $("#cls0").insertAdjacentHTML("beforeend", row);
+    const el = $("#cls0").lastElementChild;
+    requestAnimationFrame(() => el.classList.add("in"));
+    $("#so0").textContent = `${done} / ${S.liveCase.total} 份`;
+    setTimeout(() => { draining = false; drain(); }, 70);
+  };
+
+  const row = (fid, name, tag, src, summary, cls = "") =>
+    `<span data-fid="${esc(fid)}" style="display:flex;gap:8px;align-items:center;${cls}"><span class="num" style="color:var(--ink-3);min-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(name)}</span><span>→</span><b style="white-space:nowrap">${esc(tag)}</b><span class="srct ${src}" style="flex:none">${esc(src)}</span><span style="color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${esc(summary)}</span></span>`;
+
+  // 正規化事件很早就到（每檔一筆），先佔位讓畫面立刻有東西；分類結果回來再就地替換
+  const place = (fid, name, meta) => {
+    if ($(`#cls0 [data-fid="${fid}"]`)) return;
+    $("#cls0").insertAdjacentHTML("beforeend", row(fid, name, "辨識中…", "未知", meta, "opacity:.5"));
+    requestAnimationFrame(() => $(`#cls0 [data-fid="${fid}"]`)?.classList.add("in"));
+  };
+
+  const push = (fid, name, tag, src, summary, cls = "") => {
+    const held = fid && $(`#cls0 [data-fid="${fid}"]:not(.filled)`);
+    if (held) { held.outerHTML = row(fid, name, tag, src, summary, cls); const el = $(`#cls0 [data-fid="${fid}"]`); el.classList.add("in", "filled"); }
+    else queue.push(row(fid, name, tag, src, summary, cls));
+    $("#so0").textContent = `${done} / ${S.liveCase.total} 份`;
+    drain();
+  };
+
+  const stream = Api.streamJob(job.jobId, {
+    onQueued: (d) => {
+      $("#runTitle").textContent = "排隊中";
+      $("#so0").textContent = `前面還有 ${d.ahead} 件處理中，約 ${Math.ceil((d.etaMs || 0) / 1000)} 秒後開始`;
+    },
+    onStarted: () => { $("#runTitle").textContent = "正在分析卷宗"; $("#so0").textContent = `開始辨識 ${S.liveCase.total} 個檔案…`; },
+    onNormalized: (d) => {
+      if (!seen.has(d.fileId)) seen.set(d.fileId, d.fileId);
+      place(d.fileId, seen.get(d.fileId), `${KIND[d.kind] || d.kind}${d.pages ? `・${d.pages} 頁` : d.duration ? `・${d.duration}s` : ""}`);
+    },
+    onContainer: (d) => push(d.fileId, seen.get(d.fileId) || d.fileId, "壓縮檔", "未知", `已展開 ${d.childIds.length} 份`, "opacity:.6"),
+    onResult: (d) => {
+      const name = seen.get(d.fileId) || d.fileId;
+      if (d.duplicate) { dup++; done++; return push(d.fileId, name, "重複", "未知", "與既有檔案內容相同，已排除", "opacity:.55"); }
+      if (!d.ok) { bad++; done++; return push(d.fileId, name, "讀取失敗", "未知", d.error?.code || "NORMALIZE_FAILED", "opacity:.7;color:var(--seal)"); }
+      done++;
+      const segs = d.segments || [];
+      segs.forEach((sg, i) => push(i === 0 ? d.fileId : null, segs.length > 1 ? `${name}（${i + 1}/${segs.length}）` : name, sg.doc_type, sg.source, sg.summary || ""));
+      $("#runBar").style.width = Math.round((done / S.liveCase.total) * 100 * 0.6) + "%";
+    },
+    onDone: async (d) => {
+      $("#st0").classList.remove("active"); $("#st0").classList.add("done");
+      $("#so0").textContent = `${d.ok} 份完成・${d.duplicate} 份重複・${d.error} 份失敗`;
+      $("#sm0").textContent = `${Math.round((d.ms || Date.now() - t0) / 1000)} s`;
+      $("#runBar").style.width = "20%";
+      try { await runAnalysis(caseId); } catch (e) { fail(e); }
+    },
+    onFatal: (e) => fail(e),
+  });
+
+  function fail(e) {
+    $("#st0").classList.remove("active");
+    $("#so0").innerHTML = `<span style="color:var(--seal)">${esc(e.code || "ERROR")}：${esc(e.message || "")}</span>`;
+    $("#runTitle").textContent = "分析失敗";
+    stream.close();
+  }
+
+  // 逾時：超過 3 分鐘視為異常（實測 20 檔約 60–90 秒）
+  setTimeout(() => { if (!$("#st0").classList.contains("done")) fail({ code: "TIMEOUT", message: "超過 3 分鐘未完成，請重試或檢查後端日誌" }); }, 180000);
+}
+
+/* =========================================================
+   步驟 2–5：POST analyze → 每 3 秒 GET analysis 驅動進度 → done 後把 output 轉成工作畫面的 case 物件
+   契約：docs/API-分析階段.md
+   ========================================================= */
+const ANALYSIS_STEPS = ["s2", "s3", "s4", "s5", "s6"];   // 對應畫面 st1…st4（s5、s6 合併顯示在第 5 格：相似案例＋草稿）
+const STEP_SLOT = { s2: 1, s3: 2, s4: 3, s5: 4, s6: 4 };
+const STEP_OUT = {
+  s2: (o) => `${(o.fields || []).length} 個欄位，${(o.fields || []).filter((f) => f.conflict).length} 處衝突；程序 ${(o.checks || []).filter((k) => k[2] === "pass").length}/8 通過`,
+  s3: (o) => `識別 ${(o.issues || []).length} 個爭點`,
+  s4: (o) => `推薦 ${(o.laws || []).length} 筆；查核引用 ${(o.citations || []).length} 則${(o.citations || []).some((x) => x.status === "gap") ? "，有漏引" : ""}${o.alert ? "；⚠ 時效警示" : ""}`,
+  s5: (o) => `相似案例 ${(o.sims || []).length} 件`,
+  s6: (o) => `判定：${o.judge?.verdict || ""}（${o.judge?.art || ""}）`,
+};
+async function runAnalysis(caseId) {
+  $("#runTitle").textContent = "正在分析卷宗";
+  for (let i = 1; i < LIVE_STEPS.length; i++) { $("#st" + i).style.opacity = ""; $("#so" + i).textContent = ""; }
+  await Api.analyze(caseId);
+  $("#st1").classList.add("active"); $("#so1").textContent = "欄位擷取中…";
+  return new Promise((resolve, reject) => {
+    const started = {};
+    Api.pollAnalysis(caseId, (doc, e) => {
+      if (e) return reject(e);
+      const st = doc.status || {}, o = doc.output || {};
+      let doneN = 0;
+      for (const step of ANALYSIS_STEPS) {
+        const slot = STEP_SLOT[step], el = $("#st" + slot), state = st.steps?.[step];
+        if (state === "running") { el.classList.add("active"); if (!started[step]) { started[step] = 1; $("#so" + slot).textContent = { s2: "欄位擷取中…", s3: "比對爭點中…", s4: "檢索法規、查核引用中…", s5: "檢索相似案例中…", s6: "撰擬決定書草稿中…" }[step]; } }
+        if (state === "done") { doneN++; $("#so" + slot).textContent = STEP_OUT[step](o); if (step !== "s5") { el.classList.remove("active"); el.classList.add("done"); $("#sm" + slot).textContent = `${Math.round((st.ms?.[step] || 0) / 1000)} s`; } }
+      }
+      $("#runBar").style.width = Math.round(20 + doneN / ANALYSIS_STEPS.length * 80) + "%";
+      if (st.state === "failed") return reject(new ApiError(st.error?.code || "ANALYSIS_FAILED", st.error?.message || st.error || "分析失敗"));
+      if (st.state === "done") enterWork(caseId, doc).then(resolve, reject);
+    });
+  });
+}
+
+/** analysis.output（API 契約形狀）→ 工作畫面的 case 物件（data.js 形狀） */
+const DIST_COLOR = { "不受理": "#9C3A2E", "駁回": "#A8792A", "撤銷": "#2E7D5B" };
+function toCase(caseId, docs, doc) {
+  const o = doc.output || {}, j = o.judge || {};
+  const byFile = {}; docs.forEach((d) => { if (!byFile[d.fileId]) byFile[d.fileId] = d.id; });
+  const refs = {};
+  for (const [k, v] of Object.entries(o.refs || {})) { const id = byFile[v[0]]; if (id) refs[k] = [id, v[1], v[2]]; }
+  const fixRef = (r) => (r && refs[r] ? r : null);
+  const finding = (f) => f === "採機關" ? "agency" : f === "採訴願人" ? "appellant" : "open";
+  const plan = { id: "A", name: "AI 判定", verdict: j.verdict || "—", art: j.art || "", when: {}, basis: [], facts: (j.issues || []).map((x) => `${x[0]}（${x[1]}）`), cases: [], risk: [j.risk || "mid", j.riskNote || ""] };
+  let sect = "", n = 0;
+  const paras = (o.drafts?.A?.paras || []).map((p) => {
+    if (p.kind === "h4") { sect = p.text; n = 0; return { id: `h-${p.text}`, kind: "h4", text: p.text }; }
+    n++;
+    const id = sect === "主文" ? "main" : sect === "事實" ? `fact${n}` : sect === "理由" ? `r${n}` : `p${n}`;
+    return { id, kind: "p", text: esc(p.text), refs: (p.refs || []).map(fixRef).filter(Boolean), borrow: p.borrow || null };
+  });
+  const files = o.files || [];
+  return {
+    id: caseId, no: caseId, name: docs.find((d) => d.party)?.party || "新上傳案件", live: true, caseId, analysisPending: false, docs,
+    dates: o.dates || null,
+    fields: (o.fields || []).map((f) => ({ k: f.k, a: [f.a[0] ?? "—", fixRef(f.a[1])], d: [f.d[0] ?? "—", fixRef(f.d[1])], e: [f.e[0] ?? "—", fixRef(f.e[1])], conflict: f.conflict })),
+    cls: o.cls || [],
+    period: { served: o.period?.served || null, recv: o.period?.recv || null, appealSays: o.period?.appealSays || null, servedRef: fixRef(o.period?.servedRef), recvRef: fixRef(o.period?.recvRef) },
+    checks: (o.checks || []).map((k) => [k[0], k[1], k[0] === "77(2)" ? "auto" : k[2], k[3]]),
+    issues: (o.issues || []).map((it) => ({ id: it.id, title: it.title, a: [it.a[0], fixRef(it.a[1])], d: [it.d[0], fixRef(it.d[1])], e: (it.e || []).map((x) => [x[0], fixRef(x[1])]), law: it.law || [], stance: finding(it.afterObjection || it.finding), ai: it.reason, lead: { agency: ["A", ""], appellant: ["A", ""] } })),
+    citations: (o.citations || []).map((x) => ({ ...x, status: x.status === "unknown" ? "missing" : x.status, ref: fixRef(x.ref) })),
+    laws: (o.laws || []).map((l) => ({ ...l, badges: (l.badges || []).map((b) => Array.isArray(b) ? tag(b[0], b[1]) : b) })),
+    alert: o.alert || null,
+    sims: (o.sims || []).map((s) => ({ ...s, chips: s.chips || [] })),
+    simDist: (o.simDist || []).map((d) => [d[0], d[1], DIST_COLOR[d[0]] || "#888"]),
+    simsNote: `相似案例來自 Bedrock Knowledge Base（101 決定書語意檢索，已排除本案自身）；${(o.sims || []).filter((s) => s.borrow).length} 件標示可借用理由段。`,
+    plans: [plan], judge: "A",
+    drafts: { A: { tmpl: (j.art || "").replace("訴願法 §", ""), head: o.drafts?.A?.head || "新北市政府訴願決定書", sub: `案號：${caseId}　（AI 草稿・待承辦人審核）`, paras } },
+    refs, analysis: doc, lawlib: o.lawlib || null,
+  };
+}
+
+/** 取回歸戶結果＋分析結果，進工作畫面 */
+async function enterWork(caseId, analysis) {
+  const payload = await Api.listFiles(caseId);
+  const docs = toDocs(payload);
+  if (!analysis) {  // 沒分析結果（舊流程／分析失敗）：只有卷宗瀏覽器
+    S.c = { id: caseId, no: caseId, name: docs.find((d) => d.party)?.party || "新上傳案件", live: true, analysisPending: true, caseId, cutoffDate: payload.cutoffDate,
+      docs, fields: [], cls: [], issues: [], laws: [], citations: [], sims: [], simDist: [], drafts: {}, refs: {}, period: { served: null, recv: null } };
+    S.doc = null; S.zoom = 1; S.docMode = {}; S.audit = []; S.objections = []; S.paras = []; S.versions = [];
+    S.status = "承辦中"; S.libId = `${caseId}`;
+    renderDocs(); $("#analysisNote").style.display = "";
+    $$(".tab").forEach((b, i) => { b.disabled = i > 0; b.style.opacity = i > 0 ? ".4" : ""; }); $$(".tab")[0].click();
+    const first = docs.find((d) => d.include !== false); if (first) openDoc(first.id);
+    show("s-work"); return;
+  }
+  const c = toCase(caseId, docs, analysis);
+  c.cutoffDate = payload.cutoffDate;
+  $("#analysisNote").style.display = "none";
+  $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; });
+  runCase(c, false);          // 走與示範案相同的 render 路徑（S.served/S.recv/立場/草稿版本）
+  render(); show("s-work"); persist();
 }
 
 /* =========================================================
@@ -208,7 +435,16 @@ const statusLabel = () => S.status === "已結案" && S.court ? `已結案・法
 /* ---------- 持久化（案件庫） ---------- */
 function persist() {
   if (!S.c) return;
-  const c = S.c, jp = judgePlan();
+  const c = S.c;
+  if (c.analysisPending) {      // 真上傳案件：只有卷宗是真的，判定／草稿尚未接線，不要去算
+    const rec = { libId: S.libId, baseId: c.id, name: c.name, no: c.no, subj: null, art: null, verdict: null,
+      aiVerdict: null, status: S.status, createdAt: today(), closedAt: null, final: null, court: null, updatedAt: today(),
+      analysisPending: true, caseId: c.caseId,
+      state: { docs: c.docs.map((d) => ({ id: d.id, fileId: d.fileId, tag: d.tag, src: d.src, include: d.include, origName: d.origName, stdName: d.stdName, kind: d.kind, title: d.title, summary: d.summary, dup: d.dup })), audit: S.audit } };
+    const k = LIB.findIndex((r) => r.libId === S.libId); if (k >= 0) LIB[k] = rec; else LIB.push(rec);
+    return saveLib();
+  }
+  const jp = judgePlan();
   const rec = { libId: S.libId, baseId: c.id, name: c.name, no: c.no, subj: c.subj, art: currentPlan().art, verdict: S.final ? S.final.verdict : currentPlan().verdict, aiVerdict: jp.verdict, status: S.status, createdAt: (LIB.find((r) => r.libId === S.libId) || {}).createdAt || today(), closedAt: S.status === "已結案" ? ((LIB.find((r) => r.libId === S.libId) || {}).closedAt || today()) : null, final: S.final, court: S.court, updatedAt: today(),
     state: { served: S.served, recv: S.recv, stances: S.stances, plan: S.plan, paras: S.paras, versions: S.versions, audit: S.audit, objections: S.objections, finalDiff: S.finalDiff, docs: c.docs.map((d) => ({ id: d.id, tag: d.tag, src: d.src, include: d.include, origName: d.origName, stdName: d.stdName, kind: d.kind, title: d.title, note: d.note, file: d.file, summary: d.summary, dup: d.dup, unknown: d.unknown })), liveCase: c.live ? c : null } };
   const i = LIB.findIndex((r) => r.libId === S.libId); if (i >= 0) LIB[i] = rec; else LIB.push(rec);
@@ -227,6 +463,11 @@ function openRecord(rec) {
    ========================================================= */
 function render() { ensurePlan(); renderDocs(); renderExtract(); renderIssues(); renderLaws(); renderSims(); renderDraft(); updateChips(); $$(".tab")[0].click(); const first = S.c.docs.find((d) => d.kind !== "missing" && d.include !== false); if (first) openDoc(first.id); asstReset(); }
 function updateChips() {
+  if (S.c?.analysisPending) {     // 尚未有判定可顯示
+    $("#judgeChip").classList.remove("on");
+    const sc0 = $("#statusChip"); sc0.className = "chip status on " + S.status; $("#statusText").textContent = statusLabel();
+    return;
+  }
   const p = currentPlan();
   $("#judgeChip").classList.add("on"); $("#judgeText").textContent = `${p.verdict.length > 12 ? p.verdict.slice(0, 12) + "…" : p.verdict}（${p.art.replace("訴願法 ", "")}）・修改 ${S.objections.length} 次`;
   const sc = $("#statusChip"); sc.className = "chip status on " + S.status; $("#statusText").textContent = statusLabel();
@@ -281,8 +522,30 @@ function openTagPop(id, anchor) {
   $("#tpType").innerHTML = TYPES.map((t) => `<option ${d.tag === t ? "selected" : ""}>${t}</option>`).join(""); $("#tpSrc").innerHTML = SRC_ORDER.map((t) => `<option ${d.src === t ? "selected" : ""}>${t}</option>`).join("");
   pop.style.left = Math.max(8, Math.min(pane.width - 230, r.left - pane.left - 120)) + "px"; pop.style.top = (r.bottom - pane.top + 4) + "px"; pop.classList.add("on");
   $("#tpCancel").onclick = () => pop.classList.remove("on");
-  $("#tpSave").onclick = () => { const t = $("#tpType").value, sr = $("#tpSrc").value; if (t !== d.tag || sr !== d.src) { S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${d.tag}／${d.src} → ${t}／${sr}` }); d.tag = t; d.src = sr; renderDocs(); renderExtract(); renderIssues(); renderDraft(); persist(); openDoc(id); } pop.classList.remove("on"); };
+  $("#tpSave").onclick = async () => {
+    const t = $("#tpType").value, sr = $("#tpSrc").value;
+    if (t === d.tag && sr === d.src) return pop.classList.remove("on");
+    const prev = { tag: d.tag, src: d.src, stdName: d.stdName };
+    d.tag = t; d.src = sr; renderDocs(); pop.classList.remove("on");           // 樂觀更新：先動畫面
+    if (d.fileId && S.c.caseId) {
+      try {
+        const updated = await Api.patchFile(S.c.caseId, d.fileId, { segIndex: d.segIndex ?? 0, doc_type: t, source: sr, by: "承辦人" });
+        const seg = updated.segments?.[d.segIndex ?? 0];
+        if (seg) { d.stdName = seg.suggestedName; d.nature = seg.nature; d.manual = seg.manual; }
+        S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${prev.tag}／${prev.src} → ${t}／${sr}` });
+        renderDocs();
+      } catch (e) {                                                             // 失敗回滾，不留下前端與後端不一致
+        Object.assign(d, prev); renderDocs();
+        alert(`修正未儲存：${e.code || "ERROR"}　${e.message || ""}`);
+      }
+    } else {
+      S.audit.push({ ts: now(), who: "hu", para: d.stdName || d.title, action: `修正歸戶：${prev.tag}／${prev.src} → ${t}／${sr}` });
+    }
+    if (!S.c.analysisPending) { renderExtract(); renderIssues(); renderDraft(); }
+    persist(); openDoc(id);
+  };
 }
+
 function openDoc(id, after) {
   const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
   S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on");
@@ -291,6 +554,7 @@ function openDoc(id, after) {
   const view = $("#docView"), tools = $("#docTools"); tools.innerHTML = "";
   const missing = `<div class="doc-missing">找不到卷宗包檔案：<span class="num">${esc(d.file || "")}</span><br>請自 repo 根目錄開啟 prototype/index.html。</div>`;
   const head = `<div class="doc-meta num" style="margin-bottom:8px">${d.origName ? `原檔名：${esc(d.origName)}　→　` : ""}標籤：${esc(d.stdName || d.title)}<span class="srct ${d.src}">${d.src}</span>${d.srcNote ? `<span class="note">　${esc(d.srcNote)}</span>` : ""}${d.summary ? `<br><span class="note">Claude 判定：${esc(d.summary)}</span>` : ""}</div>`;
+  if (d.fileId) { openLiveDoc(d, view, tools, head); if (after) after(); return; }   // 真上傳／demo 的檔案
   if (d.include === false) { view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "未納入分析。")}</div>`; }
   else if (d.kind === "text") {
     const mode = d.file ? (S.docMode[id] || "pdf") : "text";
@@ -314,11 +578,37 @@ function openDoc(id, after) {
   else view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "")}</div>`;
   if (after) after();
 }
+/** 真上傳案件的錨點：開檔並用 /text 反白 {page,start,end}；掃描件無文字則開頁圖 */
+async function jumpLive(docId, range, second) {
+  const d = S.c.docs.find((x) => x.id === docId); if (!d) return;
+  openDoc(docId);
+  const view = $("#docView");
+  const head = view.querySelector(".doc-meta")?.outerHTML || "";
+  if (second != null) { view.innerHTML = `<div class="doc-video">${head}<video id="vid" controls preload="metadata" src="${d.file}"></video><p class="note" style="margin-top:8px">跳至 ${second} 秒</p></div>`; seek(second); return; }
+  let t = null;
+  try { t = await Api.fileText(S.c.caseId, d.fileId); } catch (e) { /* 掃描件或影片：沒有文字層 */ }
+  if (!t || !t.textPerPage?.length) {
+    const img = d.pageImageUrls?.[0] || d.thumb;
+    view.innerHTML = `<div style="padding:10px 12px 0">${head}</div>${img ? `<div class="doc-img"><div class="imgwrap"><img src="${img}" alt="${esc(d.title)}" style="max-width:100%"></div></div>` : `<div class="doc-missing">${esc(d.stdName || d.title)}（無文字層）${d.file ? `　<a class="ghost-btn" href="${d.file}" target="_blank">開啟原檔</a>` : ""}</div>`}`;
+    return;
+  }
+  const pages = t.textPerPage.map((txt, i) => {
+    const pno = i + 1;
+    let body = esc(txt);
+    if (range && range.page === pno) body = esc(txt.slice(0, range.start)) + `<mark class="hit" id="liveHit">${esc(txt.slice(range.start, range.end))}</mark>` + esc(txt.slice(range.end));
+    return `<div class="page-txt" data-page="${pno}"><div class="note" style="margin:10px 0 4px">第 ${pno} 頁</div><pre style="white-space:pre-wrap;font:13px/1.7 var(--sans);margin:0">${body}</pre></div>`;
+  }).join("");
+  view.innerHTML = `<div class="doc-body">${head}${pages}</div>`;
+  $("#docTools").innerHTML = d.file ? `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">原檔</a>` : "";
+  $("#liveHit")?.scrollIntoView({ block: "center", behavior: "smooth" });
+}
 function bindMarks() { $$("#docView mark[data-ref]").forEach((m) => m.addEventListener("click", () => { $$("#docView mark").forEach((x) => x.classList.remove("hit", "hit-seal")); m.classList.add("hit"); })); }
 function hitBox(ref) { $$("#docView .box").forEach((b) => b.classList.toggle("hit", b.dataset.ref === ref)); const b = $(`#docView .box[data-ref="${ref}"]`); if (b) b.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" }); }
 function seek(t) { const v = $("#vid"); if (!v) return; const go = () => { v.currentTime = t; v.pause(); }; if (v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true }); }
 function jumpTo(ref) {
   const r = S.c.refs[ref]; if (!r) return; const [docId, kind] = r;
+  if (kind === "text" || (kind === "doc" && S.c.live)) return jumpLive(docId, kind === "text" ? r[2] : null);
+  if (kind === "time" && S.c.live) return jumpLive(docId, null, r[2]);
   if (kind === "mark") S.docMode[docId] = "text";
   const act = () => { if (kind === "mark") { $$("#docView mark").forEach((x) => x.classList.remove("hit", "hit-seal")); const m = $(`#docView mark[data-ref="${ref}"]`); if (m) { m.classList.add(/arg|served|receiver/.test(ref) ? "hit-seal" : "hit"); m.scrollIntoView({ block: "center", behavior: "smooth" }); } } else if (kind === "box") hitBox(ref); else if (kind === "time") { const d = S.c.docs.find((x) => x.id === docId); const cue = (d.cues || []).find((q) => q[0] === ref); if (cue) seek(cue[1]); } };
   if (S.doc !== docId || (kind === "mark" && !$("#docView mark"))) openDoc(docId, () => setTimeout(act, 60)); else act();
@@ -441,6 +731,38 @@ function diffParas(oldP, newP) { const out = []; oldP.forEach((q) => { if (q.kin
 
 /* ---------- 修正意見：v9 起改由問答助手以「提案 → 確認卡 → 局部重跑」處理；S.objections 結構保留供紀錄顯示 ---------- */
 const RV_STEPS = ["案件擷取與分類", "訴願期間與程序審查", "爭點", "法規推薦", "相似案例", "決定書草稿"];
+/* ---------- 真上傳案件：助手提案「確認執行」→ POST objection（逐爭點）→ 輪詢 → 更新爭點／草稿版本 ---------- */
+async function applyLiveProposal(p) {
+  const c = S.c, D = { "採納": "accept", "部分採納": "partial", "無法採納": "reject" }, card = p.el, head = card ? card.querySelector(".pc-head span") : null;
+  const issueItems = p.items.filter((it) => it.type === "issue" && it.id), others = p.items.filter((it) => !(it.type === "issue" && it.id));
+  const reqs = issueItems.map((it) => ({ issueId: it.id, reason: `${{ appellant: "認定應改為採訴願人", agency: "認定應改為採機關", drop: "此爭點應刪除" }[it.to] || ""}${it.why ? "：" + it.why : ""}` }));
+  if (others.length) reqs.push({ issueId: c.issues[0]?.id || "I1", reason: others.map((it) => it.label).join("；") });
+  if (!reqs.length) return;
+  const tabs = [1, 4]; tabs.forEach((t) => { $$(".tab")[t].classList.add("busy"); $("#p" + t).classList.add("busy"); });
+  const before = S.paras.map((x) => ({ ...x })), replies = [];
+  try {
+    for (let i = 0; i < reqs.length; i++) {
+      if (head) head.textContent = `AI 重新引證中 ${i + 1}/${reqs.length}：${c.issues.find((x) => x.id === reqs[i].issueId)?.title || ""}`;
+      await Api.objection(c.caseId, { ...reqs[i], by: "承辦人" });
+      const n0 = (c.analysis.objections || []).length;
+      const doc = await new Promise((res, rej) => Api.pollAnalysis(c.caseId, (d, e) => { if (e) return rej(e); if ((d.objections || []).length > n0) res(d); }, { interval: 2500 }));
+      c.analysis = doc; const ob = doc.objections[doc.objections.length - 1];
+      replies.push({ label: ob.issueTitle, result: D[ob.result] || "reject", reply: ob.reply, evidence: (ob.evidence || []).map((q) => `${q.file}「${q.quote.slice(0, 30)}」`) });
+      S.audit.push({ ts: now(), who: "hu", para: ob.issueTitle, action: `修改提案：${ob.reason}` }, { ts: now(), who: "ai", para: ob.issueTitle, action: `${ob.result}：${ob.reply.slice(0, 40)}…` });
+      if (ob.revised_finding) S.stances[ob.issueId] = ob.revised_finding === "採機關" ? "agency" : ob.revised_finding === "採訴願人" ? "appellant" : "open";
+    }
+    const nc = toCase(c.caseId, c.docs, c.analysis); Object.assign(c, { issues: nc.issues, drafts: nc.drafts, refs: nc.refs, plans: nc.plans });
+    const vers = Object.keys(c.analysis.output.drafts || {}), latest = vers[vers.length - 1]; let diff = null;
+    if (latest && latest !== "A") { const nd = toCase(c.caseId, c.docs, { output: { ...c.analysis.output, drafts: { A: c.analysis.output.drafts[latest] } } }); c.drafts.A = nd.drafts.A; S.paras = nd.drafts.A.paras.map((x) => ({ ...x, tpl: x.text, src: "ai-edit", refs: x.refs || [] })); diff = diffParas(before, S.paras); pushVersion(`修改提案後重產（${latest}）`, "AI"); }
+    const worst = replies.every((r) => r.result === "accept") ? "accept" : replies.some((r) => r.result !== "reject") ? "partial" : "reject";
+    S.objections.push({ ts: now(), issue: `${reqs.length} 項`, issueId: reqs[0].issueId, text: p.q, ev: [], result: worst, reply: replies.map((r) => `${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[r.result]}：${r.reply}`).join(" "), evidence: [...new Set(replies.flatMap((r) => r.evidence))], plan: null, items: replies, scope: [2, 5], diff });
+    renderTabs(tabs); updateChips(); persist(); asstOpen();
+    if (head) head.textContent = `已執行・AI 重新引證 ${reqs.length} 項${diff ? "，草稿已重產" : "，結論不變"}`;
+    const el = asstAdd("a card rc", `<div class="pc-head"><b>已執行</b><span>${diff ? "爭點認定與草稿已更新" : "AI 維持原認定，理由如下"}</span></div><div class="pc-body"><div>${replies.map((r) => `<div class="rc-item"><span class="note">${esc(r.label)}</span><br>AI：<b class="${r.result === "accept" ? "a" : r.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[r.result]}</b>　${esc(r.reply)}${r.evidence.length ? `<div class="note">依據：${r.evidence.map(esc).join("；")}</div>` : ""}</div>`).join("")}</div><button class="ghost-btn" data-tab="4">看草稿</button></div>`);
+    el.querySelector("[data-tab]").addEventListener("click", () => $$(".tab")[4].click());
+  } catch (e) { if (head) head.textContent = `重新引證失敗：${e.code || ""} ${e.message || ""}`; asstSay(`重新引證失敗：${e.message || e.code}`); }
+  finally { tabs.forEach((t) => { $$(".tab")[t].classList.remove("busy"); $("#p" + t).classList.remove("busy"); }); }
+}
 function exportCompare() {
   const c = S.c, jp = judgePlan(), cp = currentPlan(), stN = { appellant: "採訴願人", agency: "採機關", open: "待議" };
   const cols = S.plan !== jp.id ? [["原判定", jp], ["修正後", cp]] : [["AI 判定", jp]];
@@ -624,6 +946,7 @@ function rerunInPlace(scope, card, done) {
 function renderTabs(tabs) { const R = [renderExtract, renderIssues, renderLaws, renderSims, renderDraft]; tabs.forEach((t) => R[t]()); }
 function applyProposal(p) {
   const c = S.c, D = { accept: "採納", partial: "部分採納", reject: "無法採納" }, before = S.paras.map((x) => ({ ...x }));
+  if (c.live && c.analysis) return applyLiveProposal(p);
   const replies = p.items.map((it) => ({ ...it, ...aiReply(it) }));
   replies.forEach((r) => { S.audit.push({ ts: now(), who: "hu", para: r.label.split("：")[0], action: `修改提案：${r.label}` }); if (r.stance) S.stances[r.id] = r.stance; });
   const newPlan = replies.map((r) => r.plan).filter(Boolean).pop();
