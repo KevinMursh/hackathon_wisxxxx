@@ -1225,7 +1225,7 @@ function renderServerReply(res) {
     return `${{ law: "法規", decision: "決定書", state: "分析結果" }[s.type] || ""}：${esc(s.title)}${s.version ? `（${esc(s.version)} 版）` : ""}`;
   });
   const offer = res.kind === "answer" && res.cite_offer && S.status === "承辦中" ? `<button class="ghost-btn open" data-cite="1">以此提出修改 →</button>` : "";
-  const el = asstAdd("a", `${esc(res.text || "").replace(/\n/g, "<br>")}${src.length ? `<span class="src">來源：${src.join("、")}</span>` : ""}${offer}`);
+  const el = asstAdd("a", `${esc(res.text || "").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/^#{1,4}\s*/gm, "").replace(/\n/g, "<br>")}${src.length ? `<span class="src">來源：${src.join("、")}</span>` : ""}${offer}`);
   el.querySelectorAll("[data-doc]").forEach((j) => j.addEventListener("click", () => openDoc(j.dataset.doc)));
   el.querySelector("[data-cite]")?.addEventListener("click", () => { const o = res.cite_offer; $("#asstIn").value = `請加引${o.law}第 ${o.article} 條${o.para ? `第 ${o.para} 項` : ""}`; asstSend(); });
   return el;
