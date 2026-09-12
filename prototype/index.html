@@ -1,576 +1,425 @@
 <!DOCTYPE html>
 <html lang="zh-Hant-TW" data-theme="light">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>訴願智審臺</title>
 <style>
   :root {
-    --bg: #EDEFF2;
-    --surface: #FFFFFF;
-    --surface-2: #F5F7F9;
-    --surface-3: #E8ECF1;
-    --line: #D2D8E0;
-    --line-strong: #A6B0BF;
-    --ink: #14181F;
-    --ink-2: #3F4859;
-    --ink-3: #6D7789;
-    --accent: #1F4E79;
-    --accent-2: #2E6DA4;
-    --accent-soft: #E1EBF5;
-    --seal: #A62B1F;
-    --seal-soft: #F8E6E3;
-    --amber: #7E5A0C;
-    --amber-soft: #F8EFD7;
-    --green: #24614A;
-    --green-soft: #E0EFE8;
-    --shadow: 0 1px 2px rgba(20, 24, 31, .06), 0 8px 24px -12px rgba(20, 24, 31, .18);
+    --bg: #EDEFF2; --surface: #FFFFFF; --surface-2: #F5F7F9; --surface-3: #E8ECF1;
+    --line: #D2D8E0; --line-strong: #A6B0BF;
+    --ink: #14181F; --ink-2: #3F4859; --ink-3: #6D7789;
+    --accent: #1F4E79; --accent-2: #2E6DA4; --accent-soft: #E1EBF5;
+    --seal: #A62B1F; --seal-soft: #F8E6E3;
+    --amber: #7E5A0C; --amber-soft: #F8EFD7;
+    --green: #24614A; --green-soft: #E0EFE8;
+    --shadow: 0 1px 2px rgba(20,24,31,.06), 0 8px 24px -12px rgba(20,24,31,.18);
     --on-accent: #FFFFFF;
-
     --sans: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #0F1218;
-      --surface: #171B22;
-      --surface-2: #1D222B;
-      --surface-3: #252B36;
-      --line: #2B323E;
-      --line-strong: #3D4655;
-      --ink: #E6EAF0;
-      --ink-2: #AEB7C6;
-      --ink-3: #798395;
-      --accent: #6FA3D2;
-      --accent-2: #8FBBE4;
-      --accent-soft: #1A293A;
-      --seal: #E07C72;
-      --seal-soft: #341F1D;
-      --amber: #D3A54C;
-      --amber-soft: #2C2416;
-      --green: #6FBE9C;
-      --green-soft: #17281F;
-      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
-      --on-accent: #0F1218;
-    }
-  }
-
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#0F1218; --surface:#171B22; --surface-2:#1D222B; --surface-3:#252B36; --line:#2B323E; --line-strong:#3D4655;
+    --ink:#E6EAF0; --ink-2:#AEB7C6; --ink-3:#798395; --accent:#6FA3D2; --accent-2:#8FBBE4; --accent-soft:#1A293A;
+    --seal:#E07C72; --seal-soft:#341F1D; --amber:#D3A54C; --amber-soft:#2C2416; --green:#6FBE9C; --green-soft:#17281F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7); --on-accent:#0F1218; } }
   :root[data-theme="dark"] {
-    --bg: #0F1218;
-    --surface: #171B22;
-    --surface-2: #1D222B;
-    --surface-3: #252B36;
-    --line: #2B323E;
-    --line-strong: #3D4655;
-    --ink: #E6EAF0;
-    --ink-2: #AEB7C6;
-    --ink-3: #798395;
-    --accent: #6FA3D2;
-    --accent-2: #8FBBE4;
-    --accent-soft: #1A293A;
-    --seal: #E07C72;
-    --seal-soft: #341F1D;
-    --amber: #D3A54C;
-    --amber-soft: #2C2416;
-    --green: #6FBE9C;
-    --green-soft: #17281F;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
-    --on-accent: #0F1218;
-  }
+    --bg:#0F1218; --surface:#171B22; --surface-2:#1D222B; --surface-3:#252B36; --line:#2B323E; --line-strong:#3D4655;
+    --ink:#E6EAF0; --ink-2:#AEB7C6; --ink-3:#798395; --accent:#6FA3D2; --accent-2:#8FBBE4; --accent-soft:#1A293A;
+    --seal:#E07C72; --seal-soft:#341F1D; --amber:#D3A54C; --amber-soft:#2C2416; --green:#6FBE9C; --green-soft:#17281F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7); --on-accent:#0F1218; }
 
   * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: var(--sans);
-    font-size: 14px;
-    line-height: 1.7;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  h1, h2, h3, h4 { margin: 0; font-weight: 600; text-wrap: balance; letter-spacing: -.01em; }
-
-  button { font: inherit; color: inherit; cursor: pointer; }
-
-  :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
-
-  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-
-  .eyebrow {
-    font-size: 10px; font-weight: 700; letter-spacing: .13em;
-    text-transform: uppercase; color: var(--ink-3);
-  }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4 { margin:0; font-weight:600; text-wrap:balance; letter-spacing:-.01em; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  input, textarea, select { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--accent-2); outline-offset:2px; }
+  .num { font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .eyebrow { font-size:10px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); }
+  .tag { display:inline-block; padding:1px 7px; font-size:11px; line-height:1.6; border:1px solid transparent; white-space:nowrap; }
+  .tag.neutral { background:var(--surface-3); color:var(--ink-2); border-color:var(--line); }
+  .tag.accent  { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
+  .tag.seal    { background:var(--seal-soft); color:var(--seal); border-color:var(--seal); }
+  .tag.amber   { background:var(--amber-soft); color:var(--amber); border-color:var(--amber); }
+  .tag.green   { background:var(--green-soft); color:var(--green); border-color:var(--green); }
+  .btn { background:var(--accent); color:var(--on-accent); border:1px solid var(--accent); padding:6px 14px; font-size:12.5px; font-weight:500; }
+  .btn:hover { background:var(--accent-2); border-color:var(--accent-2); }
+  .btn[disabled] { opacity:.45; cursor:not-allowed; }
+  .ghost-btn { background:none; border:1px solid var(--line); padding:5px 12px; font-size:12px; color:var(--ink-2); }
+  .ghost-btn:hover { border-color:var(--line-strong); color:var(--ink); }
+  .ghost-btn.on { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+  .note { font-size:11.5px; color:var(--ink-3); }
+  .jump { cursor:pointer; border-bottom:1px dashed var(--line-strong); }
+  .jump:hover { color:var(--accent); border-bottom-color:var(--accent); }
 
   /* ---------- 頂部列 ---------- */
-  .topbar {
-    position: sticky; top: 0; z-index: 40;
-    display: flex; align-items: center; gap: 18px;
-    padding: 0 20px; height: 52px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--line);
-  }
+  .topbar { position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:14px; padding:0 20px; height:52px; background:var(--surface); border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:baseline; gap:10px; }
+  .brand strong { font-size:15px; letter-spacing:.04em; }
+  .brand span { font-size:11px; color:var(--ink-3); letter-spacing:.04em; }
+  .seal-mark { display:grid; place-items:center; width:26px; height:26px; flex:none; border:1.5px solid var(--seal); color:var(--seal); font-size:11px; font-weight:700; line-height:1; }
+  .topbar-spacer { flex:1; }
+  .case-chip { display:none; align-items:center; gap:10px; padding:4px 10px; border:1px solid var(--line); background:var(--surface-2); font-size:12px; }
+  .case-chip.on { display:flex; }
+  .case-chip b { font-weight:600; }
+  .plan-chip { display:none; align-items:center; gap:6px; padding:4px 10px; border:1px solid var(--accent); background:var(--accent-soft); color:var(--accent); font-size:12px; }
+  .plan-chip.on { display:flex; }
 
-  .brand { display: flex; align-items: baseline; gap: 10px; }
-  .brand strong { font-size: 15px; letter-spacing: .04em; }
-  .brand span { font-size: 11px; color: var(--ink-3); letter-spacing: .04em; }
+  .screen { display:none; } .screen.on { display:block; }
 
-  .seal-mark {
-    display: grid; place-items: center;
-    width: 26px; height: 26px; flex: none;
-    border: 1.5px solid var(--seal); color: var(--seal);
-    font-size: 11px; font-weight: 700; line-height: 1;
-    align-self: center;
-  }
+  /* ---------- 1. 載入 ---------- */
+  .pick { max-width:1120px; margin:0 auto; padding:48px 24px 80px; }
+  .pick-head { margin-bottom:28px; max-width:640px; }
+  .pick-head h1 { font-size:27px; line-height:1.45; margin:10px 0 12px; }
+  .pick-head p { margin:0; color:var(--ink-2); }
+  .stat-row { display:flex; flex-wrap:wrap; border:1px solid var(--line); background:var(--surface); margin-bottom:28px; }
+  .stat { flex:1 1 150px; padding:13px 16px; border-right:1px solid var(--line); }
+  .stat:last-child { border-right:none; }
+  .stat .v { font-size:20px; font-weight:600; display:block; line-height:1.3; }
+  .stat .k { font-size:11px; color:var(--ink-3); }
 
-  .topbar-spacer { flex: 1; }
+  .intake { display:grid; grid-template-columns:1.25fr 1fr; border:1px solid var(--line); background:var(--surface); margin-bottom:14px; }
+  @media (max-width:820px) { .intake { grid-template-columns:1fr; } }
+  .upload { border-right:1px solid var(--line); display:flex; flex-direction:column; }
+  @media (max-width:820px) { .upload { border-right:none; border-bottom:1px solid var(--line); } }
+  .drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:22px; text-align:center; cursor:pointer; margin:12px 12px 0; border:1px dashed var(--line-strong);
+          background:repeating-linear-gradient(45deg, transparent, transparent 9px, var(--surface-2) 9px, var(--surface-2) 18px); transition:background .15s; }
+  .drop:hover, .drop.over { background:var(--accent-soft); border-color:var(--accent); }
+  .drop .mk { width:32px; height:32px; display:grid; place-items:center; border:1px solid var(--line-strong); color:var(--ink-3); font-size:17px; }
+  .drop b { font-size:13.5px; display:block; } .drop span { font-size:11.5px; color:var(--ink-3); }
+  .files { margin:10px 12px 0; border:1px solid var(--line); max-height:230px; overflow-y:auto; font-size:12px; }
+  .files:empty { display:none; }
+  .filerow { display:grid; grid-template-columns:1fr auto auto auto; gap:10px; align-items:center; padding:5px 10px; border-bottom:1px solid var(--line); }
+  .filerow:last-child { border-bottom:none; }
+  .filerow .fn { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .filerow .sz { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+  .filerow .rm { background:none; border:none; color:var(--ink-3); padding:0 4px; font-size:14px; }
+  .filerow .rm:hover { color:var(--seal); }
+  .filerow.pending .tag { opacity:.5; }
+  .upload-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:12px; margin-top:auto; }
+  .upload-bar .hint { font-size:11.5px; color:var(--ink-3); margin-left:auto; }
+  .paste { padding:14px 16px; display:flex; flex-direction:column; gap:9px; }
+  .paste textarea { width:100%; min-height:200px; resize:vertical; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); font-family:var(--sans); font-size:12.5px; line-height:1.85; padding:9px 11px; }
+  .paste textarea:focus { border-color:var(--accent); outline:none; background:var(--surface); }
+  .paste-bar { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .paste-bar .hint { font-size:11.5px; color:var(--ink-3); margin-left:auto; }
+  .live-note { display:flex; gap:10px; padding:10px 14px; margin-bottom:24px; border:1px solid var(--line); border-left:3px solid var(--accent); background:var(--surface-2); font-size:12px; color:var(--ink-2); line-height:1.75; }
+  .live-note b { color:var(--accent); }
+  .pick-div { display:flex; align-items:center; gap:14px; margin:0 0 14px; font-size:11.5px; color:var(--ink-3); }
+  .pick-div::after { content:""; flex:1; height:1px; background:var(--line); }
+  .case-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
+  .case-card { text-align:left; background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--line-strong); padding:18px 18px 16px; display:flex; flex-direction:column; gap:10px; transition:border-color .15s, transform .15s, box-shadow .15s; }
+  .case-card:hover { border-color:var(--line-strong); border-top-color:var(--accent); transform:translateY(-2px); box-shadow:var(--shadow); }
+  .case-card .no { font-size:11px; color:var(--ink-3); }
+  .case-card h3 { font-size:15px; line-height:1.55; }
+  .case-card p { margin:0; font-size:12.5px; color:var(--ink-2); line-height:1.65; }
+  .case-card .foot { margin-top:auto; padding-top:10px; border-top:1px solid var(--line); display:flex; justify-content:space-between; font-size:11px; color:var(--ink-3); }
+  .case-card .go { color:var(--accent); font-weight:600; }
+  .disclaimer { margin-top:30px; padding:14px 16px; border:1px dashed var(--line-strong); background:var(--surface-2); font-size:12px; color:var(--ink-3); line-height:1.75; }
+  .disclaimer b { color:var(--ink-2); }
 
-  .case-chip {
-    display: none; align-items: center; gap: 10px;
-    padding: 4px 10px; border: 1px solid var(--line);
-    background: var(--surface-2); font-size: 12px;
-  }
-  .case-chip.on { display: flex; }
-  .case-chip b { font-weight: 600; }
-
-  .ghost-btn {
-    background: none; border: 1px solid var(--line);
-    padding: 5px 12px; font-size: 12px; color: var(--ink-2);
-  }
-  .ghost-btn:hover { border-color: var(--line-strong); color: var(--ink); }
-
-  /* ---------- 畫面切換 ---------- */
-  .screen { display: none; }
-  .screen.on { display: block; }
-
-  /* ---------- 1. 選案 ---------- */
-  .pick { max-width: 1080px; margin: 0 auto; padding: 56px 24px 80px; }
-
-  .pick-head { margin-bottom: 36px; max-width: 620px; }
-  .pick-head h1 { font-size: 27px; line-height: 1.45; margin: 10px 0 12px; }
-  .pick-head p { margin: 0; color: var(--ink-2); font-size: 14px; }
-
-  .stat-row {
-    display: flex; flex-wrap: wrap; gap: 0;
-    border: 1px solid var(--line); background: var(--surface);
-    margin-bottom: 36px;
-  }
-  .stat {
-    flex: 1 1 150px; padding: 13px 16px;
-    border-right: 1px solid var(--line);
-  }
-  .stat:last-child { border-right: none; }
-  .stat .v { font-size: 20px; font-weight: 600; display: block; line-height: 1.3; }
-  .stat .k { font-size: 11px; color: var(--ink-3); }
-
-  /* 載入區 */
-  .intake {
-    display: grid; grid-template-columns: minmax(240px, 1fr) 1.35fr; gap: 0;
-    border: 1px solid var(--line); background: var(--surface); margin-bottom: 14px;
-  }
-  @media (max-width: 780px) { .intake { grid-template-columns: 1fr; } }
-
-  .drop {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 9px; padding: 30px 22px; text-align: center; cursor: pointer;
-    border-right: 1px solid var(--line);
-    background: repeating-linear-gradient(45deg, transparent, transparent 9px, var(--surface-2) 9px, var(--surface-2) 18px);
-    transition: background .15s;
-  }
-  @media (max-width: 780px) { .drop { border-right: none; border-bottom: 1px solid var(--line); } }
-  .drop:hover, .drop.over { background: var(--accent-soft); }
-  .drop .mk {
-    width: 34px; height: 34px; display: grid; place-items: center;
-    border: 1px solid var(--line-strong); color: var(--ink-3); font-size: 17px; line-height: 1;
-  }
-  .drop.over .mk { border-color: var(--accent); color: var(--accent); }
-  .drop b { font-size: 13.5px; font-weight: 600; display: block; }
-  .drop span { font-size: 11.5px; color: var(--ink-3); }
-
-  .paste { padding: 16px 18px; display: flex; flex-direction: column; gap: 9px; }
-  .paste textarea {
-    width: 100%; min-height: 116px; resize: vertical;
-    border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
-    font-family: var(--sans); font-size: 12.5px; line-height: 1.85; padding: 9px 11px;
-  }
-  .paste textarea:focus { border-color: var(--accent); outline: none; background: var(--surface); }
-  .paste textarea::placeholder { color: var(--ink-3); }
-  .paste-bar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-  .paste-bar .hint { font-size: 11.5px; color: var(--ink-3); margin-left: auto; }
-  .btn[disabled] { opacity: .45; cursor: not-allowed; }
-
-  .live-note {
-    display: flex; gap: 10px; padding: 10px 14px; margin-bottom: 26px;
-    border: 1px solid var(--line); border-left: 3px solid var(--accent);
-    background: var(--surface-2); font-size: 12px; color: var(--ink-2); line-height: 1.75;
-  }
-  .live-note b { color: var(--accent); font-weight: 600; }
-
-  .pick-div {
-    display: flex; align-items: center; gap: 14px; margin: 0 0 14px;
-    font-size: 11.5px; color: var(--ink-3);
-  }
-  .pick-div::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-
-  .case-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-
-  .case-card {
-    text-align: left; background: var(--surface);
-    border: 1px solid var(--line); border-top: 3px solid var(--line-strong);
-    padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 10px;
-    transition: border-color .15s, transform .15s, box-shadow .15s;
-  }
-  .case-card:hover {
-    border-color: var(--line-strong); border-top-color: var(--accent);
-    transform: translateY(-2px); box-shadow: var(--shadow);
-  }
-  .case-card .no { font-size: 11px; color: var(--ink-3); }
-  .case-card h3 { font-size: 15px; line-height: 1.55; }
-  .case-card p { margin: 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
-  .case-card .foot {
-    margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line);
-    display: flex; align-items: center; justify-content: space-between;
-    font-size: 11px; color: var(--ink-3);
-  }
-  .case-card .go { color: var(--accent); font-weight: 600; }
-
-  .tag {
-    display: inline-block; padding: 1px 7px; font-size: 11px; line-height: 1.6;
-    border: 1px solid transparent; white-space: nowrap;
-  }
-  .tag.neutral { background: var(--surface-3); color: var(--ink-2); border-color: var(--line); }
-  .tag.accent  { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-  .tag.seal    { background: var(--seal-soft); color: var(--seal); border-color: var(--seal); }
-  .tag.amber   { background: var(--amber-soft); color: var(--amber); border-color: var(--amber); }
-  .tag.green   { background: var(--green-soft); color: var(--green); border-color: var(--green); }
-
-  .disclaimer {
-    margin-top: 34px; padding: 14px 16px;
-    border: 1px dashed var(--line-strong); background: var(--surface-2);
-    font-size: 12px; color: var(--ink-3); line-height: 1.75;
-  }
-  .disclaimer b { color: var(--ink-2); font-weight: 600; }
+  /* QR 視窗 */
+  .modal { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:16px; }
+  .modal.on { display:flex; }
+  .modal-box { background:var(--surface); border:1px solid var(--line); width:min(720px, 100%); box-shadow:var(--shadow); display:grid; grid-template-columns:260px 1fr; }
+  @media (max-width:640px) { .modal-box { grid-template-columns:1fr; } }
+  .qr-side { padding:22px; border-right:1px solid var(--line); text-align:center; }
+  .qr-side canvas { width:200px; height:200px; image-rendering:pixelated; border:6px solid #fff; box-shadow:0 0 0 1px var(--line); }
+  .qr-side .code { font-family:var(--mono); font-size:13px; margin-top:10px; letter-spacing:.15em; }
+  .phone { padding:18px 20px; display:flex; flex-direction:column; gap:8px; min-height:320px; }
+  .feed { flex:1; border:1px solid var(--line); background:var(--surface-2); padding:10px 12px; font-size:12.5px; overflow-y:auto; max-height:260px; }
+  .feed div { padding:3px 0; border-bottom:1px dashed var(--line); }
+  .feed .ok { color:var(--green); } .feed .prog { color:var(--accent); }
+  .feed .bar { height:3px; background:var(--surface-3); margin-top:4px; } .feed .bar i { display:block; height:100%; background:var(--accent); transition:width .3s; }
 
   /* ---------- 2. 分析中 ---------- */
-  .run { max-width: 620px; margin: 0 auto; padding: 90px 24px; }
-  .run h2 { font-size: 17px; margin-bottom: 4px; }
-  .run > p { margin: 0 0 32px; color: var(--ink-3); font-size: 12.5px; }
-
-  .steps { border: 1px solid var(--line); background: var(--surface); }
-  .step {
-    display: grid; grid-template-columns: 34px 1fr auto; align-items: start;
-    gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--line);
-    opacity: .35; transition: opacity .3s;
-  }
-  .step:last-child { border-bottom: none; }
-  .step.active, .step.done { opacity: 1; }
-  .step .idx {
-    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-    border: 1px solid var(--line); width: 22px; height: 22px;
-    display: grid; place-items: center; margin-top: 2px;
-  }
-  .step.active .idx { border-color: var(--accent); color: var(--accent); }
-  .step.done .idx { border-color: var(--green); color: var(--green); background: var(--green-soft); }
-  .step .name { font-size: 13.5px; font-weight: 500; }
-  .step .out { font-size: 12px; color: var(--ink-3); min-height: 20px; }
-  .step .ms { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
-
-  .bar { height: 2px; background: var(--surface-3); margin-top: 6px; overflow: hidden; }
-  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s linear; }
+  .run { max-width:680px; margin:0 auto; padding:70px 24px; }
+  .run h2 { font-size:17px; margin-bottom:4px; } .run > p { margin:0 0 26px; color:var(--ink-3); font-size:12.5px; }
+  .steps { border:1px solid var(--line); background:var(--surface); }
+  .step { display:grid; grid-template-columns:34px 1fr auto; align-items:start; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line); opacity:.35; transition:opacity .3s; }
+  .step:last-child { border-bottom:none; } .step.active, .step.done { opacity:1; }
+  .step .idx { font-family:var(--mono); font-size:11px; color:var(--ink-3); border:1px solid var(--line); width:22px; height:22px; display:grid; place-items:center; margin-top:2px; }
+  .step.active .idx { border-color:var(--accent); color:var(--accent); }
+  .step.done .idx { border-color:var(--green); color:var(--green); background:var(--green-soft); }
+  .step .name { font-size:13.5px; font-weight:500; } .step .out { font-size:12px; color:var(--ink-3); min-height:20px; }
+  .step .ms { font-size:11px; color:var(--ink-3); font-family:var(--mono); }
+  .classify { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+  .classify span { font-size:11px; padding:1px 7px; border:1px solid var(--line); background:var(--surface-2); opacity:0; transform:translateY(3px); transition:opacity .25s, transform .25s; }
+  .classify span.in { opacity:1; transform:none; }
+  .bar { height:2px; background:var(--surface-3); margin-top:6px; overflow:hidden; } .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .5s linear; }
 
   /* ---------- 3. 結果 ---------- */
-  .work {
-    display: grid; grid-template-columns: minmax(300px, 34%) 1fr;
-    align-items: start; gap: 0;
-    height: calc(100vh - 52px);
-  }
-  @media (max-width: 900px) {
-    .work { grid-template-columns: 1fr; height: auto; }
-    .doc-pane { max-height: 340px; }
-  }
+  .work { display:grid; grid-template-columns:minmax(320px, 36%) minmax(0, 1fr); align-items:start; height:calc(100vh - 52px); }
+  @media (max-width:960px) { .work { grid-template-columns:minmax(0, 1fr); height:auto; } .doc-pane { max-height:420px; } }
+  .doc-pane { border-right:1px solid var(--line); background:var(--surface); height:100%; display:flex; flex-direction:column; min-height:0; min-width:0; }
+  .pane-head { border-bottom:1px solid var(--line); padding:9px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex:none; }
+  .docstrip { display:flex; gap:6px; overflow-x:auto; padding:8px 12px; border-bottom:1px solid var(--line); flex:none; scrollbar-width:thin; }
+  .docstrip button { flex:none; background:var(--surface-2); border:1px solid var(--line); padding:4px 9px; font-size:11.5px; display:flex; align-items:center; gap:6px; color:var(--ink-2); }
+  .docstrip button i { width:7px; height:7px; display:block; border-radius:50%; background:var(--line-strong); }
+  .docstrip button.on { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+  .docstrip button.on i { background:var(--accent); }
+  .doc-view { flex:1; overflow:auto; position:relative; min-height:0; }
+  .doc-body { padding:18px 22px 60px; font-size:13.5px; line-height:2.05; color:var(--ink-2); }
+  .doc-body h4 { font-size:14px; color:var(--ink); margin:20px 0 8px; } .doc-body h4:first-child { margin-top:0; }
+  .doc-body p { margin:0 0 12px; }
+  .doc-meta { border:1px solid var(--line); background:var(--surface-2); padding:10px 12px; margin-bottom:18px; font-size:12px; line-height:1.9; }
+  mark[data-ref] { background:transparent; color:inherit; border-bottom:1.5px solid var(--line-strong); padding:0 1px; cursor:pointer; transition:background .15s, color .15s; }
+  mark[data-ref]:hover { background:var(--surface-3); }
+  mark.hit { background:var(--accent-soft); color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+  mark.hit-seal { background:var(--seal-soft); color:var(--seal); border-bottom-color:var(--seal); font-weight:600; }
+  .doc-tools { display:flex; gap:6px; align-items:center; }
+  .doc-tools button { padding:3px 8px; font-size:11px; }
+  .doc-img { position:relative; padding:12px; transform-origin:0 0; cursor:grab; user-select:none; width:max-content; }
+  .doc-img.drag { cursor:grabbing; }
+  .doc-img img { display:block; max-width:none; width:var(--imgw, 100%); }
+  .doc-img .imgwrap { position:relative; width:var(--imgw); }
+  .doc-img .imgwrap img { width:100%; }
+  .box { position:absolute; border:2px solid var(--accent); background:rgba(31,78,121,.08); cursor:pointer; transition:box-shadow .15s; }
+  .box:hover, .box.hit { box-shadow:0 0 0 3px rgba(46,109,164,.35); }
+  .box.hit { border-color:var(--seal); background:rgba(166,43,31,.12); animation:pulse 1.2s ease-out 2; }
+  @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(166,43,31,.5);} 100% { box-shadow:0 0 0 14px rgba(166,43,31,0);} }
+  .box .lb { position:absolute; left:-2px; top:100%; margin-top:3px; background:var(--accent); color:#fff; font-size:10.5px; padding:1px 6px; white-space:nowrap; display:none; z-index:2; }
+  .box:hover .lb, .box.hit .lb { display:block; }
+  .box.hit .lb { background:var(--seal); }
+  .doc-pdf { width:100%; height:100%; border:none; min-height:560px; }
+  .doc-video { padding:14px; } .doc-video video { width:100%; background:#000; display:block; }
+  .cues { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .doc-missing { padding:24px; font-size:12.5px; color:var(--ink-3); }
 
-  /* 左：訴願書原文 */
-  .doc-pane {
-    border-right: 1px solid var(--line);
-    background: var(--surface);
-    height: 100%; overflow-y: auto;
-  }
-  .pane-head {
-    position: sticky; top: 0; background: var(--surface);
-    border-bottom: 1px solid var(--line); padding: 11px 18px;
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  }
-  .pane-head .eyebrow { line-height: 1.6; }
-  .doc-body { padding: 20px 22px 60px; font-size: 13.5px; line-height: 2.05; color: var(--ink-2); }
-  .doc-body h4 { font-size: 14px; color: var(--ink); margin: 22px 0 8px; }
-  .doc-body h4:first-child { margin-top: 0; }
-  .doc-body p { margin: 0 0 12px; }
-  .doc-meta {
-    border: 1px solid var(--line); background: var(--surface-2);
-    padding: 10px 12px; margin-bottom: 18px; font-size: 12px; line-height: 1.9;
-  }
+  .panel { height:100%; overflow-y:auto; background:var(--bg); min-width:0; }
+  .tabs { position:sticky; top:0; z-index:20; display:flex; background:var(--surface); border-bottom:1px solid var(--line); overflow-x:auto; }
+  .tab { background:none; border:none; border-bottom:2px solid transparent; padding:11px 14px; font-size:12.5px; color:var(--ink-3); white-space:nowrap; display:flex; align-items:center; gap:7px; }
+  .tab:hover { color:var(--ink-2); } .tab.on { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+  .tab .n { font-family:var(--mono); font-size:10px; color:var(--ink-3); border:1px solid var(--line); padding:0 4px; }
+  .tab.on .n { border-color:var(--accent); color:var(--accent); }
+  .tab .dot { width:6px; height:6px; border-radius:50%; background:var(--seal); display:none; } .tab.warn .dot { display:block; }
+  .tabpage { display:none; padding:20px 22px 80px; max-width:960px; } .tabpage.on { display:block; }
+  .sec { margin-bottom:26px; }
+  .sec-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid var(--line-strong); }
+  .sec-head h3 { font-size:14px; }
+  .box2 { border:1px solid var(--line); background:var(--surface); }
 
-  mark[data-ref] {
-    background: transparent; color: inherit;
-    border-bottom: 1.5px solid var(--line-strong);
-    padding: 0 1px; cursor: pointer; transition: background .15s, color .15s;
-  }
-  mark[data-ref]:hover { background: var(--surface-3); }
-  mark.hit {
-    background: var(--accent-soft); color: var(--accent);
-    border-bottom-color: var(--accent); font-weight: 600;
-  }
-  mark.hit-seal {
-    background: var(--seal-soft); color: var(--seal);
-    border-bottom-color: var(--seal); font-weight: 600;
-  }
+  /* Tab1 三方對照 */
+  .cmp { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .cmp th { text-align:left; font-weight:500; color:var(--ink-3); padding:7px 10px; background:var(--surface-2); border-bottom:1px solid var(--line); font-size:11.5px; }
+  .cmp td { padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .cmp tr:last-child td { border-bottom:none; }
+  .cmp td:first-child { color:var(--ink-3); width:96px; white-space:nowrap; }
+  .cmp tr.conflict td { background:var(--seal-soft); }
+  .cmp tr.conflict td:first-child { color:var(--seal); font-weight:600; }
+  .cmp .why { display:block; font-size:11px; color:var(--seal); margin-top:2px; }
+  .clsgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); }
+  .cls { padding:12px 16px; border-right:1px solid var(--line); } .cls:last-child { border-right:none; }
+  .cls .lab { font-size:11.5px; color:var(--ink-3); } .cls .val { font-size:15px; font-weight:600; margin-top:3px; line-height:1.5; }
+  .checks { display:grid; grid-template-columns:repeat(auto-fit, minmax(232px, 1fr)); }
+  .chk { display:flex; gap:10px; align-items:flex-start; padding:10px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); font-size:12.5px; }
+  .chk .mk { font-family:var(--mono); font-size:12px; width:18px; flex:none; text-align:center; margin-top:1px; }
+  .chk.pass .mk { color:var(--green); } .chk.fail .mk { color:var(--seal); } .chk.na .mk { color:var(--ink-3); } .chk.warn .mk { color:var(--amber); }
+  .chk.warn { background:var(--amber-soft); } .chk.fail { background:var(--seal-soft); } .chk.na { opacity:.6; }
+  .chk .art { font-family:var(--mono); font-size:11px; color:var(--ink-3); display:block; } .chk.fail .art { color:var(--seal); }
+  .verdict { display:flex; align-items:flex-start; gap:14px; padding:14px 18px; border:1px solid; }
+  .verdict.stop { background:var(--seal-soft); border-color:var(--seal); } .verdict.go { background:var(--green-soft); border-color:var(--green); }
+  .verdict .big { font-size:16px; font-weight:700; white-space:nowrap; } .verdict.stop .big { color:var(--seal); } .verdict.go .big { color:var(--green); }
+  .verdict p { margin:0; font-size:12.5px; line-height:1.75; color:var(--ink-2); }
+  .period-edit { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0; }
+  .period-edit > div { padding:12px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .period-edit label { display:block; font-size:11.5px; color:var(--ink-3); margin-bottom:4px; }
+  .period-edit input { width:100%; border:1px solid var(--line); background:var(--surface-2); padding:5px 8px; font-family:var(--mono); font-size:13px; }
+  .period-edit input:focus { border-color:var(--accent); outline:none; background:var(--surface); }
+  .period-edit .src { font-size:11px; color:var(--ink-3); margin-top:4px; }
+  .period-edit .warnsrc { color:var(--seal); }
+  .timeline { padding:20px 18px 16px; overflow-x:auto; }
+  .tl-track { position:relative; min-width:520px; height:2px; background:var(--line-strong); margin:30px 58px 0; }
+  .tl-fill { position:absolute; top:0; height:2px; background:var(--seal); }
+  .tl-pt { position:absolute; top:0; transform:translateX(-50%); text-align:center; }
+  .tl-pt .dot { width:9px; height:9px; background:var(--surface); border:2px solid var(--line-strong); margin:-4px auto 0; border-radius:50%; }
+  .tl-pt.key .dot { border-color:var(--accent); background:var(--accent); } .tl-pt.bad .dot { border-color:var(--seal); background:var(--seal); }
+  .tl-pt .lab { font-size:11px; color:var(--ink-3); margin-top:7px; white-space:nowrap; }
+  .tl-pt .d { font-size:11.5px; font-family:var(--mono); color:var(--ink-2); white-space:nowrap; }
+  .tl-pt.bad .d, .tl-pt.bad .lab { color:var(--seal); font-weight:600; }
+  .tl-pt .up { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); white-space:nowrap; }
+  .tl-note { margin-top:62px; font-size:12.5px; color:var(--ink-2); border-top:1px solid var(--line); padding-top:12px; } .tl-note b { font-family:var(--mono); }
 
-  /* 右：分析面板 */
-  .panel { height: 100%; overflow-y: auto; background: var(--bg); }
+  /* Tab2 爭點 */
+  .issue { border:1px solid var(--line); background:var(--surface); margin-bottom:14px; }
+  .issue-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--surface-2); }
+  .issue-head .n { font-family:var(--mono); font-size:11px; border:1px solid var(--accent); color:var(--accent); padding:0 6px; }
+  .issue-head h3 { font-size:13.5px; flex:1; }
+  .issue-grid { display:grid; grid-template-columns:1fr 1fr 1fr; }
+  @media (max-width:760px) { .issue-grid { grid-template-columns:1fr; } }
+  .issue-grid > div { padding:10px 14px; border-right:1px solid var(--line); font-size:12.5px; }
+  .issue-grid > div:last-child { border-right:none; }
+  .issue-grid .lab { font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:4px; }
+  .issue-grid .ev { display:flex; flex-wrap:wrap; gap:5px; }
+  .issue-foot { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:10px 14px; border-top:1px solid var(--line); font-size:12px; }
+  .issue-foot .laws { color:var(--ink-2); } .issue-foot .laws span { display:inline-block; margin-right:10px; }
+  .stance { display:flex; border:1px solid var(--line); }
+  .stance label { padding:4px 10px; font-size:12px; cursor:pointer; border-right:1px solid var(--line); color:var(--ink-3); display:flex; align-items:center; gap:5px; }
+  .stance label:last-child { border-right:none; }
+  .stance input { margin:0; }
+  .stance label.on { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  .lead { padding:8px 14px; border-top:1px solid var(--line); font-size:12px; background:var(--surface-2); display:flex; gap:16px; flex-wrap:wrap; }
+  .lead b { font-family:var(--mono); }
 
-  .tabs {
-    position: sticky; top: 0; z-index: 20;
-    display: flex; background: var(--surface); border-bottom: 1px solid var(--line);
-    overflow-x: auto;
-  }
-  .tab {
-    background: none; border: none; border-bottom: 2px solid transparent;
-    padding: 12px 18px; font-size: 13px; color: var(--ink-3);
-    white-space: nowrap; display: flex; align-items: center; gap: 8px;
-  }
-  .tab:hover { color: var(--ink-2); }
-  .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
-  .tab .n {
-    font-family: var(--mono); font-size: 10px; color: var(--ink-3);
-    border: 1px solid var(--line); padding: 0 4px;
-  }
-  .tab.on .n { border-color: var(--accent); color: var(--accent); }
+  /* Tab3 法規 */
+  .law { display:grid; grid-template-columns:1fr auto; gap:4px 16px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  .law:last-child { border-bottom:none; } .law .ttl { font-size:13.5px; font-weight:600; } .law .ttl .n { color:var(--accent); }
+  .law .txt { grid-column:1/-1; font-size:12.5px; color:var(--ink-2); line-height:1.8; border-left:2px solid var(--line); padding-left:11px; margin-top:3px; }
+  .law .badges { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; } .law .rel { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+  .alert { display:flex; gap:12px; padding:13px 16px; background:var(--amber-soft); border:1px solid var(--amber); }
+  .alert .mk { color:var(--amber); font-weight:700; } .alert p { margin:0; font-size:12.5px; line-height:1.8; color:var(--ink-2); }
+  .cite-check { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .cite-check th { text-align:left; font-weight:500; color:var(--ink-3); padding:7px 10px; background:var(--surface-2); border-bottom:1px solid var(--line); font-size:11.5px; }
+  .cite-check td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; } .cite-check tr:last-child td { border-bottom:none; }
+  .cite-check tr.amended td { background:var(--amber-soft); } .cite-check tr.gap td { background:var(--surface-2); }
+  .st { display:inline-block; padding:1px 8px; font-size:11px; border:1px solid; white-space:nowrap; }
+  .st.ok { color:var(--green); border-color:var(--green); background:var(--green-soft); }
+  .st.amended { color:var(--amber); border-color:var(--amber); background:var(--amber-soft); }
+  .st.missing, .st.repealed { color:var(--seal); border-color:var(--seal); background:var(--seal-soft); }
+  .st.gap { color:var(--ink-3); border-color:var(--line-strong); }
 
-  .tabpage { display: none; padding: 22px 24px 70px; max-width: 900px; }
-  .tabpage.on { display: block; }
+  /* Tab4 相似案例 */
+  .sim { border-bottom:1px solid var(--line); padding:14px 16px; } .sim:last-child { border-bottom:none; }
+  .sim-top { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
+  .sim .rank { font-family:var(--mono); font-size:11px; color:var(--ink-3); border:1px solid var(--line); padding:1px 6px; }
+  .sim .fn { font-family:var(--mono); font-size:12px; flex:1; min-width:0; } .sim .score { font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:600; }
+  .sim .why { font-size:12.5px; color:var(--ink-2); line-height:1.8; margin:0 0 8px; } .sim .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .simbar { height:3px; background:var(--surface-3); margin-bottom:9px; } .simbar i { display:block; height:100%; background:var(--accent); }
+  .dist { display:flex; height:26px; border:1px solid var(--line); overflow:hidden; } .dist div { display:grid; place-items:center; font-size:11px; color:#fff; }
+  .dist-key { display:flex; flex-wrap:wrap; gap:14px; margin-top:9px; font-size:11.5px; color:var(--ink-3); } .dist-key span { display:flex; align-items:center; gap:5px; } .dist-key i { width:9px; height:9px; display:block; }
 
-  .sec { margin-bottom: 28px; }
-  .sec-head {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; margin-bottom: 10px; padding-bottom: 7px;
-    border-bottom: 1px solid var(--line-strong);
-  }
-  .sec-head h3 { font-size: 14px; }
-  .sec-head .note { font-size: 11.5px; color: var(--ink-3); }
+  /* Tab5 方案 */
+  .plans { display:grid; grid-template-columns:repeat(auto-fit, minmax(270px, 1fr)); gap:14px; }
+  .plan { border:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; position:relative; }
+  .plan.rec { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+  .plan.off { opacity:.55; }
+  .plan-head { padding:12px 14px; border-bottom:1px solid var(--line); background:var(--surface-2); display:flex; align-items:center; gap:8px; }
+  .plan-head h3 { font-size:14px; } .plan-head .art { font-family:var(--mono); font-size:11px; color:var(--ink-3); margin-left:auto; }
+  .plan .verdict-line { padding:10px 14px; font-size:13.5px; font-weight:600; border-bottom:1px solid var(--line); }
+  .plan .sec2 { padding:9px 14px; border-bottom:1px solid var(--line); font-size:12px; }
+  .plan .sec2 .lab { font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:3px; }
+  .plan .sec2 ul { margin:0; padding-left:16px; } .plan .sec2 li { margin:2px 0; }
+  .plan .fit { font-family:var(--mono); font-size:11px; }
+  .risk { padding:9px 14px; font-size:12px; border-bottom:1px solid var(--line); }
+  .risk.low { background:var(--green-soft); } .risk.mid { background:var(--amber-soft); } .risk.high { background:var(--seal-soft); }
+  .plan-foot { padding:10px 14px; margin-top:auto; display:flex; align-items:center; gap:8px; }
+  .plan-foot label { display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer; }
+  .single { padding:14px 16px; border:1px solid var(--accent); background:var(--accent-soft); font-size:12.5px; line-height:1.8; margin-bottom:14px; }
+  .single b { color:var(--accent); }
 
-  .box { border: 1px solid var(--line); background: var(--surface); }
+  /* Tab6 草稿 */
+  .draft-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--surface-2); }
+  .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--ink-3); margin-left:auto; }
+  .legend i { display:inline-block; width:10px; height:10px; vertical-align:-1px; margin-right:3px; }
+  .draft { padding:24px 30px 30px; font-size:13.5px; line-height:2.1; }
+  .draft-title { text-align:center; font-size:15px; font-weight:600; letter-spacing:.1em; margin-bottom:6px; }
+  .draft-sub { text-align:center; font-size:12px; color:var(--ink-3); font-family:var(--mono); margin-bottom:20px; }
+  .draft h4 { font-size:13.5px; letter-spacing:.5em; margin:20px 0 8px; border-bottom:1px solid var(--line); padding-bottom:5px; }
+  .draft p { margin:0 0 10px; color:var(--ink-2); text-align:justify; }
+  .para { position:relative; padding:2px 8px 2px 12px; border-left:3px solid var(--accent-soft); margin-left:-12px; cursor:pointer; }
+  .para:hover { background:var(--surface-2); }
+  .para[data-src="human"] { border-left-color:var(--green); }
+  .para[data-src="ai-edit"] { border-left-color:var(--accent); }
+  .para.sel { background:var(--accent-soft); outline:1px solid var(--accent); }
+  .para[contenteditable]:focus { outline:1px solid var(--accent); background:var(--surface); cursor:text; }
+  .cite { display:block; font-size:11px; color:var(--ink-3); font-family:var(--mono); margin:-6px 0 10px; padding-left:12px; border-left:2px solid var(--accent-soft); }
+  .cite .jump { margin-right:8px; }
+  .fill { background:var(--amber-soft); border-bottom:1px dashed var(--amber); color:var(--amber); padding:0 3px; font-weight:600; }
+  .gain { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); }
+  .gain > div { padding:12px 16px; border-right:1px solid var(--line); } .gain > div:last-child { border-right:none; }
+  .gain .v { font-size:19px; font-weight:600; display:block; } .gain .v.up { color:var(--green); } .gain .k { font-size:11.5px; color:var(--ink-3); }
+  .foot-note { margin-top:22px; padding-top:12px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-3); line-height:1.85; }
 
-  /* 擷取欄位表 */
-  .fields { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .fields tr { border-bottom: 1px solid var(--line); cursor: pointer; }
-  .fields tr:last-child { border-bottom: none; }
-  .fields tr:hover, .fields tr.lit { background: var(--accent-soft); }
-  .fields th {
-    text-align: left; font-weight: 500; color: var(--ink-3);
-    padding: 8px 14px; width: 118px; vertical-align: top;
-    border-right: 1px solid var(--line); font-size: 12.5px;
-  }
-  .fields td { padding: 8px 14px; vertical-align: top; }
-  .fields td .src { font-size: 11px; color: var(--ink-3); margin-left: 8px; }
+  .chat { border:1px solid var(--line); background:var(--surface); margin-top:18px; }
+  .chat-head { display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid var(--line); background:var(--surface-2); font-size:12.5px; }
+  .chat-head .scope { margin-left:auto; font-size:11.5px; color:var(--ink-3); } .chat-head .scope b { color:var(--accent); }
+  .chat-log { max-height:300px; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:8px; font-size:12.5px; }
+  .msg { max-width:88%; padding:7px 11px; line-height:1.7; }
+  .msg.u { align-self:flex-end; background:var(--accent-soft); color:var(--ink); border:1px solid var(--accent); }
+  .msg.a { align-self:flex-start; background:var(--surface-2); border:1px solid var(--line); }
+  .msg.a .st { margin-top:4px; }
+  .diffbox { border:1px solid var(--amber); background:var(--surface); padding:10px 12px; margin-top:4px; font-size:12.5px; line-height:1.9; }
+  .diffbox del { background:var(--seal-soft); color:var(--seal); text-decoration:line-through; }
+  .diffbox ins { background:var(--green-soft); color:var(--green); text-decoration:none; }
+  .diffbox .acts { display:flex; gap:8px; margin-top:8px; }
+  .quick { display:flex; flex-wrap:wrap; gap:6px; padding:8px 14px; border-top:1px solid var(--line); }
+  .quick button { font-size:12px; padding:4px 10px; }
+  .chat-in { display:flex; gap:8px; padding:10px 14px; border-top:1px solid var(--line); }
+  .chat-in input { flex:1; border:1px solid var(--line); background:var(--surface-2); padding:7px 10px; font-size:12.5px; }
+  .chat-in input:focus { border-color:var(--accent); outline:none; background:var(--surface); }
 
-  /* 分類信心 */
-  .clsgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0; }
-  .cls { padding: 14px 16px; border-right: 1px solid var(--line); }
-  .cls:last-child { border-right: none; }
-  .cls .lab { font-size: 11.5px; color: var(--ink-3); }
-  .cls .val { font-size: 15px; font-weight: 600; margin: 3px 0 7px; line-height: 1.5; }
-  .meter { height: 4px; background: var(--surface-3); }
-  .meter i { display: block; height: 100%; background: var(--accent); }
-  .meter.warn i { background: var(--amber); }
-  .cls .pct { font-size: 11px; color: var(--ink-3); font-family: var(--mono); margin-top: 4px; display: block; }
+  .hist { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:760px) { .hist { grid-template-columns:1fr; } }
+  .vlist, .alist { font-size:12px; }
+  .vrow, .arow { display:grid; gap:10px; padding:7px 12px; border-bottom:1px solid var(--line); align-items:center; }
+  .vrow { grid-template-columns:auto 1fr auto auto; } .arow { grid-template-columns:auto auto 1fr; }
+  .vrow:last-child, .arow:last-child { border-bottom:none; }
+  .vrow .t, .arow .t { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+  .vrow.cur { background:var(--accent-soft); }
+  .vrow button { font-size:11px; padding:2px 8px; }
+  .arow .who { font-size:11px; padding:0 6px; border:1px solid var(--line); }
+  .arow .who.ai { color:var(--accent); border-color:var(--accent); } .arow .who.hu { color:var(--green); border-color:var(--green); }
 
-  /* 程序審查檢核 */
-  .checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); }
-  .chk {
-    display: flex; gap: 10px; align-items: flex-start;
-    padding: 10px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
-    font-size: 12.5px;
+  .case-chip b, .plan-chip b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:38vw; }
+  @media (max-width:760px) {
+    .topbar { flex-wrap:wrap; height:auto; min-height:52px; padding:6px 12px; gap:8px; }
+    .brand span, .case-chip .eyebrow, .plan-chip .eyebrow, .case-chip .num { display:none; }
+    .topbar-spacer { flex-basis:100%; height:0; }
+    .pane-head, .sec-head, .draft-bar, .upload-bar, .paste-bar, .issue-head { flex-wrap:wrap; }
+    .issue-foot { grid-template-columns:1fr; }
+    .stance { flex-wrap:wrap; }
+    .tabpage { padding:14px 12px 60px; }
+    .draft { padding:16px 14px 20px; }
+    .cmp, .cite-check { display:block; overflow-x:auto; }
+    .timeline { overflow-x:auto; }
   }
-  .chk .mk {
-    font-family: var(--mono); font-size: 12px; width: 18px; flex: none;
-    text-align: center; line-height: 1.5; margin-top: 1px;
-  }
-  .chk.pass .mk { color: var(--green); }
-  .chk.fail .mk { color: var(--seal); }
-  .chk.na .mk { color: var(--ink-3); }
-  .chk.warn .mk { color: var(--amber); }
-  .chk.warn { background: var(--amber-soft); }
-  .chk.warn .art { color: var(--amber); }
-  .chk.fail { background: var(--seal-soft); }
-  .chk .art { font-family: var(--mono); font-size: 11px; color: var(--ink-3); display: block; }
-  .chk.fail .art { color: var(--seal); }
-  .chk.na { opacity: .6; }
-
-  .verdict {
-    display: flex; align-items: flex-start; gap: 14px;
-    padding: 15px 18px; border: 1px solid; margin-top: 0;
-  }
-  .verdict.stop { background: var(--seal-soft); border-color: var(--seal); }
-  .verdict.go { background: var(--green-soft); border-color: var(--green); }
-  .verdict .big { font-size: 16px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
-  .verdict.stop .big { color: var(--seal); }
-  .verdict.go .big { color: var(--green); }
-  .verdict p { margin: 0; font-size: 12.5px; line-height: 1.75; color: var(--ink-2); }
-
-  /* 期間時間軸 */
-  .timeline { padding: 20px 18px 16px; overflow-x: auto; }
-  .tl-track { position: relative; min-width: 520px; height: 2px; background: var(--line-strong); margin: 30px 58px 0; }
-  .tl-fill { position: absolute; top: 0; height: 2px; background: var(--seal); }
-  .tl-pt { position: absolute; top: 0; transform: translateX(-50%); text-align: center; }
-  .tl-pt .dot {
-    width: 9px; height: 9px; background: var(--surface); border: 2px solid var(--line-strong);
-    margin: -4px auto 0; border-radius: 50%;
-  }
-  .tl-pt.key .dot { border-color: var(--accent); background: var(--accent); }
-  .tl-pt.bad .dot { border-color: var(--seal); background: var(--seal); }
-  .tl-pt .lab { font-size: 11px; color: var(--ink-3); margin-top: 7px; white-space: nowrap; }
-  .tl-pt .d { font-size: 11.5px; font-family: var(--mono); color: var(--ink-2); white-space: nowrap; }
-  .tl-pt.bad .d, .tl-pt.bad .lab { color: var(--seal); font-weight: 600; }
-  .tl-pt .up { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
-  .tl-note {
-    margin-top: 62px; font-size: 12.5px; color: var(--ink-2);
-    border-top: 1px solid var(--line); padding-top: 12px;
-  }
-  .tl-note b { font-family: var(--mono); }
-
-  /* 法規推薦 */
-  .law {
-    display: grid; grid-template-columns: 1fr auto; gap: 4px 16px;
-    padding: 13px 16px; border-bottom: 1px solid var(--line);
-  }
-  .law:last-child { border-bottom: none; }
-  .law .ttl { font-size: 13.5px; font-weight: 600; }
-  .law .ttl .n { font-variant-numeric: tabular-nums; color: var(--accent); }
-  .law .txt {
-    grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-2);
-    line-height: 1.8; border-left: 2px solid var(--line); padding-left: 11px; margin-top: 3px;
-  }
-  .law .badges { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-  .law .rel { font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: right; }
-
-  .alert {
-    display: flex; gap: 12px; padding: 13px 16px;
-    background: var(--amber-soft); border: 1px solid var(--amber);
-  }
-  .alert .mk { color: var(--amber); font-weight: 700; flex: none; }
-  .alert p { margin: 0; font-size: 12.5px; line-height: 1.8; color: var(--ink-2); }
-  .alert b { color: var(--amber); }
-
-  /* 相似案例 */
-  .sim { border-bottom: 1px solid var(--line); padding: 14px 16px; }
-  .sim:last-child { border-bottom: none; }
-  .sim-top { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
-  .sim .rank {
-    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-    border: 1px solid var(--line); padding: 1px 6px; flex: none;
-  }
-  .sim .fn { font-family: var(--mono); font-size: 12px; color: var(--ink); flex: 1; min-width: 0; }
-  .sim .score { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 600; }
-  .sim .why { font-size: 12.5px; color: var(--ink-2); line-height: 1.8; margin: 0 0 8px; }
-  .sim .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .simbar { height: 3px; background: var(--surface-3); margin-bottom: 9px; }
-  .simbar i { display: block; height: 100%; background: var(--accent); }
-
-  .dist { display: flex; height: 26px; border: 1px solid var(--line); overflow: hidden; }
-  .dist div { display: grid; place-items: center; font-size: 11px; color: #fff; }
-  .dist-key { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 9px; font-size: 11.5px; color: var(--ink-3); }
-  .dist-key span { display: flex; align-items: center; gap: 5px; }
-  .dist-key i { width: 9px; height: 9px; display: block; }
-
-  /* 決定書草稿 */
-  .draft { padding: 26px 30px 34px; font-size: 13.5px; line-height: 2.1; }
-  .draft-title { text-align: center; font-size: 15px; font-weight: 600; letter-spacing: .1em; margin-bottom: 6px; }
-  .draft-sub { text-align: center; font-size: 12px; color: var(--ink-3); font-family: var(--mono); margin-bottom: 22px; }
-  .draft h4 {
-    font-size: 13.5px; letter-spacing: .5em; margin: 22px 0 8px; color: var(--ink);
-    border-bottom: 1px solid var(--line); padding-bottom: 5px;
-  }
-  .draft p { margin: 0 0 12px; color: var(--ink-2); text-align: justify; }
-  .draft .para { position: relative; padding-right: 4px; }
-  .draft .para:hover { background: var(--surface-2); }
-  .draft .cite {
-    display: block; font-size: 11px; color: var(--ink-3);
-    font-family: var(--mono); margin: -8px 0 12px; padding-left: 12px;
-    border-left: 2px solid var(--accent-soft);
-  }
-  .fill {
-    background: var(--amber-soft); border-bottom: 1px dashed var(--amber);
-    color: var(--amber); padding: 0 3px; font-weight: 600;
-  }
-
-  .draft-bar {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 11px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2);
-  }
-  .btn {
-    background: var(--accent); color: var(--on-accent); border: 1px solid var(--accent);
-    padding: 6px 14px; font-size: 12.5px; font-weight: 500;
-  }
-  .btn:hover { background: var(--accent-2); border-color: var(--accent-2); }
-
-  /* 效益列 */
-  .gain { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-  .gain > div { padding: 13px 16px; border-right: 1px solid var(--line); }
-  .gain > div:last-child { border-right: none; }
-  .gain .v { font-size: 19px; font-weight: 600; display: block; line-height: 1.4; }
-  .gain .v.up { color: var(--green); }
-  .gain .k { font-size: 11.5px; color: var(--ink-3); }
-
-  .foot-note {
-    margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line);
-    font-size: 11.5px; color: var(--ink-3); line-height: 1.85;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; animation: none !important; }
-  }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
+  @media print { .topbar, .doc-pane, .tabs, .chat, .draft-bar { display:none !important; } .work { display:block; height:auto; } .tabpage { display:block !important; } }
 </style>
 
 <header class="topbar">
   <div class="seal-mark">訴</div>
-  <div class="brand">
-    <strong>訴願智審臺</strong>
-    <span>新北市政府法制局 ・ 原型展示</span>
-  </div>
-  <div class="case-chip" id="chip">
-    <span class="eyebrow">承辦中</span>
-    <b id="chipName">—</b>
-    <span class="num" id="chipNo">—</span>
-  </div>
+  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ 原型展示 v2</span></div>
+  <div class="case-chip" id="chip"><span class="eyebrow">承辦中</span><b id="chipName">—</b><span class="num" id="chipNo">—</span></div>
+  <div class="plan-chip" id="planChip"><span class="eyebrow">採用方案</span><b id="planChipText">—</b></div>
   <div class="topbar-spacer"></div>
   <button class="ghost-btn" id="themeBtn">切換深色</button>
   <button class="ghost-btn" id="backBtn" style="display:none">重選案件</button>
 </header>
 
-<!-- ======== 畫面 1：選案 ======== -->
+<!-- ======== 畫面 1：載入 ======== -->
 <section class="screen on" id="s-pick">
   <div class="pick">
     <div class="pick-head">
       <div class="eyebrow">訴願案件審理作業流程之 AI 輔助應用</div>
       <h1>把承辦人從重複撰擬中解放，<br>專注在真正需要判斷的案件。</h1>
-      <p>載入一份訴願書，或選擇示範案件。系統會完成欄位擷取、程序審查、法規檢索、相似案例比對，並產出決定書草稿。示範案件均取材自法制局提供之歷史訴願決定書資料集。</p>
+      <p>上傳整包卷宗（訴願書、答辯書、卷證掃描件、採證照片與影片），系統先辨識歸戶，再完成三方對照、爭點比對、法規查核、相似案例、方案研擬與決定書草稿。</p>
     </div>
-
     <div class="stat-row">
-      <div class="stat"><span class="v num">1,566</span><span class="k">114 年訴願收案量（110 年為 1,238）</span></div>
-      <div class="stat"><span class="v num">70%</span><span class="k">程序不受理占比（資料集 71/101）</span></div>
-      <div class="stat"><span class="v num">101</span><span class="k">歷史決定書比對庫（110–114 年）</span></div>
+      <div class="stat"><span class="v num">1,566</span><span class="k">114 年全市訴願收案量（110 年為 1,238）</span></div>
+      <div class="stat"><span class="v num">101</span><span class="k">歷史決定書比對庫（110–114 年，本次提供）</span></div>
+      <div class="stat"><span class="v num">70%</span><span class="k">程序不受理占比（71 / 101）</span></div>
       <div class="stat"><span class="v num">40</span><span class="k">法規、函釋與判解索引</span></div>
     </div>
 
     <div class="intake">
-      <div class="drop" id="drop" tabindex="0" role="button" aria-label="上傳訴願書檔案">
-        <span class="mk">＋</span>
-        <span><b>拖曳訴願書至此</b><span>或點選選擇檔案　PDF・DOCX・JPG</span></span>
-        <input type="file" id="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" hidden>
+      <div class="upload">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="上傳卷宗檔案">
+          <span class="mk">＋</span>
+          <span><b>拖曳整包卷宗至此，或點選選擇多個檔案</b><span>PDF・JPG・PNG・MP4　可一次多選；系統會辨識每個檔案是訴願書、答辯書、送達證書、照片或影片</span></span>
+          <input type="file" id="file" multiple accept=".pdf,.jpg,.jpeg,.png,.mp4,.mov,.doc,.docx" hidden>
+        </div>
+        <div class="files" id="fileList"></div>
+        <div class="upload-bar">
+          <button class="btn" id="runBtn" disabled>開始分析</button>
+          <button class="ghost-btn" id="qrBtn">手機拍照上傳（QR）</button>
+          <button class="ghost-btn" id="packBtn">載入 case02 卷宗包（20 頁）</button>
+          <button class="ghost-btn" id="clearBtn">清除</button>
+          <span class="hint" id="fileHint">尚未加入檔案</span>
+        </div>
       </div>
       <div class="paste">
-        <span class="eyebrow">或直接貼上訴願書內容</span>
+        <span class="eyebrow">或直接貼上訴願書內容（即時解析）</span>
         <textarea id="pasteBox" placeholder="貼上訴願書全文。系統會擷取訴願人、原處分機關、文號、送達日與收文日，計算 30 日法定期間，判定案由並檢索相似歷史決定書。"></textarea>
         <div class="paste-bar">
           <button class="btn" id="parseBtn" disabled>解析並分析</button>
@@ -579,26 +428,40 @@
         </div>
       </div>
     </div>
-
-    <div class="live-note">
-      <span><b>貼上文字這條路徑是真的在運算。</b>欄位擷取、民國日期換算、30 日期間計算、案由判定與相似案例檢索皆於瀏覽器即時執行，比對範圍為法制局資料集之 101 件歷史決定書。上傳檔案路徑因原型未內建 PDF 解析，將以示範資料展示後續流程。</span>
-    </div>
+    <div class="live-note"><span><b>貼上文字這條路徑是真的在運算。</b>欄位擷取、民國日期換算、30 日期間計算、案由判定與相似案例檢索皆於瀏覽器即時執行。多檔案上傳路徑因原型未內建 OCR／PDF 解析，會依檔名辨識類型後以 case02 卷宗包示範後續流程；卷宗瀏覽器顯示的掃描件、照片與影片均為卷宗包內的實際檔案。</span></div>
 
     <div class="pick-div">或選擇示範案件</div>
     <div class="case-grid" id="caseGrid"></div>
 
     <div class="disclaimer">
-      <b>關於這份原型</b>　純前端展示，未串接後端模型；畫面上的擷取結果、法規命中與相似度分數為依據真實決定書預先編排之示範資料，用於呈現操作動線與資訊架構。<br>
-      <b>資料來源</b>　新北市政府法制局提供之歷史訴願決定書、相關法規、行政函釋、司法院釋字及行政判解共 143 份文件。姓名與地址依原文遮蔽處理。
+      <b>關於這份原型</b>　純前端展示，未串接後端模型。畫面上的擷取結果、爭點、方案、引用查核為依真實決定書預先編排之示範資料；貼上文字路徑為瀏覽器端規則運算。<br>
+      <b>資料來源</b>　新北市政府法制局提供之歷史訴願決定書 101 份、相關法規 11 份、行政函釋 10 份、司法院釋字及行政判解 19 份；case02 卷宗包為依真實決定書 1141061379 反推之模擬卷證（每頁附浮水印）。姓名與地址依原文遮蔽處理。
     </div>
   </div>
 </section>
+
+<!-- QR 視窗 -->
+<div class="modal" id="qrModal">
+  <div class="modal-box">
+    <div class="qr-side">
+      <div class="eyebrow">手機掃碼上傳</div>
+      <canvas id="qrCanvas" width="41" height="41" style="margin-top:10px"></canvas>
+      <div class="code" id="qrCode">—</div>
+      <p class="note" style="margin:8px 0 0">示範用配對碼，有效 10 分鐘。<br>正式版由後端簽發 S3 上傳連結。</p>
+    </div>
+    <div class="phone">
+      <div style="display:flex;align-items:center;gap:8px"><span class="eyebrow">手機端狀態</span><span class="note" id="phoneState">等待掃碼…</span><button class="ghost-btn" id="qrClose" style="margin-left:auto">關閉</button></div>
+      <div class="feed" id="phoneFeed"></div>
+      <div style="display:flex;gap:8px"><button class="ghost-btn" id="simScan">模擬：手機已掃碼並拍照</button><button class="btn" id="qrDone" disabled>加入清單並關閉</button></div>
+    </div>
+  </div>
+</div>
 
 <!-- ======== 畫面 2：分析中 ======== -->
 <section class="screen" id="s-run">
   <div class="run">
     <div class="eyebrow">處理中</div>
-    <h2 id="runTitle">正在分析訴願書</h2>
+    <h2 id="runTitle">正在分析卷宗</h2>
     <p id="runSub">—</p>
     <div class="steps" id="stepList"></div>
     <div class="bar"><i id="runBar"></i></div>
@@ -610,1285 +473,31 @@
   <div class="work">
     <aside class="doc-pane">
       <div class="pane-head">
-        <span class="eyebrow">訴願書原文</span>
-        <span class="tag neutral">點擊右側欄位可回指原文</span>
+        <div><span class="eyebrow">卷宗瀏覽器</span><span class="note" id="docCount" style="margin-left:8px"></span></div>
+        <div class="doc-tools" id="docTools"></div>
       </div>
-      <div class="doc-body" id="docBody"></div>
+      <div class="docstrip" id="docStrip"></div>
+      <div class="doc-view" id="docView"></div>
     </aside>
-
-    <div class="panel">
+    <div class="panel" id="panel">
       <div class="tabs" id="tabs">
-        <button class="tab on" data-t="0"><span class="n">1</span>案件擷取與分類</button>
-        <button class="tab" data-t="1"><span class="n">2</span>法規推薦</button>
-        <button class="tab" data-t="2"><span class="n">3</span>相似案例</button>
-        <button class="tab" data-t="3"><span class="n">4</span>決定書草稿</button>
+        <button class="tab on" data-t="0"><span class="n">1</span>案件擷取與分類<span class="dot"></span></button>
+        <button class="tab" data-t="1"><span class="n">2</span>爭點<span class="dot"></span></button>
+        <button class="tab" data-t="2"><span class="n">3</span>法規推薦<span class="dot"></span></button>
+        <button class="tab" data-t="3"><span class="n">4</span>相似案例<span class="dot"></span></button>
+        <button class="tab" data-t="4"><span class="n">5</span>方案研擬<span class="dot"></span></button>
+        <button class="tab" data-t="5"><span class="n">6</span>決定書草稿<span class="dot"></span></button>
       </div>
       <div class="tabpage on" id="p0"></div>
       <div class="tabpage" id="p1"></div>
       <div class="tabpage" id="p2"></div>
       <div class="tabpage" id="p3"></div>
+      <div class="tabpage" id="p4"></div>
+      <div class="tabpage" id="p5"></div>
     </div>
   </div>
 </section>
 
-<script>
-"use strict";
-
-/* =========================================================
-   示範資料：三件取材自法制局歷史訴願決定書資料集
-   ========================================================= */
-const CASES = [
-
-/* ---------- A. 逾期不受理（77 條 1 項 2 款）---------- */
-{
-  id: "A",
-  no: "1141091381",
-  name: "洪○ ／ 違反廢棄物清理法",
-  cardTitle: "遲延 2 年餘才提起訴願",
-  cardDesc: "訴願人不服 112 年 1 月裁處書，遲至 114 年 9 月始遞狀。程序審查即可終結，是全市占比最高的一類。",
-  cardTags: ['<span class="tag neutral">廢棄物清理法</span>', '<span class="tag seal">程序不合</span>'],
-  expect: "訴願法 77(2) ・ 不受理",
-  outcome: "stop",
-
-  doc: `
-    <div class="doc-meta num">
-      收文日期：114-09-25　收文號：1141091381<br>
-      文件類型：訴願書（自然人）　頁數：2
-    </div>
-    <h4>訴願人</h4>
-    <p><mark data-ref="applicant">洪○</mark>，住新北市○○區○○街 467 巷 20 弄 28 號。委任代理人 <mark data-ref="agent">許○蘭</mark>。</p>
-    <h4>原處分</h4>
-    <p>不服<mark data-ref="agency">新北市政府環境保護局</mark>民國 <mark data-ref="orderdate">112 年 1 月 10 日</mark><mark data-ref="orderno">新北環稽字第 41-112-010273 號</mark>裁處書所為之處分。</p>
-    <h4>訴願請求</h4>
-    <p><mark data-ref="claim">請求撤銷原處分。</mark></p>
-    <h4>訴願理由</h4>
-    <p>一、本人於<mark data-ref="served">今年初整理郵件時，方發現二年前家中曾有人代收一份環保局裁處書</mark>，本人當時人在外縣市工作，並未實際知悉該處分內容，亦未收到任何通知。</p>
-    <p>二、該裁處書係由<mark data-ref="receiver">舍弟（同住）代為蓋章簽收</mark>，本人並未親自收受，自不生送達效力，訴願期間應自本人實際知悉之日起算。</p>
-    <p>三、原處分認定之違規事實與現場情況不符，本人並無違規行為，懇請鈞府明察，撤銷原處分。</p>
-  `,
-
-  fields: [
-    ["訴願人", "洪○（自然人）", "applicant", "本文第 1 段"],
-    ["代理人", "許○蘭", "agent", "本文第 1 段"],
-    ["原處分機關", "新北市政府環境保護局", "agency", "本文第 2 段"],
-    ["原處分文號", "新北環稽字第 41-112-010273 號", "orderno", "本文第 2 段"],
-    ["原處分日期", "112-01-10", "orderdate", "本文第 2 段"],
-    ["送達情形", "付與同居人收受（訴願人自陳）", "receiver", "理由第 2 點"],
-    ["機關收文日", "114-09-25", null, "收文戳"],
-    ["訴願請求", "撤銷原處分", "claim", "請求欄"],
-  ],
-
-  cls: [
-    ["案件類型", "違反廢棄物清理法", 96],
-    ["主要爭點", "送達合法性與訴願期間起算", 93],
-    ["預判走向", "程序不受理", 98],
-  ],
-
-  checks: [
-    ["77(1)", "訴願書合法定程式", "pass", "書狀格式、簽名、附件齊備"],
-    ["77(2)", "於法定期間內提起", "fail", "逾期 931 日"],
-    ["77(3)", "當事人適格", "pass", "訴願人為處分相對人"],
-    ["77(4)", "具訴願能力", "pass", "成年自然人"],
-    ["77(5)", "代理人合法", "na", "資料集未涵蓋此款"],
-    ["77(6)", "行政處分仍存在", "pass", "未經撤銷或廢止"],
-    ["77(7)", "非重行提起", "pass", "查無同一事件前案"],
-    ["77(8)", "屬訴願救濟範圍", "pass", "裁處書為行政處分"],
-  ],
-
-  verdict: {
-    kind: "stop",
-    big: "應為不受理",
-    text: "程序審查於第 2 款即告終結，依訴願法第 77 條第 1 項第 2 款作成不受理決定，毋庸進入實體審查。訴願人主張「由同居人代收不生效力」一節，經比對行政程序法第 73 條第 1 項與法務部 93 年寄存送達函釋，應不足採。",
-  },
-
-  timeline: {
-    points: [
-      { d: "112-01-10", lab: "處分作成", pos: 0, cls: "" },
-      { d: "112-02-07", lab: "合法送達（同居人）", pos: 15, cls: "key" },
-      { d: "112-03-09", lab: "期間屆滿", pos: 34, cls: "key" },
-      { d: "114-09-25", lab: "實際收文", pos: 100, cls: "bad" },
-    ],
-    fill: 100,
-    note: '起算日 <b>112-02-08</b>（送達之次日）＋ 30 日 ＝ 屆滿日 <b>112-03-09</b>。訴願人住居所位於本市，毋須扣除在途期間。實際收文日 <b>114-09-25</b>，<span style="color:var(--seal);font-weight:600">逾法定不變期間 931 日</span>，原處分業已確定。',
-  },
-
-  laws: [
-    { g: "程序法規", n: "訴願法 第 14 條第 1 項、第 3 項", t: "訴願之提起，應自行政處分達到或公告期滿之次日起 30 日內為之。訴願之提起，以原行政處分機關或受理訴願機關收受訴願書之日期為準。", rel: 99, badges: ['<span class="tag green">現行有效</span>', '<span class="tag neutral">最新修正 101-06-27</span>', '<span class="tag accent">期間起算</span>'] },
-    { g: "程序法規", n: "訴願法 第 77 條第 2 款", t: "訴願事件有左列各款情形之一者，應為不受理之決定：二、提起訴願逾法定期間者或未於第 57 條但書所定期間內補送訴願書者。", rel: 99, badges: ['<span class="tag green">現行有效</span>', '<span class="tag seal">本案適用</span>'] },
-    { g: "程序法規", n: "行政程序法 第 73 條第 1 項", t: "於應送達處所不獲會晤應受送達人時，得將文書付與有辨別事理能力之同居人、受雇人或應送達處所之接收郵件人員。", rel: 97, badges: ['<span class="tag green">現行有效</span>', '<span class="tag accent">補充送達</span>'] },
-    { g: "程序法規", n: "行政程序法 第 67、68、72 條", t: "送達由行政機關依職權為之，得自行或交由郵政機關送達；送達於應受送達人之住居所、事務所或營業所為之。", rel: 88, badges: ['<span class="tag green">現行有效</span>'] },
-    { g: "行政函釋", n: "法務部 93.4.13 法律字第 0930014628 號函", t: "關於寄存送達及補充送達之效力認定：文書付與有辨別事理能力之同居人時，即生合法送達效力，不以應受送達人實際知悉為必要。", rel: 94, badges: ['<span class="tag neutral">資料集內文件</span>', '<span class="tag accent">直接回應訴願主張</span>'] },
-    { g: "判解", n: "釋字第 546 號解釋", t: "提起行政爭訟須具備權利保護必要；行政處分已確定者，當事人不得再事爭執。", rel: 71, badges: ['<span class="tag neutral">資料集內文件</span>'] },
-  ],
-
-  alert: null,
-
-  sims: [
-    { fn: "112年-違反空氣汙染管制法-77(2)-訴願逾期-不受理", s: 94, why: "同為逾期不受理，且訴願人同樣主張「未實際收受」。理由欄之送達效力論述可直接套用，僅需替換日期與文號。", chips: ["逾期", "補充送達", "同居人代收"] },
-    { fn: "111年-違反廢棄物清理法-77(2)-訴願逾期-不受理", s: 91, why: "案由完全相同（廢清法裁處），期間計算段落之句式一致。", chips: ["逾期", "廢清法"] },
-    { fn: "114年-違反洗錢防制法-77(2)-訴願逾期-不受理", s: 87, why: "同年度決定書，格式與委員名單為最新版本，適合作為文字基準。", chips: ["逾期", "114 年格式"] },
-    { fn: "111年-違反建築法-77(2)-訴願逾期-不受理", s: 84, why: "涉及在途期間扣除之論述，本案毋須扣除，可作反面對照。", chips: ["逾期", "在途期間"] },
-    { fn: "112年-違反噪音管制法-77(2)-訴願逾期-不受理", s: 80, why: "送達證書認定方式相同，援引之行政程序法條次一致。", chips: ["逾期", "送達證書"] },
-  ],
-
-  simDist: [["不受理", 5, "#9C3A2E"], ["駁回", 0, "#A8792A"], ["撤銷", 0, "#2E7D5B"]],
-
-  draft: {
-    head: "新北市政府訴願決定書",
-    sub: "案號：1141091381 號　（草稿・待承辦人審核）",
-    tmpl: "77(2) 不受理",
-    body: `
-      <p class="num">訴願人　洪○<br>代理人　許○蘭<br>原處分機關　新北市政府環境保護局</p>
-      <p>上列訴願人因違反廢棄物清理法事件，不服原處分機關民國 112 年 1 月 10 日新北環稽字第 41-112-010273 號裁處書所為之處分，提起訴願一案，本府依法決定如下：</p>
-      <h4>主文</h4>
-      <p>訴願不受理。</p>
-      <h4>理由</h4>
-      <p class="para">一、按訴願法第 14 條第 1 項及第 3 項規定：「訴願之提起，應自行政處分達到或公告期滿之次日起 30 日內為之（第 1 項）。訴願之提起，以原行政處分機關或受理訴願機關收受訴願書之日期為準（第 3 項）。」、第 77 條第 2 款規定：「訴願事件有左列各款情形之一者，應為不受理之決定：二、提起訴願逾法定期間者……。」</p>
-      <span class="cite">引自　相關法規／訴願法.pdf</span>
-      <p class="para">二、次按行政程序法第 67 條、第 68 條第 1 項、第 72 條第 1 項及第 73 條第 1 項規定，送達由行政機關依職權為之，於應送達處所不獲會晤應受送達人時，得將文書付與有辨別事理能力之同居人收受。</p>
-      <span class="cite">引自　相關法規／行政程序法.pdf</span>
-      <p class="para">三、本件訴願人不服原處分機關 112 年 1 月 10 日新北環稽字第 41-112-010273 號裁處書（下稱系爭裁處書）所為之處分，依首揭規定，自應於行政處分達到之次日起 30 日內提起訴願。查系爭裁處書經原處分機關委由郵政機關以掛號於 <span class="fill">112 年 2 月 7 日</span> 送達於訴願人住居所，因郵務人員未獲會晤訴願人本人，乃於當日將系爭裁處書付予同居人<span class="fill">許○于</span>蓋章收受，此有系爭裁處書及其送達證書影本附卷可稽。依前揭行政程序法規定，系爭裁處書自付予同居人之日起即生合法送達效力。核計本件訴願之 30 日法定期間，應自 112 年 2 月 8 日起算，因訴願人住居所位於本市，毋須扣除在途期間，其訴願期間至 112 年 3 月 9 日屆滿。惟訴願人遲至 114 年 9 月 25 日（機關收文日）始檢具訴願書提起訴願，顯已逾 30 日之法定不變期間，原處分業已確定。</p>
-      <span class="cite">日期由期間計算模組推導　｜　套用 112年-77(2) 決定書句式</span>
-      <p class="para">四、至訴願人主張系爭裁處書由同居人代收，未經其本人親自收受，不生送達效力一節。惟按行政程序法第 73 條第 1 項規定，補充送達於文書付與有辨別事理能力之同居人時即生效力，不以應受送達人實際知悉為必要（法務部 93 年 4 月 13 日法律字第 0930014628 號函釋參照）。是訴願人主張，尚難採據。</p>
-      <span class="cite">引自　行政函釋／法務部93年…函-寄存送達.pdf</span>
-      <p class="para">五、綜上論結，本件訴願為程序不合，依訴願法第 77 條第 2 款規定，決定如主文。</p>
-    `,
-  },
-
-  gain: [["38 秒", "本次生成耗時", "up"], ["約 3.5 小時", "同類案件人工撰擬平均", ""], ["8 / 8", "程序審查款次自動檢核", ""], ["4 處", "待人工確認（黃底）", ""]],
-},
-
-/* ---------- B. 廢清法 煙蒂 駁回（79 條 1 項）---------- */
-{
-  id: "B",
-  no: "1141061379",
-  name: "鄭○芳 ／ 違反廢棄物清理法",
-  cardTitle: "隨地拋棄煙蒂遭罰 3,600 元",
-  cardDesc: "爭執稽查照片舉證不足。需進入實體審查，涉裁罰準則係數與行政罰法第 18 條裁量。",
-  cardTags: ['<span class="tag neutral">廢棄物清理法</span>', '<span class="tag amber">實體審查</span>'],
-  expect: "訴願法 79I ・ 駁回",
-  outcome: "go",
-
-  doc: `
-    <div class="doc-meta num">
-      收文日期：114-09-22　收文號：1141061379<br>
-      文件類型：訴願書（自然人）　頁數：3
-    </div>
-    <h4>訴願人</h4>
-    <p><mark data-ref="applicant">鄭○芳</mark>，車號 <mark data-ref="plate">000-0000</mark> 汽車所有人。</p>
-    <h4>原處分</h4>
-    <p>不服<mark data-ref="agency">新北市政府環境保護局</mark>民國 <mark data-ref="orderdate">114 年 9 月 16 日</mark><mark data-ref="orderno">新北環稽字第 41-114-090351 號</mark>裁處書，裁處<mark data-ref="amount">罰鍰新臺幣 3,600 元</mark>。</p>
-    <h4>訴願請求</h4>
-    <p><mark data-ref="claim">請求撤銷原處分。</mark></p>
-    <h4>訴願理由</h4>
-    <p>一、原處分機關指稱本人於 <mark data-ref="factdate">114 年 6 月 27 日 12 時 40 分</mark>許，在<mark data-ref="place">本市○○區○○○路○○號旁</mark>隨地拋棄煙蒂。</p>
-    <p>二、<mark data-ref="arg1">惟稽查照片未能清楚呈現所謂「煙蒂」存在之證據，僅能辨識車輛或人員位置，並未拍攝到煙蒂落地或丟棄之具體情況</mark>，原處分機關僅憑模糊照片即認定亂丟煙蒂，恐有舉證不足之情形。</p>
-    <p>三、<mark data-ref="arg2">本人當時並無丟棄煙蒂之行為，已將煙蒂拿回車上垃圾桶丟棄</mark>，原處分顯有違誤。</p>
-    <p>四、縱認有違規，罰鍰額度亦屬過重，請審酌本人並無前科紀錄。</p>
-  `,
-
-  fields: [
-    ["訴願人", "鄭○芳（自然人）", "applicant", "本文第 1 段"],
-    ["原處分機關", "新北市政府環境保護局", "agency", "本文第 2 段"],
-    ["原處分文號", "新北環稽字第 41-114-090351 號", "orderno", "本文第 2 段"],
-    ["原處分日期", "114-09-16", "orderdate", "本文第 2 段"],
-    ["裁罰內容", "罰鍰 3,600 元", "amount", "本文第 2 段"],
-    ["違規時地", "114-06-27 12:40／○○區○○○路", "factdate", "理由第 1 點"],
-    ["機關收文日", "114-09-22", null, "收文戳"],
-    ["訴願主張 ①", "稽查照片舉證不足", "arg1", "理由第 2 點"],
-    ["訴願主張 ②", "否認違規事實（已帶回車上丟棄）", "arg2", "理由第 3 點"],
-    ["訴願主張 ③", "罰鍰額度過重", null, "理由第 4 點"],
-  ],
-
-  cls: [
-    ["案件類型", "違反廢棄物清理法", 98],
-    ["主要爭點", "違規事證認定與裁量適法性", 91],
-    ["預判走向", "訴願無理由・駁回", 86],
-  ],
-
-  checks: [
-    ["77(1)", "訴願書合法定程式", "pass", "書狀格式、簽名、附件齊備"],
-    ["77(2)", "於法定期間內提起", "pass", "尚餘 26 日"],
-    ["77(3)", "當事人適格", "pass", "訴願人為受處分人"],
-    ["77(4)", "具訴願能力", "pass", "成年自然人"],
-    ["77(5)", "代理人合法", "na", "未委任代理人"],
-    ["77(6)", "行政處分仍存在", "pass", "罰鍰尚未繳納亦未撤銷"],
-    ["77(7)", "非重行提起", "pass", "查無同一事件前案"],
-    ["77(8)", "屬訴願救濟範圍", "pass", "裁處書為行政處分"],
-  ],
-
-  verdict: {
-    kind: "go",
-    big: "程序合法",
-    text: "八款程序要件全數通過，應進入實體審查。實體爭點有二：一為違規事證是否充足（涉舉證責任），二為罰鍰係數認定是否逾越裁量範圍（涉行政罰法第 18 條）。系統已就兩項爭點分別備妥法規依據與相似案例。",
-  },
-
-  timeline: {
-    points: [
-      { d: "114-09-16", lab: "處分作成", pos: 0, cls: "" },
-      { d: "114-09-18", lab: "合法送達", pos: 15, cls: "key" },
-      { d: "114-09-22", lab: "實際收文", pos: 32, cls: "key" },
-      { d: "114-10-18", lab: "期間屆滿", pos: 100, cls: "" },
-    ],
-    fill: 32,
-    note: '起算日 <b>114-09-19</b> ＋ 30 日 ＝ 屆滿日 <b>114-10-18</b>。實際收文日 <b>114-09-22</b>，<span style="color:var(--green);font-weight:600">未逾期，距屆滿尚餘 26 日</span>。',
-  },
-
-  laws: [
-    { g: "實體法規", n: "廢棄物清理法 第 27 條第 1 款", t: "在指定清除地區內嚴禁有下列行為：一、隨地吐痰、檳榔汁、檳榔渣，拋棄紙屑、煙蒂、口香糖、瓜果或其皮、核、汁、渣或其他一般廢棄物。", rel: 99, badges: ['<span class="tag green">現行有效</span>', '<span class="tag seal">本案裁罰依據</span>'] },
-    { g: "實體法規", n: "廢棄物清理法 第 50 條第 3 款", t: "有下列情形之一者，處新臺幣 1 千 2 百元以上 6 千元以下罰鍰：三、為第 27 條各款行為之一。", rel: 99, badges: ['<span class="tag green">現行有效</span>', '<span class="tag accent">法定額度 1,200–6,000</span>'] },
-    { g: "實體法規", n: "廢棄物清理法 第 4 條", t: "本法所稱主管機關：在直轄市為直轄市政府。（本府 109.2.14 新北府環秘字第 1090218367 號公告，權限劃分予環境保護局執行）", rel: 92, badges: ['<span class="tag accent">機關權限段落必引</span>'] },
-    { g: "實體法規", n: "行政罰法 第 18 條第 1 項", t: "裁處罰鍰，應審酌違反行政法上義務行為應受責難程度、所生影響及因違反行政法上義務所得之利益，並得考量受處罰者之資力。", rel: 95, badges: ['<span class="tag green">現行有效</span>', '<span class="tag amber">回應「額度過重」主張</span>'] },
-    { g: "裁罰基準", n: "違反廢棄物清理法罰鍰額度裁罰準則 第 2 條第 1 項第 1 款", t: "行為人違反本法義務規定之行為涉及一般廢棄物者，適用附表 1。（本案為附表 1 項次 13，環保局係數說明 A=3）", rel: 96, badges: ['<span class="tag accent">係數計算</span>', '<span class="tag neutral">需附罰鍰額度表</span>'] },
-    { g: "行政函釋", n: "環保署 108.9.12 環署毒字第 1080067666 號函", t: "任意棄置煙蒂不僅妨礙市容觀瞻，被亂丟在騎樓、路面之菸蒂，更容易經由下水道進入河川及海洋，造成鳥類和海洋生物誤食，甚至經由食物鏈危害人體健康。", rel: 89, badges: ['<span class="tag neutral">支撐 A=3 之污染程度認定</span>'] },
-    { g: "判解", n: "最高行政法院 108 年度判字第 531 號判決", t: "行政罰法第 7 條第 1 項故意過失之認定：行為人違反行政法上義務而無故意或過失者，不予處罰。", rel: 78, badges: ['<span class="tag neutral">資料集內文件</span>'] },
-  ],
-
-  alert: null,
-
-  sims: [
-    { fn: "114年-違反廢棄物清理法-79I-訴願無理由-駁回", s: 96, why: "同一裁罰準則、同一函釋、同為煙蒂案件，理由欄第 1 至 5 點可近乎直接沿用，僅需更換違規時地與係數說明。", chips: ["煙蒂", "A=3", "駁回"] },
-    { fn: "112年-違反廢棄物清理法-79I-訴願無理由-駁回", s: 88, why: "同樣以「照片模糊、舉證不足」為主要爭點，其影像放大逐格檢視之論述可作為第 6 點答辯範本。", chips: ["舉證不足", "稽查照片"] },
-    { fn: "113年-違反空氣汙染防制法-79I-訴願無理由-駁回", s: 79, why: "裁量審查段落（行政罰法第 18 條）之寫法相近，可借用「於不牴觸係數範圍內認定」句式。", chips: ["裁量審查", "行政罰法 18"] },
-    { fn: "114年-違反廢棄物清理法-81I-訴願有理由-撤銷另處", s: 66, why: "反面對照：該案因稽查照片確實無法辨識拋棄動作而撤銷。建議承辦人先確認本案影片是否攝得拋棄瞬間。", chips: ["反面案例", "須注意"] },
-    { fn: "111年-違反廢棄物清理法-79I-訴願無理由-駁回", s: 62, why: "涉及車籍查詢認定駕駛人身分之論述，本案同以車籍資料鎖定訴願人。", chips: ["車籍查詢", "身分認定"] },
-  ],
-
-  simDist: [["不受理", 0, "#9C3A2E"], ["駁回", 4, "#A8792A"], ["撤銷", 1, "#2E7D5B"]],
-
-  draft: {
-    head: "新北市政府訴願決定書",
-    sub: "案號：1141061379 號　（草稿・待承辦人審核）",
-    tmpl: "79I 駁回",
-    body: `
-      <p class="num">訴願人　鄭○芳<br>原處分機關　新北市政府環境保護局</p>
-      <p>上列訴願人因違反廢棄物清理法事件，不服原處分機關民國 114 年 9 月 16 日新北環稽字第 41-114-090351 號裁處書所為之處分，提起訴願一案，本府依法決定如下：</p>
-      <h4>主文</h4>
-      <p>訴願駁回。</p>
-      <h4>事實</h4>
-      <p class="para">緣駕駛車號 000-0000 號汽車（下稱系爭車輛）之駕駛人於民國（下同）114 年 6 月 27 日 12 時 40 分許在本市○○區○○○路○○號旁，隨地拋棄煙蒂，致污染環境。經原處分機關查得系爭車輛駕駛人為訴願人，認訴願人違反廢棄物清理法第 27 條第 1 款規定，依同法第 50 條第 3 款及違反廢棄物清理法罰鍰額度裁罰準則第 2 條第 1 項第 1 款規定，以 114 年 9 月 16 日新北環稽字第 41-114-090351 號裁處書（下稱系爭裁處書）裁處訴願人新臺幣（下同）3,600 元罰鍰。訴願人不服，於 114 年 9 月 22 日（機關收文日）提起本件訴願，並據原處分機關檢卷答辯到府。茲摘敘訴辯意旨於次：</p>
-      <p class="para">一、訴願意旨略謂：照片未能清楚呈現所謂「煙蒂」存在之證據，僅能辨識車輛或人員位置，並未拍攝到煙蒂落地或丟棄之具體情況。原處分機關僅憑模糊照片即認定亂丟煙蒂，恐有舉證不足之情形，且訴願人當時亦未有丟棄煙蒂之行為，並將煙蒂拿回車上垃圾桶丟棄等語。</p>
-      <p class="para">二、答辯意旨略謂：<span class="fill">（待原處分機關檢卷答辯後補入）</span></p>
-      <span class="cite">事實欄由擷取欄位自動編排　｜　訴願意旨摘錄自原文理由第 2、3 點</span>
-      <h4>理由</h4>
-      <p class="para">一、按廢棄物清理法第 4 條規定：「本法所稱主管機關……在直轄市為直轄市政府……」、本府 109 年 2 月 14 日新北府環秘字第 1090218367 號公告：「本府關於……廢棄物清理法……所定主管機關權限，劃分予本府環境保護局執行……」。準此，本案原處分機關為有權限處分之機關。</p>
-      <p class="para">二、次按廢棄物清理法第 27 條第 1 款、第 50 條第 3 款及違反廢棄物清理法罰鍰額度裁罰準則第 2 條第 1 項第 1 款規定……（法條全文自動帶入）。</p>
-      <p class="para">三、復按改制前行政院環境保護署 108 年 9 月 12 日環署毒字第 1080067666 號函略以：「任意棄置煙蒂不僅妨礙市容觀瞻……甚至經由食物鏈危害人體健康。」</p>
-      <span class="cite">法條與函釋全文引自　相關法規／廢棄物清理法.pdf、行政函釋資料夾</span>
-      <p class="para">四、卷查訴願人駕駛系爭車輛於事實欄所述時間、地點，隨地丟棄煙蒂，致污染環境，此有<span class="fill">原處分機關稽查照片及車籍查詢資料</span>等附卷可稽，其違規事證，應堪認定。</p>
-      <p class="para">五、據上，原處分機關審酌訴願人之違規情節、應受責難程度及所生影響等情，以系爭裁處書裁處訴願人 3,600 元罰鍰，洵屬有據。</p>
-      <p class="para">六、至訴願人主張原處分機關僅憑模糊照片即認定亂丟煙蒂，恐有舉證不足之情形等語。惟經審視卷附之影像放大照片，<span class="fill">（請承辦人依卷附影像補述具體勘驗結果）</span>。又原處分機關依前揭裁罰準則第 2 條第 1 項規定，審酌訴願人違規情節、應受責難程度及所生影響，認煙蒂係香煙濾嘴，成分為塑膠，內含重金屬、致癌物質等，容易經由下水道進入河川及海洋，污染程度大，故於不牴觸其係數範圍內認定 A=3，應認於法尚無不合。是訴願人主張，尚難採據。</p>
-      <span class="cite">套用 114年-煙蒂案-79I 決定書第 6 點句式（相似度 96%）</span>
-      <p class="para">七、綜上論結，本件訴願為無理由，依訴願法第 79 條第 1 項規定，決定如主文。</p>
-    `,
-  },
-
-  gain: [["1 分 12 秒", "本次生成耗時", "up"], ["約 4 小時", "同類案件人工撰擬平均", ""], ["7 件", "法規函釋自動命中", ""], ["3 處", "待人工確認（黃底）", ""]],
-},
-
-/* ---------- C. 洗錢防制法 告誡 駁回，含新舊法警示 ---------- */
-{
-  id: "C",
-  no: "1147101441",
-  name: "林○儒 ／ 違反洗錢防制法",
-  cardTitle: "交付拍賣平臺帳號遭書面告誡",
-  cardDesc: "案量成長最快的類型。行為時間跨越洗錢防制法 113 年全文修正，涉新舊法適用判斷。",
-  cardTags: ['<span class="tag neutral">洗錢防制法</span>', '<span class="tag amber">新舊法適用</span>'],
-  expect: "訴願法 79I ・ 駁回",
-  outcome: "go",
-
-  doc: `
-    <div class="doc-meta num">
-      收文日期：114-10-16　收文號：1147101441<br>
-      文件類型：訴願書（自然人・委任律師）　頁數：5
-    </div>
-    <h4>訴願人</h4>
-    <p><mark data-ref="applicant">林○儒</mark></p>
-    <h4>原處分</h4>
-    <p>不服<mark data-ref="agency">新北市政府警察局汐止分局</mark>民國 <mark data-ref="orderdate">114 年 9 月 7 日</mark><mark data-ref="orderno">新北警汐刑字第 1144250329 號</mark><mark data-ref="type">書面告誡</mark>所為之處分。</p>
-    <h4>訴願請求</h4>
-    <p><mark data-ref="claim">請求撤銷原處分。</mark></p>
-    <h4>訴願理由</h4>
-    <p>一、訴願人與馬○公司、豐○公司簽訂<mark data-ref="fact">蝦○代運營租借授權合作契約書</mark>，約定共同經營蝦○賣場，而提供系爭帳號予馬○公司以共同經營，<mark data-ref="arg1">並無隱匿犯罪所得或掩飾來源之不法目的，且開設帳號須實名登記，倘有交易糾紛亦可清楚追查源頭，自應符合洗錢防制法第 22 條第 1 項但書之除外規定</mark>。</p>
-    <p>二、<mark data-ref="arg2">原處分機關未給予訴願人任何說明解釋機會，即逕為限制訴願人使用金融機構帳戶之權利。本件係限制剝奪人民權利之行政處分，自應踐行行政程序法第 102 條給予陳述意見之機會，程序上顯有瑕疵</mark>。</p>
-    <p>三、<mark data-ref="arg3">訴願人並未交付或提供自己之銀行帳號，合作期間綁定收款均為同一銀行帳號，並無洗錢防制法第 22 條第 3 項第 2 款（帳戶或帳號合計 3 個以上）之情形</mark>。</p>
-    <p>四、<mark data-ref="behdate">本件行為時點為 113 年 2 月 7 日</mark>，懇請鈞府審酌。</p>
-  `,
-
-  fields: [
-    ["訴願人", "林○儒（自然人）", "applicant", "本文第 1 段"],
-    ["原處分機關", "新北市政府警察局汐止分局", "agency", "本文第 2 段"],
-    ["原處分文號", "新北警汐刑字第 1144250329 號", "orderno", "本文第 2 段"],
-    ["處分種類", "書面告誡（非罰鍰）", "type", "本文第 2 段"],
-    ["原處分日期", "114-09-07", "orderdate", "本文第 2 段"],
-    ["行為時點", "113-02-07", "behdate", "理由第 4 點"],
-    ["機關收文日", "114-10-16", null, "收文戳"],
-    ["訴願主張 ①", "符合第 22 條第 1 項但書正當理由", "arg1", "理由第 1 點"],
-    ["訴願主張 ②", "未給予陳述意見機會（程序瑕疵）", "arg2", "理由第 2 點"],
-    ["訴願主張 ③", "未達 3 個帳號之要件", "arg3", "理由第 3 點"],
-  ],
-
-  cls: [
-    ["案件類型", "違反洗錢防制法", 97],
-    ["主要爭點", "但書正當理由＋陳述意見程序瑕疵", 84],
-    ["預判走向", "訴願無理由・駁回", 72],
-  ],
-
-  checks: [
-    ["77(1)", "訴願書合法定程式", "pass", "書狀格式、簽名、附件齊備"],
-    ["77(2)", "於法定期間內提起", "pass", "僅餘 1 日，臨界"],
-    ["77(3)", "當事人適格", "pass", "訴願人為受告誡人"],
-    ["77(4)", "具訴願能力", "pass", "成年自然人"],
-    ["77(5)", "代理人合法", "na", "委任狀已附卷"],
-    ["77(6)", "行政處分仍存在", "pass", "告誡效力持續中"],
-    ["77(7)", "非重行提起", "pass", "查無同一事件前案"],
-    ["77(8)", "屬訴願救濟範圍", "pass", "書面告誡具規制效力，為行政處分"],
-  ],
-
-  verdict: {
-    kind: "go",
-    big: "程序合法",
-    text: "程序要件通過，惟第 2 款屬臨界情形（距屆滿僅 1 日），建議於卷面標註送達證書已核對無誤。實體部分有三項主張須逐一回應，其中「未給予陳述意見」一項涉行政程序法第 103、114 條，屬本案最需論述之處。",
-  },
-
-  timeline: {
-    points: [
-      { d: "113-02-07", lab: "行為時", pos: 0, cls: "" },
-      { d: "114-09-07", lab: "告誡作成", pos: 45, cls: "" },
-      { d: "114-09-17", lab: "合法送達", pos: 63, cls: "key" },
-      { d: "114-10-16", lab: "實際收文", pos: 82, cls: "key" },
-      { d: "114-10-17", lab: "屆滿", pos: 100, cls: "bad" },
-    ],
-    fill: 82,
-    note: '起算日 <b>114-09-18</b> ＋ 30 日 ＝ 屆滿日 <b>114-10-17</b>。實際收文日 <b>114-10-16</b>，<span style="color:var(--amber);font-weight:600">距屆滿僅餘 1 日，屬臨界案件</span>，建議人工複核送達證書。',
-  },
-
-  laws: [
-    { g: "實體法規", n: "洗錢防制法 第 22 條第 1 項、第 3 項第 1 款", t: "任何人不得將自己或他人向金融機構申請開立之帳戶、向提供虛擬資產服務或第三方支付服務之事業或人員申請之帳號交付、提供予他人使用。但符合一般商業、金融交易習慣，或基於親友間信賴關係或其他正當理由者，不在此限。……違反第 1 項規定而有下列情形之一者……一、期約或收受對價而犯之。", rel: 99, badges: ['<span class="tag seal">113-07-31 修正公布</span>', '<span class="tag amber">須確認適用版本</span>', '<span class="tag accent">本案裁罰依據</span>'] },
-    { g: "程序法規", n: "行政程序法 第 102 條、第 103 條第 5 款", t: "行政機關作成限制或剝奪人民自由或權利之行政處分前，應給予處分相對人陳述意見之機會。但有下列各款情形之一者，得不給予陳述意見之機會：五、行政處分所根據之事實，客觀上明白足以確認者。", rel: 97, badges: ['<span class="tag green">現行有效</span>', '<span class="tag amber">直接回應訴願主張 ②</span>'] },
-    { g: "程序法規", n: "行政程序法 第 114 條第 1 項第 3 款、第 2 項", t: "違反程序或方式規定之行政處分，除依第 111 條規定而無效者外，因下列情形而補正：三、應給予當事人陳述意見之機會已於事後給予者。前項第 2 款至第 5 款之補正行為，僅得於訴願程序終結前為之。", rel: 94, badges: ['<span class="tag accent">程序瑕疵補正</span>', '<span class="tag neutral">資料集判解：最高行 93 判 1624</span>'] },
-    { g: "程序法規", n: "行政程序法 第 101 條第 1 項", t: "行政處分如有誤寫、誤算或其他類此之顯然錯誤者，處分機關得隨時或依申請更正之。", rel: 81, badges: ['<span class="tag neutral">追補理由之論述基礎</span>'] },
-    { g: "判解", n: "臺北高等行政法院 114 年度簡上字第 13 號判決", t: "洗錢防制法第 22 條所稱「正當理由」之認定，應審酌交付帳號之對價關係、資金流向是否符合正常商業營運型態。", rel: 96, badges: ['<span class="tag neutral">資料集內文件</span>', '<span class="tag accent">最新見解・直接對應爭點</span>'] },
-    { g: "判解", n: "最高行政法院 106 年度判字第 151 號判決", t: "行政罰法第 5 條從新從輕原則之適用：行為後法律有變更者，適用裁處時之規定，但裁處前之法律有利於受處罰者，適用最有利之規定。", rel: 92, badges: ['<span class="tag amber">新舊法比較必引</span>', '<span class="tag neutral">資料集內文件</span>'] },
-  ],
-
-  alert: {
-    title: "法規時效性警示",
-    text: '<b>洗錢防制法於 113 年 7 月 31 日全文修正公布、113 年 8 月 2 日施行。</b>本案行為時點為 <b>113 年 2 月 7 日</b>，落在修正施行日之前，行為時應適用修正前之第 15 條之 2，而原處分係引用修正後之第 22 條。請確認是否須依行政罰法第 5 條為新舊法比較（從新從輕），並於理由欄補充適用版本之說明。資料集內「最高行政法院 106 年度判字第 151 號判決」可供援引。',
-  },
-
-  sims: [
-    { fn: "114年-違反洗錢防制法-79I-訴願無理由-駁回", s: 93, why: "同為交付第三方支付帳號、收受對價之告誡案。理由欄關於「不符一般商業交易習慣」之認定邏輯可直接參用。", chips: ["帳號交付", "收受對價", "駁回"] },
-    { fn: "114年-違反洗錢防制法-81I-訴願有理由-撤銷另處", s: 85, why: "反面對照：該案因原處分機關未給予陳述意見且未於訴願程序終結前補正而遭撤銷。本案主張 ② 與其高度重疊，務必先確認卷內有無調查筆錄。", chips: ["反面案例", "陳述意見", "須注意"] },
-    { fn: "113年-違反洗錢防制法-79I-訴願無理由-駁回", s: 77, why: "行為時點同樣跨越 113 年修法，其新舊法比較段落可作為本案適用版本說明之範本。", chips: ["新舊法", "從新從輕"] },
-    { fn: "114年-違反洗錢防制法-77(2)-訴願逾期-不受理", s: 54, why: "程序面對照，本案期間僅餘 1 日，可參考其送達證書認定方式加強卷面說明。", chips: ["期間臨界"] },
-    { fn: "112年-違反建築法-79I-訴願無理由-駁回", s: 48, why: "跨案由參考：其行政程序法第 114 條補正論述完整，可借用句式。", chips: ["程序補正", "跨案由"] },
-  ],
-
-  simDist: [["不受理", 1, "#9C3A2E"], ["駁回", 3, "#A8792A"], ["撤銷", 1, "#2E7D5B"]],
-
-  draft: {
-    head: "新北市政府訴願決定書",
-    sub: "案號：1147101441 號　（草稿・待承辦人審核）",
-    tmpl: "79I 駁回",
-    body: `
-      <p class="num">訴願人　林○儒<br>原處分機關　新北市政府警察局汐止分局</p>
-      <p>上列訴願人因違反洗錢防制法事件，不服原處分機關民國 114 年 9 月 7 日新北警汐刑字第 1144250329 號書面告誡所為之處分，提起訴願一案，本府依法決定如下：</p>
-      <h4>主文</h4>
-      <p>訴願駁回。</p>
-      <h4>事實</h4>
-      <p class="para">緣內政部警政署刑事警察局查獲馬○企業有限公司及豐○生技有限公司大量收集他人向蝦○拍賣購物平臺申請之帳號，發現訴願人於民國（下同）113 年 2 月 7 日將其向蝦○拍賣購物平臺申請之帳號（下稱系爭帳號），以每週賣場營利所得百分之 1.5 作為報酬，交付、提供予馬○公司使用。案經原處分機關於 114 年 9 月 7 日通知訴願人到案說明後，認訴願人收受對價將自己向第三方支付服務之事業申請之帳號交付、提供予他人使用，且不符合一般商業、金融交易習慣，或基於親友間信賴關係或其他正當理由，已違反洗錢防制法第 22 條第 1 項及第 3 項第 1 款規定，依同條第 2 項、第 4 項規定裁處告誡。訴願人不服，於 114 年 10 月 16 日提起本件訴願。茲摘敘訴辯意旨於次：</p>
-      <p class="para">一、訴願意旨略謂：（一）訴願人與該二公司簽訂代運營租借授權合作契約書，共同經營賣場而提供系爭帳號，並無隱匿犯罪所得之不法目的，且帳號須實名登記，應符合第 22 條第 1 項但書之除外規定。（二）原處分機關未給予陳述意見機會，程序上有瑕疵。（三）訴願人並未交付自己之銀行帳號，無同條第 3 項第 2 款之情形等語。</p>
-      <p class="para">二、答辯意旨略謂：<span class="fill">（待原處分機關檢卷答辯後補入）</span></p>
-      <h4>理由</h4>
-      <p class="para">一、按洗錢防制法第 22 條規定：「任何人不得將自己或他人向金融機構申請開立之帳戶、向提供虛擬資產服務或第三方支付服務之事業或人員申請之帳號交付、提供予他人使用。但符合一般商業、金融交易習慣，或基於親友間信賴關係或其他正當理由者，不在此限（第 1 項）……」</p>
-      <p class="para"><span class="fill">〔法規時效性提醒〕本條係 113 年 7 月 31 日修正公布、同年 8 月 2 日施行。本案行為時（113 年 2 月 7 日）應適用修正前第 15 條之 2 規定，請承辦人依行政罰法第 5 條為新舊法比較後，於本點補充適用版本之說明。</span></p>
-      <span class="cite">由法規時效性模組插入　｜　參最高行政法院 106 年度判字第 151 號判決</span>
-      <p class="para">二、卷查本案訴願人於 113 年 2 月 7 日將系爭帳號以每週賣場營利所得百分之 1.5 作為報酬，交付、提供予他人使用，並依指示將系爭帳號內款項轉出至指定之銀行帳戶，此有<span class="fill">調查筆錄、帳號租賃契約書</span>等影本附卷可稽。原處分機關認訴願人違反洗錢防制法第 22 條第 1 項及同條第 3 項第 1 款規定，且不符合一般商業、金融交易習慣或其他正當理由，爰依同條第 2 項及第 4 項規定裁處告誡，揆諸前揭規定，洵屬有據。</p>
-      <p class="para">三、至訴願人主張未提供銀行帳戶、不符第 22 條第 3 項第 2 款規定，且未給予陳述意見之機會等語。惟查：</p>
-      <p class="para">（一）本件原處分係依同條第 3 項第 1 款「期約或收受對價而犯之」認定，與第 2 款「帳戶或帳號合計 3 個以上」無涉，訴願人執此主張，容有誤會。</p>
-      <p class="para">（二）原處分機關業於 114 年 9 月 7 日通知訴願人到案說明並製作調查筆錄，已予訴願人陳述意見之機會；縱認程序上有所欠缺，亦已於訴願程序終結前補正，依行政程序法第 114 條第 1 項第 3 款及第 2 項規定，其瑕疵已因補正而治癒。<span class="fill">（請承辦人確認卷內調查筆錄日期與簽名）</span></p>
-      <span class="cite">套用 114年-洗錢防制法-79I 決定書結構　｜　反面案例已於相似案例頁標示</span>
-      <p class="para">四、綜上論結，本件訴願為無理由，依訴願法第 79 條第 1 項規定，決定如主文。</p>
-    `,
-  },
-
-  gain: [["1 分 46 秒", "本次生成耗時", "up"], ["約 6 小時", "同類案件人工撰擬平均", ""], ["1 項", "法規時效性風險攔截", "up"], ["5 處", "待人工確認（黃底）", ""]],
-},
-];
-
-/* =========================================================
-   資料集索引：法制局提供之 101 件歷史訴願決定書
-   （檔名即標註：年度－案由－法條－理由－結果）
-   ========================================================= */
-const DOC_INDEX = `110年-社會救助事件-77(1)-逾期不補正-不受理
-110年-違反噪音管制法事件-77(1)-逾期不補正-不受理
-110年-違反空氣汙染管制法事件-77(2)-訴願逾期-不受理
-110年-違反毒品危害防制條例事件-77(2)-訴願逾期-不受理
-110年-都市更新事件-77(3)-當事人不適格-不受理
-110年-請求撤銷建造執照事件-77(3)-當事人不適格-不受理
-110年-違反噪音管制法事件-77(4)-無訴願能力-不受理
-110年-違反噪音管制法事件-77(4)-無訴願能力-不受理
-110年-違反停車場法事件-77(6)-行政處分已不存在-不受理
-110年-違反廢棄物清理法事件-77(6)-行政處分已不存在-不受理
-110年-申請閱覽卷宗事件-77(7)-重行提起訴願-不受理
-110年-陳情事件-77(7)-重行提起訴願-不受理
-110年-違章建築事件-77(8)-非行政處分-不受理
-110年-公寓大廈管理條例事件-77(8)-非行政處分&不屬訴願救濟範圍內事項-不受理
-110年-違反噪音管制法事件-79I-訴願無理由-駁回
-110年-違反建築法事件-79I-訴願無理由-駁回
-110年-違反廢棄物清理法事件-79I-訴願無理由-駁回
-110年-違反廢棄物清理法事件-81I-訴願有理由-撤銷另處
-110年-違反建築法事件-81I-訴願有理由-撤銷另處
-110年-違反空氣汙染防制法事件-81I-訴願有理由-撤銷另處
-111年-違反空氣汙染防制法事件-77(1)-不合法定程式不補正-不受理
-111年-違反噪音管制法事件-77(1)-不合法定程式不補正-不受理
-111年-違反廢棄物清理法事件-77(2)-訴願逾期-不受理
-111年-違反建築法事件-77(2)-訴願逾期-不受理
-111年-違反空氣汙染管制法事件-77(3)-當事人不適格-不受理
-111年-違反廢棄物清理法事件-77(3)-當事人不適格-不受理
-111年-違反噪音管制法事件-77(4)-無訴願能力-不受理
-111年-違反建築法事件-77(4)-無訴願能力-不受理
-111年-申請閱覽卷宗事件-77(6)-行政處分已不存在-不受理
-111年-土地增值稅事件-77(6)-行政處分已不存在-不受理
-111年-違反公寓大廈管理條例事件-77(7)-重行提起訴願-不受理
-111年-違反噪音管制法事件-77(7)-重行提起訴願-不受理
-111年-陳情事件-77(8)-非行政處分&不屬訴願救濟範圍事項-不受理
-111年-違反建築法事件-77(8)-不屬訴願救濟範圍事項-不受理
-111年-違反建築法事件-79I-訴願無理由-駁回
-111年-違反噪音管制法事件-79I-訴願無理由-駁回
-111年-違反廢棄物清理法事件-79I-訴願無理由-駁回
-111年-違反廢棄物清理法事件-81I-訴願有理由-原處分撤銷
-111年-違反建築法事件-81I-訴願有理由-原處分撤銷
-111年-廢止工廠登記事件-81I-訴願有理由-撤銷另處
-112年-違反廢棄物清理法事件-77(1)-不合法定程式不補正-不受理
-112年-違反建築法事件-77(1)-不合法定程式不補正-不受理
-112年-違反空氣汙染管制法事件-77(2)-訴願逾期-不受理
-112年-違反噪音管制法事件-77(2)-訴願逾期-不受理
-112年-違反空氣汙染防制法事件-77(3)-當事人不適格-不受理
-112年-違章建築事件-77(3)&77(8)-當事人不適格&非訴願救濟範圍-不受理
-112年-違反洗錢防制法事件-77(6)-行政處分已不存在-不受理
-112年-違反停車場法事件-77(6)-行政處分已不存在-不受理
-112年-建造執照事件-77(7)-重行提起訴願-不受理
-112年-農業用地作農業使用證明事件-77(7)-重行提起訴願-不受理
-112年-陳情事件-77(8)-非行政處分-不受理
-112年-檢舉事件-77(8)-不屬訴願救濟範圍事項-不受理
-112年-違反空氣汙染防制法事件-77(8)-非行政處分-不受理
-112年-違反廢棄物清理法事件-77(8)-非行政處分-不受理
-112年-違反空氣汙染管制法事件-79I-訴願無理由-駁回
-112年-違章建築事件-79I-訴願無理由-駁回
-112年-違反噪音管制法事件-79I-訴願無理由-駁回
-112年-申請提供政府資訊事件-81I-訴願有理由-撤銷另處
-112年-違反廢棄物清理法事件-81I-訴願有理由-撤銷另處
-112年-違反建築法事件-81I-訴願有理由-撤銷另處
-113年-違反廢棄物清理法事件-77(1)-不合法定程式不補正-不受理
-113年-違反空氣汙染管制法事件-77(1)-不合法定程式不補正-不受理
-113年-違反空氣汙染防制法事件-77(2)-訴願逾期-不受理
-113年-違反洗錢防制法事件-77(2)-訴願逾期-不受理
-113年-違反空氣汙染防制法事件-77(3)-當事人不適格-不受理
-113年-違反建築法事件-77(3)-當事人不適格-不受理
-113年-違反噪音管制法事件-77(4)-無訴願能力-不受理
-113年-違反建築法事件-77(4)-無訴願能力-不受理
-113年-違反洗錢防制法事件-77(6)-行政處分已不存在-不受理
-113年-違反建築法事件-77(6)-行政處分已不存在-不受理
-113年-違反洗錢防制法事件-77(7)-重行提起訴願-不受理
-113年-違章建築事件-77(7)-重行提起訴願-不受理
-113年-申請提供政府資訊事件-77(8)-不屬訴願救濟範圍事項-不受理
-113年-檢舉事件-77(8)-非行政處分-不受理
-113年-違反洗錢防制法事件-79II-訴願無理由-駁回
-113年-違反洗錢防制法事件-79I-訴願無理由-駁回
-113年-違反廢棄物清理法事件-79I-訴願無理由-駁回
-113年-違反洗錢防制法事件-81I-訴願有理由-撤銷另處
-113年-申請提供政府資訊事件-81I-訴願有理由-撤銷另處
-113年-違反廢棄物清理法事件-81I-訴願有理由-撤銷另處
-114年-違反噪音管制法事件-77(1)-不合法定程式不補正-不受理
-114年-違反廢棄物清理法事件-77(1)-不合法定程式-不受理
-114年-違反洗錢防制法事件-77(2)-訴願逾期-不受理
-114年-違反廢棄物清理法事件-77(2)-訴願逾期-不受理
-114年-違反空氣汙染防制法事件-77(3)-當事人不適格-不受理
-114年-請求撤銷建造執照事件-77(3)-當事人不適格-不受理
-114年-違反噪音管制法事件-77(4)-無訴願能力-不受理
-114年-違反建築法事件-77(4)-無訴願能力-不受理
-114年-違反洗錢防制法事件-77(6)-行政處分已不存在-不受理
-114年-違反廢棄物清理法事件-77(6)-行政處分已不存在-不受理
-114年-違反洗錢防制法事件-77(7)-重行提起訴願-不受理
-114年-申請提供政府資訊事件-77(7)-重行提起訴願-不受理
-114年-陳情事件-77(8)-非行政處分-不受理
-114年-道路交通管理處罰條例事件-77(8)-不屬訴願救濟範圍事項-不受理
-114年-違反洗錢防制法事件-79I-訴願無理由-駁回
-114年-違反空氣汙染防制法事件-79I-訴願無理由-駁回
-114年-違反廢棄物清理法事件-79I-訴願無理由-駁回
-114年-違反洗錢防制法事件-81I-訴願有理由-撤銷另處
-114年-違反建築法事件-81I-訴願有理由-原處分撤銷
-114年-申請政府資訊事件-81I、II-訴願有理由-撤銷另處
-114年-違反建築法事件-77(8)&79I-部分不受理&部分駁回`
-  .split("\n").map((fn) => {
-    const p = fn.split("-");
-    return {
-      fn, y: parseInt(p[0], 10),
-      subj: p[1].replace(/^違反/, "").replace(/事件$/, ""),
-      art: p[2],
-      res: p[p.length - 1],
-    };
-  });
-
-/* 案由族群：同族視為部分相似 */
-const FAMILY = [
-  ["廢棄物清理法", "噪音管制法", "空氣污染防制法", "空氣汙染防制法", "空氣汙染管制法"],
-  ["建築法", "違章建築", "建造執照", "請求撤銷建造執照", "公寓大廈管理條例", "違反公寓大廈管理條例", "都市更新"],
-  ["申請提供政府資訊", "申請政府資訊", "申請閱覽卷宗", "陳情", "檢舉"],
-];
-
-/* 案由關鍵字（用於判定貼上文字之案由） */
-const SUBJ_KEYS = [
-  ["廢棄物清理法", ["廢棄物清理法", "煙蒂", "菸蒂", "隨地拋棄", "亂丟", "清除地區"]],
-  ["洗錢防制法", ["洗錢防制法", "人頭帳戶", "帳號交付", "第三方支付", "書面告誡", "虛擬資產"]],
-  ["空氣污染防制法", ["空氣污染防制法", "空氣汙染", "露天燃燒", "逸散", "粒狀污染物"]],
-  ["噪音管制法", ["噪音管制法", "噪音", "音量", "分貝"]],
-  ["建築法", ["建築法", "違建", "違章建築", "建造執照", "使用執照", "雜項執照", "公共安全檢查"]],
-  ["申請提供政府資訊", ["政府資訊公開法", "申請提供政府資訊", "閱覽卷宗", "資訊公開"]],
-  ["道路交通管理處罰條例", ["道路交通管理處罰條例", "違規停車", "紅線"]],
-  ["停車場法", ["停車場法"]],
-  ["公寓大廈管理條例", ["公寓大廈管理條例", "管理委員會", "區分所有權人"]],
-];
-
-/* 法規庫：程序法規恆推薦，實體法規依案由匹配 */
-const PROC_LAWS = [
-  { g: "程序法規", n: "訴願法 第 14 條第 1 項、第 3 項", t: "訴願之提起，應自行政處分達到或公告期滿之次日起 30 日內為之。訴願之提起，以原行政處分機關或受理訴願機關收受訴願書之日期為準。", rel: 99, badges: ['<span class="tag green">現行有效</span>', '<span class="tag neutral">最新修正 101-06-27</span>', '<span class="tag accent">期間起算</span>'] },
-  { g: "程序法規", n: "訴願法 第 77 條", t: "訴願事件有左列各款情形之一者，應為不受理之決定：一、訴願書不合法定程式不能補正或經通知補正逾期不補正者。二、提起訴願逾法定期間者……八、對於非行政處分或不屬訴願救濟範圍內之事項提起訴願者。", rel: 97, badges: ['<span class="tag green">現行有效</span>', '<span class="tag accent">程序審查總則</span>'] },
-  { g: "程序法規", n: "行政程序法 第 72、73 條", t: "送達於應受送達人之住居所、事務所或營業所為之；於應送達處所不獲會晤應受送達人時，得將文書付與有辨別事理能力之同居人、受雇人或接收郵件人員。", rel: 93, badges: ['<span class="tag green">現行有效</span>', '<span class="tag accent">送達效力</span>'] },
-  { g: "程序法規", n: "行政程序法 第 102、103 條", t: "行政機關作成限制或剝奪人民自由或權利之行政處分前，應給予處分相對人陳述意見之機會；但行政處分所根據之事實客觀上明白足以確認者，得不給予。", rel: 84, badges: ['<span class="tag green">現行有效</span>'] },
-];
-
-const SUBJ_LAWS = {
-  "廢棄物清理法": [
-    { n: "廢棄物清理法 第 27 條", t: "在指定清除地區內嚴禁有下列行為：一、隨地吐痰、檳榔汁、檳榔渣，拋棄紙屑、煙蒂、口香糖、瓜果或其皮、核、汁、渣或其他一般廢棄物。", rel: 98, badges: ['<span class="tag green">現行有效</span>', '<span class="tag seal">禁止行為</span>'] },
-    { n: "廢棄物清理法 第 50 條", t: "有下列情形之一者，處新臺幣 1 千 2 百元以上 6 千元以下罰鍰。經限期改善，屆期仍未完成改善者，按日連續處罰：三、為第 27 條各款行為之一。", rel: 97, badges: ['<span class="tag green">現行有效</span>', '<span class="tag accent">法定額度 1,200–6,000</span>'] },
-    { n: "違反廢棄物清理法罰鍰額度裁罰準則 第 2 條", t: "違反本法規定者，罰鍰額度除依下列規定裁處外，依行政罰法第 18 條第 1 項規定審酌之：一、涉及一般廢棄物者，適用附表 1。", rel: 92, badges: ['<span class="tag accent">係數計算</span>'] },
-    { n: "行政罰法 第 18 條第 1 項", t: "裁處罰鍰，應審酌違反行政法上義務行為應受責難程度、所生影響及因違反行政法上義務所得之利益，並得考量受處罰者之資力。", rel: 90, badges: ['<span class="tag green">現行有效</span>', '<span class="tag amber">裁量審查</span>'] },
-  ],
-  "洗錢防制法": [
-    { n: "洗錢防制法 第 22 條", t: "任何人不得將自己或他人向金融機構申請開立之帳戶、向提供虛擬資產服務或第三方支付服務之事業或人員申請之帳號交付、提供予他人使用。但符合一般商業、金融交易習慣，或基於親友間信賴關係或其他正當理由者，不在此限。", rel: 98, badges: ['<span class="tag seal">113-07-31 修正公布</span>', '<span class="tag amber">須確認適用版本</span>'] },
-    { n: "行政罰法 第 5 條", t: "行為後法律或自治條例有變更者，適用裁處時之法律或自治條例。但裁處前之法律或自治條例有利於受處罰者，適用最有利於受處罰者之規定。", rel: 94, badges: ['<span class="tag amber">從新從輕</span>'] },
-    { n: "行政程序法 第 114 條", t: "違反程序或方式規定之行政處分，因下列情形而補正：三、應給予當事人陳述意見之機會已於事後給予者。前項補正行為，僅得於訴願程序終結前為之。", rel: 88, badges: ['<span class="tag accent">程序瑕疵補正</span>'] },
-  ],
-  "空氣污染防制法": [
-    { n: "空氣污染防制法 第 32 條", t: "在各級防制區及總量管制區內，不得有下列行為：一、從事燃燒、融解、煉製、研磨、鑽孔、打磨、堆置、輸送或其他操作，致產生明顯之粒狀污染物，散布於空氣或他人財物。", rel: 97, badges: ['<span class="tag green">現行有效</span>'] },
-    { n: "空氣污染防制法 第 67 條", t: "違反第 32 條第 1 項各款情形之一者，處新臺幣 1,200 元以上 10 萬元以下罰鍰；其屬工商廠、場者，處 10 萬元以上 500 萬元以下罰鍰。", rel: 95, badges: ['<span class="tag green">現行有效</span>'] },
-    { n: "行政罰法 第 18 條第 1 項", t: "裁處罰鍰，應審酌違反行政法上義務行為應受責難程度、所生影響及因違反行政法上義務所得之利益。", rel: 88, badges: ['<span class="tag amber">裁量審查</span>'] },
-  ],
-  "噪音管制法": [
-    { n: "噪音管制法 第 9 條", t: "噪音管制區內之下列場所、工程及設施，所發出之聲音不得超出噪音管制標準：一、工廠（場）。二、娛樂場所。三、營業場所。四、營建工程。五、擴音設施。", rel: 97, badges: ['<span class="tag green">現行有效</span>'] },
-    { n: "噪音管制法 第 24 條", t: "違反第 9 條第 1 項規定者，處新臺幣 3 千元以上 3 萬元以下罰鍰，並限期改善，屆期仍未完成改善者，按次處罰。", rel: 95, badges: ['<span class="tag green">現行有效</span>'] },
-    { n: "行政罰法 第 18 條第 1 項", t: "裁處罰鍰，應審酌違反行政法上義務行為應受責難程度、所生影響及因違反行政法上義務所得之利益。", rel: 86, badges: ['<span class="tag amber">裁量審查</span>'] },
-  ],
-  "建築法": [
-    { n: "建築法 第 25 條", t: "建築物非經申請直轄市、縣（市）主管建築機關之審查許可並發給執照，不得擅自建造或使用或拆除。", rel: 96, badges: ['<span class="tag green">現行有效</span>'] },
-    { n: "建築法 第 86 條", t: "違反第 25 條之規定者，依左列規定處罰：一、擅自建造者，處以建築物造價千分之五十以下罰鍰，並勒令停工補辦手續。", rel: 95, badges: ['<span class="tag green">現行有效</span>'] },
-    { n: "建築法 第 91 條", t: "有左列情形之一者，處建築物所有權人、使用人、機械遊樂設施之經營者新臺幣 6 萬元以上 30 萬元以下罰鍰，並限期改善或補辦手續。", rel: 92, badges: ['<span class="tag green">現行有效</span>'] },
-  ],
-  "申請提供政府資訊": [
-    { n: "政府資訊公開法 第 18 條第 1 項", t: "政府資訊屬於下列各款情形之一者，應限制公開或不予提供之：三、政府機關作成意思決定前，內部單位之擬稿或其他準備作業。但對公益有必要者，得公開或提供之。", rel: 97, badges: ['<span class="tag green">現行有效</span>'] },
-    { n: "政府資訊公開法 第 18 條第 2 項", t: "政府資訊含有前項各款限制公開或不予提供之事項者，應僅就其他部分公開或提供之（資訊分離原則）。", rel: 95, badges: ['<span class="tag accent">資訊分離原則</span>'] },
-  ],
-};
-
-/* 函釋與判解庫：依關鍵字匹配 */
-const REFS = [
-  { g: "行政函釋", n: "法務部 93.4.13 法律字第 0930014628 號函", t: "關於寄存送達及補充送達之效力認定：文書付與有辨別事理能力之同居人時，即生合法送達效力，不以應受送達人實際知悉為必要。", kw: ["送達", "同居人", "寄存", "逾期", "收受"], rel: 94 },
-  { g: "行政函釋", n: "法務部 108.8.14 法律字第 10803511720 號函", t: "行政罰法第 2 條所稱裁罰性不利處分之認定，應以其是否具有制裁性為斷。", kw: ["告誡", "裁罰", "不利處分"], rel: 83 },
-  { g: "行政函釋", n: "法務部 104.9.2 法律字第 10403507770 號函", t: "政府資訊公開法之適用範圍與限制公開事由之判斷標準。", kw: ["政府資訊", "資訊公開", "閱覽"], rel: 88 },
-  { g: "行政函釋", n: "法務部 107.10.17 法律字第 10703515450 號函", t: "廢棄物清理法第 11 條、第 27 條第 11 款關於清除處理義務人之認定。", kw: ["廢棄物", "清除", "土地所有人"], rel: 86 },
-  { g: "行政函釋", n: "環保署 108.9.12 環署毒字第 1080067666 號函", t: "任意棄置煙蒂不僅妨礙市容觀瞻，被亂丟在騎樓、路面之菸蒂，更容易經由下水道進入河川及海洋，造成生物誤食，甚至危害人體健康。", kw: ["煙蒂", "菸蒂", "廢棄物"], rel: 89 },
-  { g: "判解", n: "釋字第 546 號解釋", t: "提起行政爭訟須具備權利保護必要；行政處分已確定或已無回復法律上利益之實益者，其訴願無實益。", kw: ["逾期", "確定", "權利保護", "不存在"], rel: 76 },
-  { g: "判解", n: "釋字第 469 號解釋", t: "法律規定之內容非僅屬授予國家機關推行公共事務之權限，而其目的係為保護人民生命、身體及財產等法益者，人民得請求救濟。", kw: ["檢舉", "陳情", "利害關係"], rel: 72 },
-  { g: "判解", n: "最高行政法院 108 年度上字第 930 號判決", t: "政府資訊公開法第 18 條第 2 項資訊分離原則之操作方式。", kw: ["政府資訊", "資訊公開"], rel: 90 },
-  { g: "判解", n: "最高行政法院 108 年度判字第 531 號判決", t: "行政罰法第 7 條第 1 項：違反行政法上義務之行為非出於故意或過失者，不予處罰。", kw: ["故意", "過失", "舉證", "事證"], rel: 84 },
-  { g: "判解", n: "最高行政法院 106 年度判字第 151 號判決", t: "行政罰法第 5 條從新從輕原則之適用：行為後法律有變更者，適用裁處時之規定，但裁處前之法律有利於受處罰者，適用最有利之規定。", kw: ["修正", "新舊法", "從新從輕", "洗錢"], rel: 91 },
-  { g: "判解", n: "臺北高等行政法院 114 年度簡上字第 13 號判決", t: "洗錢防制法第 22 條所稱「正當理由」之認定，應審酌交付帳號之對價關係、資金流向是否符合正常商業營運型態。", kw: ["洗錢", "帳號", "正當理由", "對價"], rel: 93 },
-  { g: "判解", n: "臺北高等行政法院 105 年度訴字第 1301 號判決", t: "利害關係人之認定：須其權利或法律上利益因行政處分而受有損害。", kw: ["利害關係", "適格", "相對人"], rel: 80 },
-  { g: "判解", n: "最高行政法院 93 年度判字第 1624 號判決", t: "行政程序法第 114 條第 1 項、第 2 項程序瑕疵補正之時點限制。", kw: ["陳述意見", "補正", "程序瑕疵"], rel: 87 },
-];
-
-/* =========================================================
-   即時解析引擎（純前端，無後端）
-   ========================================================= */
-
-/* 民國日期 → { raw, idx, y, m, d, iso, t } */
-function findDates(text) {
-  const out = [];
-  const re = /(?:民國\s*)?(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/g;
-  let m;
-  while ((m = re.exec(text))) {
-    const y = +m[1], mo = +m[2], d = +m[3];
-    if (y < 90 || y > 130 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
-    out.push({
-      raw: m[0], idx: m.index, y, m: mo, d,
-      iso: `${String(y).padStart(3, "0")}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
-      t: Date.UTC(y + 1911, mo - 1, d),
-    });
-  }
-  return out;
-}
-
-const DAY = 86400000;
-const toMg = (t) => {
-  const dt = new Date(t);
-  return `${dt.getUTCFullYear() - 1911}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
-};
-/* 公文用中文日期 */
-const cnDate = (t) => {
-  const dt = new Date(t);
-  return `${dt.getUTCFullYear() - 1911} 年 ${dt.getUTCMonth() + 1} 月 ${dt.getUTCDate()} 日`;
-};
-const cnDateD = (d) => `${d.y} 年 ${d.m} 月 ${d.d} 日`;
-
-/* 取距離關鍵字最近的日期 */
-function dateNear(text, dates, keys, window = 60) {
-  for (const k of keys) {
-    let from = 0, i;
-    while ((i = text.indexOf(k, from)) >= 0) {
-      let best = null, bestD = Infinity;
-      for (const d of dates) {
-        const dist = d.idx < i ? i - (d.idx + d.raw.length) : d.idx - i;
-        if (dist <= window && dist < bestD) { bestD = dist; best = d; }
-      }
-      if (best) return best;
-      from = i + k.length;
-    }
-  }
-  return null;
-}
-
-function firstMatch(text, re) {
-  const m = text.match(re);
-  return m ? (m[1] || m[0]).trim() : null;
-}
-
-function classifySubject(text) {
-  let best = null, bestN = 0;
-  for (const [subj, keys] of SUBJ_KEYS) {
-    const n = keys.reduce((a, k) => a + (text.includes(k) ? (k.length > 4 ? 2 : 1) : 0), 0);
-    if (n > bestN) { bestN = n; best = subj; }
-  }
-  return { subj: best, hits: bestN };
-}
-
-function famOf(s) {
-  const i = FAMILY.findIndex((f) => f.includes(s));
-  return i < 0 ? -1 : i;
-}
-
-/* 相似案例檢索：對 101 件真實檔名評分 */
-function searchDocs(subj, art, n = 5) {
-  const fam = famOf(subj);
-  const scored = DOC_INDEX.map((d) => {
-    let s = 8;
-    if (subj && d.subj === subj) s += 46;
-    else if (fam >= 0 && famOf(d.subj) === fam) s += 21;
-    if (art && d.art.indexOf(art) >= 0) s += 33;
-    s += Math.max(0, 10 - (114 - d.y) * 2.5);
-    return { ...d, s: Math.min(97, Math.round(s)) };
-  });
-  scored.sort((a, b) => b.s - a.s || b.y - a.y);
-  return scored.slice(0, n);
-}
-
-function whyDoc(d, q) {
-  const bits = [];
-  if (d.subj === q.subj) bits.push("案由完全相同");
-  else if (famOf(d.subj) === famOf(q.subj) && famOf(d.subj) >= 0) bits.push("同屬相近法規領域");
-  if (q.art && d.art.indexOf(q.art) >= 0) bits.push(`同以訴願法 ${q.art} 作成決定，理由欄結構可直接參用`);
-  if (d.y >= 113) bits.push("近年決定書，格式與委員名單為新版");
-  if (d.res.indexOf("撤銷") >= 0) bits.push("結果為撤銷，建議作為反面對照檢視本案風險");
-  return bits.length ? bits.join("；") + "。" : "案由與法條部分相符，可供文字結構參考。";
-}
-
-/* 主解析 */
-function parseAppeal(raw) {
-  const t0 = performance.now();
-  const text = raw.replace(/\r/g, "").trim();
-  const dates = findDates(text);
-
-  const applicant = firstMatch(text, /訴願人[：:　\s]*([一-龥○Ｏ]{2,5})/);
-  const agent = firstMatch(text, /代理人[：:　\s]*([一-龥○Ｏ]{2,5})/);
-  const agency = firstMatch(text, /(新北市政府[一-龥]{2,10}(?:分局|局|處))|(新北市[一-龥]{1,4}區公所)|(新北市政府)/);
-  const orderNo = (firstMatch(text, /([一-龥]{2,8}字第?\s*[0-9A-Za-z][0-9A-Za-z\-]{3,}\s*號?)/) || "")
-    .replace(/^[日月年時分號第許起至]+/, "").trim() || null;
-  const amount = firstMatch(text, /(?:新臺幣|新台幣)?\s*([\d,]{3,})\s*元/);
-
-  const dServed = dateNear(text, dates, ["送達", "收受", "簽收", "收到"]);
-  const dReceived = dateNear(text, dates, ["收文", "提起本件訴願", "提起訴願", "遞狀"]);
-  const dOrder = dateNear(text, dates, ["裁處書", "處分書", "告誡", "原處分", "所為之處分"]) || dates[0] || null;
-
-  const { subj, hits } = classifySubject(text);
-
-  /* 期間計算 */
-  let period = null;
-  if (dServed) {
-    const start = dServed.t + DAY;
-    const due = dServed.t + 30 * DAY;
-    const recv = dReceived ? dReceived.t : null;
-    period = {
-      served: dServed, start, due,
-      recv, over: recv !== null ? recv > due : null,
-      days: recv !== null ? Math.round((recv - due) / DAY) : null,
-      left: recv !== null ? Math.round((due - recv) / DAY) : null,
-    };
-  }
-
-  const overdue = period && period.over === true;
-  const art = overdue ? "77(2)" : "79I";
-  const sims = searchDocs(subj, art);
-  const ms = Math.max(1, Math.round(performance.now() - t0));
-
-  return { text, dates, applicant, agent, agency, orderNo, amount, dServed, dReceived, dOrder, subj, hits, period, overdue, art, sims, ms };
-}
-
-/* 解析結果 → 與 CASES 同形狀之物件，直接餵給 render() */
-function buildCase(p, srcLabel) {
-  const S = p.subj || "未判定";
-  const marks = [
-    ["applicant", p.applicant], ["agent", p.agent], ["agency", p.agency],
-    ["orderno", p.orderNo], ["amount", p.amount],
-    ["served", p.dServed && p.dServed.raw], ["received", p.dReceived && p.dReceived.raw],
-    ["orderdate", p.dOrder && p.dOrder.raw],
-  ];
-
-  /* 原文標註 */
-  let html = esc(p.text);
-  marks.forEach(([ref, v]) => {
-    if (!v) return;
-    const t = esc(v), i = html.indexOf(t);
-    if (i < 0) return;
-    html = html.slice(0, i) + `<mark data-ref="${ref}">` + t + "</mark>" + html.slice(i + t.length);
-  });
-  const doc = `<div class="doc-meta num">來源：${esc(srcLabel)}<br>字數：${p.text.length}　偵測日期：${p.dates.length} 處　解析耗時：${p.ms} ms</div>`
-    + html.split(/\n+/).filter((s) => s.trim()).map((s) => `<p>${s}</p>`).join("");
-
-  const F = (k, v, ref, src) => [k, v || "未能自文本判定", ref, src];
-  const fields = [
-    F("訴願人", p.applicant, "applicant", "「訴願人」欄"),
-    F("代理人", p.agent, "agent", "「代理人」欄"),
-    F("原處分機關", p.agency, "agency", "機關名稱比對"),
-    F("原處分文號", p.orderNo, "orderno", "文號格式比對"),
-    F("原處分日期", p.dOrder && p.dOrder.iso, "orderdate", "處分關鍵字鄰近日期"),
-    F("送達日", p.dServed && p.dServed.iso, "served", "送達關鍵字鄰近日期"),
-    F("機關收文日", p.dReceived && p.dReceived.iso, "received", "收文關鍵字鄰近日期"),
-    F("裁罰金額", p.amount && p.amount + " 元", "amount", "金額格式比對"),
-  ];
-
-  const conf = Math.min(96, 55 + p.hits * 7);
-  const cls = [
-    ["案件類型", S, p.subj ? conf : 30],
-    ["主要爭點", p.overdue ? "訴願期間是否逾期" : (p.subj ? "違規事證與裁量適法性" : "待人工判定"), p.overdue ? 95 : 60],
-    ["預判走向", p.overdue ? "程序不受理" : (p.period ? "進入實體審查" : "程序資料不足"), p.period ? (p.overdue ? 96 : 70) : 40],
-  ];
-
-  /* 程序審查 */
-  const per = p.period;
-  const c2 = !per ? ["77(2)", "於法定期間內提起", "warn", "文本未見送達日，須人工核對送達證書"]
-    : per.recv === null ? ["77(2)", "於法定期間內提起", "warn", "文本未見收文日，須人工核對"]
-    : per.over ? ["77(2)", "於法定期間內提起", "fail", `逾期 ${per.days} 日`]
-    : ["77(2)", "於法定期間內提起", "pass", `尚餘 ${per.left} 日`];
-
-  const checks = [
-    ["77(1)", "訴願書合法定程式", p.applicant && p.orderNo ? "pass" : "warn", p.applicant && p.orderNo ? "訴願人與原處分均可辨識" : "欄位不全，須通知補正"],
-    c2,
-    ["77(3)", "當事人適格", "warn", "須核對訴願人是否為處分相對人"],
-    ["77(4)", "具訴願能力", "warn", "須核對訴願人年齡與行為能力"],
-    ["77(5)", "代理人合法", p.agent ? "warn" : "na", p.agent ? "已載代理人，須核對委任狀" : "未委任代理人"],
-    ["77(6)", "行政處分仍存在", "warn", "須向原處分機關確認"],
-    ["77(7)", "非重行提起", "warn", "須查訴願案件管理系統"],
-    ["77(8)", "屬訴願救濟範圍", p.orderNo ? "pass" : "warn", p.orderNo ? "已載處分文號，具規制效力" : "須確認是否為行政處分"],
-  ];
-
-  const verdict = p.overdue
-    ? { kind: "stop", big: "應為不受理", text: `依擷取之送達日 ${per.served.iso} 起算，法定期間至 ${toMg(per.due)} 屆滿，機關收文日 ${p.dReceived.iso} 已逾期 ${per.days} 日。程序審查於訴願法第 77 條第 1 項第 2 款即告終結，毋庸進入實體審查。期間計算為純規則運算，惟送達日之認定仍須以卷附送達證書為準。` }
-    : { kind: "go", big: per && per.recv !== null ? "期間內提起" : "待補程序資料", text: per && per.recv !== null ? `收文日距屆滿尚餘 ${per.left} 日，未逾法定不變期間。其餘七款要件涉及卷面與系統查詢，本原型無法自訴願書單一文本判定，已全數標示為待人工核對。` : "文本中未能同時擷取送達日與收文日，無法完成期間計算。請補充送達證書資訊，或於下方欄位表確認擷取結果後人工輸入。" };
-
-  /* 時間軸 */
-  let timeline = null;
-  if (per) {
-    const pts = [], anchor = [];
-    if (p.dOrder) anchor.push([p.dOrder.t, "處分作成", ""]);
-    anchor.push([per.served.t, "合法送達", "key"]);
-    anchor.push([per.due, "期間屆滿", per.over ? "key" : ""]);
-    if (per.recv !== null) anchor.push([per.recv, "實際收文", per.over ? "bad" : "key"]);
-    anchor.sort((a, b) => a[0] - b[0]);
-    const min = anchor[0][0], max = anchor[anchor.length - 1][0], span = Math.max(1, max - min);
-    anchor.forEach(([t, lab, cls2], i) => {
-      let pos = (t - min) / span * 100;
-      pos = Math.round(pos);
-      if (i > 0 && pos - pts[pts.length - 1].pos < 17) pos = Math.min(100, pts[pts.length - 1].pos + 17);
-      pts.push({ d: toMg(t), lab, pos, cls: cls2 });
-    });
-    const recvPt = pts.find((x) => x.lab === "實際收文");
-    timeline = {
-      points: pts, fill: recvPt ? recvPt.pos : 100,
-      note: `起算日 <b>${toMg(per.start)}</b>（送達之次日）＋ 30 日 ＝ 屆滿日 <b>${toMg(per.due)}</b>。`
-        + (per.recv === null ? "文本未見機關收文日，無法完成比對。"
-          : per.over ? `實際收文日 <b>${toMg(per.recv)}</b>，<span style="color:var(--seal);font-weight:600">逾法定不變期間 ${per.days} 日</span>，原處分業已確定。`
-          : `實際收文日 <b>${toMg(per.recv)}</b>，<span style="color:var(--green);font-weight:600">未逾期，距屆滿尚餘 ${per.left} 日</span>。`)
-        + " 在途期間未扣除，訴願人住居所在本市以外者須另行加計。",
-    };
-  }
-
-  /* 法規檢索 */
-  const laws = PROC_LAWS.slice();
-  (SUBJ_LAWS[S] || []).forEach((l) => laws.push({ ...l, g: "實體法規" }));
-  REFS.forEach((r) => {
-    const hit = r.kw.filter((k) => p.text.includes(k)).length;
-    if (hit > 0) laws.push({ g: r.g, n: r.n, t: r.t, rel: Math.min(97, r.rel + hit * 2), badges: ['<span class="tag neutral">資料集內文件</span>', `<span class="tag accent">命中關鍵字 ${hit} 個</span>`] });
-  });
-
-  const alert = (S === "洗錢防制法" && p.dOrder && p.dOrder.t < Date.UTC(2024, 7, 2))
-    ? { title: "法規時效性警示", text: `<b>洗錢防制法於 113 年 7 月 31 日全文修正公布、113 年 8 月 2 日施行。</b>本案偵測到之日期 <b>${p.dOrder.iso}</b> 落在修正施行日之前，行為時應適用修正前條文。請依行政罰法第 5 條為新舊法比較（從新從輕），並於理由欄補充適用版本之說明。` }
-    : null;
-
-  /* 相似案例 */
-  const q = { subj: S, art: p.art };
-  const sims = p.sims.map((d) => ({
-    fn: d.fn, s: d.s, why: whyDoc(d, q),
-    chips: [d.res, d.art, d.subj].concat(d.res.indexOf("撤銷") >= 0 ? ["反面案例"] : []),
-  }));
-  const cnt = { 不受理: 0, 駁回: 0, 撤銷: 0 };
-  p.sims.forEach((d) => {
-    if (d.res.indexOf("不受理") >= 0) cnt.不受理++;
-    else if (d.res.indexOf("駁回") >= 0) cnt.駁回++;
-    else cnt.撤銷++;
-  });
-  const simDist = [["不受理", cnt.不受理, "#9C3A2E"], ["駁回", cnt.駁回, "#A8792A"], ["撤銷", cnt.撤銷, "#2E7D5B"]];
-
-  /* 草稿 */
-  const B = (v) => v ? esc(v) : '<span class="fill">（待補）</span>';
-  const draft = p.overdue ? {
-    head: "新北市政府訴願決定書", sub: "（即時解析草稿・待承辦人審核）", tmpl: "77(2) 不受理",
-    body: `
-      <p>訴願人　${B(p.applicant)}${p.agent ? "<br>代理人　" + esc(p.agent) : ""}<br>原處分機關　${B(p.agency)}</p>
-      <p>上列訴願人因${esc(S)}事件，不服原處分機關民國 ${p.dOrder ? cnDateD(p.dOrder) : '<span class="fill">（待補）</span>'} ${B(p.orderNo)}所為之處分，提起訴願一案，本府依法決定如下：</p>
-      <h4>主文</h4><p>訴願不受理。</p>
-      <h4>理由</h4>
-      <p class="para">一、按訴願法第 14 條第 1 項及第 3 項規定：「訴願之提起，應自行政處分達到或公告期滿之次日起 30 日內為之。訴願之提起，以原行政處分機關或受理訴願機關收受訴願書之日期為準。」、第 77 條第 2 款規定：「訴願事件有左列各款情形之一者，應為不受理之決定：二、提起訴願逾法定期間者……。」</p>
-      <span class="cite">引自　相關法規／訴願法.pdf</span>
-      <p class="para">二、次按行政程序法第 67、68、72、73 條規定，送達由行政機關依職權為之，於應送達處所不獲會晤應受送達人時，得將文書付與有辨別事理能力之同居人收受。</p>
-      <span class="cite">引自　相關法規／行政程序法.pdf</span>
-      <p class="para">三、本件系爭處分於 ${cnDateD(per.served)} 送達訴願人<span class="fill">（送達方式與受領人請依卷附送達證書補實）</span>，依首揭規定，訴願期間應自 ${cnDate(per.start)} 起算，至 ${cnDate(per.due)} 屆滿。惟訴願人遲至 ${cnDateD(p.dReceived)}（機關收文日）始提起本件訴願，已逾 30 日之法定不變期間 ${per.days} 日，原處分業已確定。</p>
-      <span class="cite">日期由期間計算模組即時推導（送達日 ＋ 30 日，未扣除在途期間）</span>
-      <p class="para">四、<span class="fill">（訴願人如就送達效力有所主張，請於本點逐一回應；可援引法務部 93 年 4 月 13 日法律字第 0930014628 號函釋）</span></p>
-      <p class="para">五、綜上論結，本件訴願為程序不合，依訴願法第 77 條第 2 款規定，決定如主文。</p>`,
-  } : {
-    head: "新北市政府訴願決定書", sub: "（即時解析草稿・待承辦人審核）", tmpl: "79I 駁回（骨架）",
-    body: `
-      <p>訴願人　${B(p.applicant)}${p.agent ? "<br>代理人　" + esc(p.agent) : ""}<br>原處分機關　${B(p.agency)}</p>
-      <p>上列訴願人因${esc(S)}事件，不服原處分機關民國 ${p.dOrder ? cnDateD(p.dOrder) : '<span class="fill">（待補）</span>'} ${B(p.orderNo)}所為之處分，提起訴願一案，本府依法決定如下：</p>
-      <h4>主文</h4><p><span class="fill">訴願駁回。／原處分撤銷。（依實體審查結果擇一）</span></p>
-      <h4>事實</h4>
-      <p class="para">緣<span class="fill">（違規事實：時間、地點、行為態樣，請依原處分機關卷證補實）</span>。經原處分機關認訴願人違反${esc(S)}規定${p.amount ? "，裁處罰鍰新臺幣 " + esc(p.amount) + " 元" : ""}，以${B(p.orderNo)}裁處書處分。訴願人不服，於 ${p.dReceived ? cnDateD(p.dReceived) : '<span class="fill">（待補）</span>'} 提起本件訴願。</p>
-      <p class="para">一、訴願意旨略謂：<span class="fill">（自訴願書理由欄摘敘，本原型僅擷取結構欄位，語意摘要須由模型或承辦人完成）</span>等語。</p>
-      <p class="para">二、答辯意旨略謂：<span class="fill">（待原處分機關檢卷答辯後補入）</span>等語。</p>
-      <h4>理由</h4>
-      <p class="para">一、按<span class="fill">（本案主管機關權限依據與權限劃分公告）</span>。準此，本案原處分機關為有權限處分之機關。</p>
-      <p class="para">二、次按${esc(S)}相關規定……（系統已於「法規推薦」頁備妥 ${(SUBJ_LAWS[S] || []).length} 條實體法條全文，可一鍵帶入）。</p>
-      <span class="cite">引自　相關法規資料夾</span>
-      <p class="para">三、卷查<span class="fill">（違規事證認定：稽查照片、採證紀錄、調查筆錄等）</span>，其違規事證應堪認定。</p>
-      <p class="para">四、至訴願人主張<span class="fill">（逐一回應訴願主張）</span>等語。惟<span class="fill">（駁斥理由）</span>。是訴願人主張，尚難採據。</p>
-      <p class="para">五、綜上論結，本件訴願為無理由，依訴願法第 79 條第 1 項規定，決定如主文。</p>`,
-  };
-
-  const filled = fields.filter((f) => f[1] !== "未能自文本判定").length;
-  const gain = [
-    [p.ms + " ms", "瀏覽器端解析耗時", "up"],
-    [`${filled} / ${fields.length}`, "欄位成功擷取", filled >= 6 ? "up" : ""],
-    ["101 件", "相似案例檢索範圍", ""],
-    [p.overdue ? "已判定" : "待人工", "程序期間審查", p.overdue ? "up" : ""],
-  ];
-
-  return {
-    id: "LIVE", no: "即時解析", name: `${S}　${srcLabel}`,
-    outcome: p.overdue ? "stop" : "go",
-    doc, fields, cls, checks, verdict,
-    timeline: timeline || { points: [{ d: "—", lab: "資料不足", pos: 50, cls: "" }], fill: 0, note: "文本中未擷取到送達日，無法計算訴願期間。請確認訴願書是否記載送達日期，或改由送達證書輸入。" },
-    laws, alert, sims, simDist, draft, gain,
-  };
-}
-
-/* =========================================================
-   畫面控制
-   ========================================================= */
-const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-
-/* --- 主題 --- */
-const themeBtn = $("#themeBtn");
-themeBtn.addEventListener("click", () => {
-  const cur = document.documentElement.getAttribute("data-theme");
-  const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const nowDark = cur ? cur === "dark" : sysDark;
-  document.documentElement.setAttribute("data-theme", nowDark ? "light" : "dark");
-  themeBtn.textContent = nowDark ? "切換深色" : "切換淺色";
-});
-
-/* --- 選案畫面 --- */
-$("#caseGrid").innerHTML = CASES.map((c, i) => `
-  <button class="case-card" data-i="${i}">
-    <span class="no num">案號 ${c.no}</span>
-    <h3>${c.cardTitle}</h3>
-    <p>${c.cardDesc}</p>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">${c.cardTags.join("")}</div>
-    <div class="foot"><span>${c.name}</span><span class="go">開始分析 →</span></div>
-  </button>
-`).join("");
-
-document.querySelectorAll(".case-card").forEach((el) => {
-  el.addEventListener("click", () => runCase(CASES[+el.dataset.i]));
-});
-
-/* --- 載入：貼上文字（真實解析） --- */
-const SAMPLE = `訴 願 書
-
-訴願人　王○明
-代理人　李○華
-原處分機關　新北市政府環境保護局
-
-一、訴願人不服原處分機關民國 113 年 11 月 4 日新北環稽字第 41-113-110288 號裁處書所為之處分（裁處罰鍰新臺幣 3,600 元），依法提起訴願。
-
-二、訴願請求：請求撤銷原處分。
-
-三、事實及理由：
-（一）原處分機關指稱訴願人於 113 年 10 月 12 日 14 時 20 分許，在本市○○區○○路○○號前隨地拋棄煙蒂，致污染環境，違反廢棄物清理法第 27 條第 1 款規定。
-（二）上開裁處書係於 113 年 11 月 15 日送達訴願人住居所，由訴願人之配偶代為簽收。訴願人當時因公出國，返國後始知悉本件處分。
-（三）稽查照片僅拍攝到訴願人站立位置，並未清楚攝得拋棄煙蒂之瞬間，原處分機關舉證顯有不足。
-（四）訴願人並無違規行為，懇請鈞府明察，撤銷原處分。
-
-此致
-新北市政府
-
-（本件於 114 年 3 月 6 日收文）`;
-
-const pasteBox = $("#pasteBox"), parseBtn = $("#parseBtn"), pasteHint = $("#pasteHint");
-
-function syncPaste() {
-  const n = pasteBox.value.trim().length;
-  parseBtn.disabled = n < 40;
-  pasteHint.textContent = n === 0 ? "尚未輸入內容" : n < 40 ? `已輸入 ${n} 字，至少需 40 字` : `已輸入 ${n} 字，可解析`;
-}
-pasteBox.addEventListener("input", syncPaste);
-syncPaste();
-
-$("#sampleBtn").addEventListener("click", () => {
-  pasteBox.value = SAMPLE;
-  syncPaste();
-  pasteBox.focus();
-});
-
-parseBtn.addEventListener("click", () => {
-  const raw = pasteBox.value.trim();
-  if (raw.length < 40) return;
-  runCase(buildCase(parseAppeal(raw), "貼上文字"), true);
-});
-
-/* --- 載入：上傳檔案（示範路徑） --- */
-const drop = $("#drop"), fileInput = $("#file");
-
-function takeFile(f) {
-  if (!f) return;
-  const kb = Math.max(1, Math.round(f.size / 1024));
-  const hit = /洗錢|告誡/.test(f.name) ? CASES[2] : /逾期|不受理/.test(f.name) ? CASES[0] : CASES[1];
-  const c = { ...hit, name: `${f.name}（${kb} KB）`, no: "示範資料" };
-  c.doc = `<div class="doc-meta num" style="border-color:var(--amber);background:var(--amber-soft)">已接收檔案：${esc(f.name)}　${kb} KB<br>本原型未內建 PDF／DOCX 解析，以下為示範案件內容，用於展示後續流程。</div>` + hit.doc;
-  runCase(c, true);
-}
-
-drop.addEventListener("click", () => fileInput.click());
-drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
-fileInput.addEventListener("change", (e) => takeFile(e.target.files[0]));
-["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
-["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
-drop.addEventListener("drop", (e) => takeFile(e.dataTransfer.files[0]));
-
-$("#backBtn").addEventListener("click", () => {
-  show("s-pick");
-  $("#chip").classList.remove("on");
-  $("#backBtn").style.display = "none";
-});
-
-function show(id) {
-  document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("on", s.id === id));
-  window.scrollTo(0, 0);
-}
-
-/* --- 分析動畫 --- */
-const STEPS = (c) => [
-  ["文件解析與欄位擷取", c.no === "即時解析"
-    ? `即時擷取 ${c.fields.filter((f) => f[1] !== "未能自文本判定").length} / ${c.fields.length} 個欄位`
-    : `擷取 ${c.fields.length} 個欄位，全部回指原文位置`, 700],
-  ["案件分類與爭點識別", `分類：${c.cls[0][1]}（信心 ${c.cls[0][2]}%）`, 620],
-  ["程序審查（訴願法第 77 條）", c.outcome === "stop" ? "第 2 款未通過 → 建議不受理" : "八款要件檢核完成，進入實體審查", 760],
-  ["法規、函釋與判解檢索", `命中 ${c.laws.length} 筆依據${c.alert ? "，並發出 1 則時效性警示" : ""}`, 840],
-  ["相似案例比對", `掃描 101 件歷史決定書，取 Top ${c.sims.length}`, 700],
-  ["決定書草稿生成", `套用「${c.draft.tmpl}」模板`, 900],
-];
-
-function runCase(c) {
-  const live = c.no === "即時解析" || c.no === "示範資料";
-  $("#chip").classList.add("on");
-  $("#chipName").textContent = c.name;
-  $("#chipNo").textContent = live ? c.no : "案號 " + c.no;
-  $("#backBtn").style.display = "";
-
-  const steps = STEPS(c);
-  $("#runSub").textContent = live ? c.name + "　・　" + c.no : `${c.name}　・　案號 ${c.no}`;
-  $("#stepList").innerHTML = steps.map((s, i) => `
-    <div class="step" id="st${i}">
-      <div class="idx">${i + 1}</div>
-      <div><div class="name">${s[0]}</div><div class="out" id="so${i}"></div></div>
-      <div class="ms" id="sm${i}"></div>
-    </div>
-  `).join("");
-  $("#runBar").style.width = "0";
-  show("s-run");
-
-  let t = 0;
-  steps.forEach((s, i) => {
-    setTimeout(() => {
-      const el = $("#st" + i);
-      if (!el) return;
-      el.classList.add("active");
-      $("#runBar").style.width = ((i + 1) / steps.length * 100) + "%";
-    }, t);
-    t += s[2];
-    setTimeout(() => {
-      const el = $("#st" + i);
-      if (!el) return;
-      el.classList.remove("active");
-      el.classList.add("done");
-      $("#so" + i).textContent = s[1];
-      $("#sm" + i).textContent = s[2] + " ms";
-    }, t);
-  });
-
-  setTimeout(() => { render(c); show("s-work"); }, t + 550);
-}
-
-/* --- 分頁 --- */
-document.querySelectorAll(".tab").forEach((b) => {
-  b.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x === b));
-    document.querySelectorAll(".tabpage").forEach((p, i) => p.classList.toggle("on", i === +b.dataset.t));
-    document.querySelector(".panel").scrollTop = 0;
-  });
-});
-
-/* --- 渲染結果 --- */
-function render(c) {
-  $("#docBody").innerHTML = c.doc;
-  renderExtract(c);
-  renderLaws(c);
-  renderSims(c);
-  renderDraft(c);
-  document.querySelectorAll(".tab")[0].click();
-}
-
-/* 分頁 1：擷取與分類 */
-function renderExtract(c) {
-  const rows = c.fields.map((f) => `
-    <tr data-ref="${f[2] || ""}" ${f[2] ? "" : 'style="cursor:default"'}>
-      <th>${f[0]}</th>
-      <td>${esc(f[1])}<span class="src">${f[3]}</span></td>
-    </tr>
-  `).join("");
-
-  const cls = c.cls.map(([lab, val, pct]) => `
-    <div class="cls">
-      <span class="lab">${lab}</span>
-      <span class="val">${val}</span>
-      <div class="meter${pct < 85 ? " warn" : ""}"><i style="width:${pct}%"></i></div>
-      <span class="pct">信心 ${pct}%</span>
-    </div>
-  `).join("");
-
-  const marks = { pass: "✓", fail: "✕", na: "－", warn: "？" };
-  const checks = c.checks.map((k) => `
-    <div class="chk ${k[2]}">
-      <span class="mk">${marks[k[2]]}</span>
-      <div><span>${k[1]}</span><span class="art">訴願法 ${k[0]}　${k[3]}</span></div>
-    </div>
-  `).join("");
-
-  const tl = c.timeline;
-  const pts = tl.points.map((p) => `
-    <div class="tl-pt ${p.cls}" style="left:${p.pos}%">
-      <div class="up"><div class="d">${p.d}</div></div>
-      <div class="dot"></div>
-      <div class="lab">${p.lab}</div>
-    </div>
-  `).join("");
-
-  $("#p0").innerHTML = `
-    <div class="sec">
-      <div class="sec-head"><h3>擷取欄位</h3><span class="note">滑過任一列，左側原文同步標示來源</span></div>
-      <div class="box"><table class="fields">${rows}</table></div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-head"><h3>案件分類與爭點</h3><span class="note">分類模型輸出</span></div>
-      <div class="box clsgrid">${cls}</div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-head"><h3>程序審查　訴願法第 77 條各款</h3><span class="note">依日期與卷面資料自動檢核</span></div>
-      <div class="box"><div class="checks">${checks}</div>
-      <div class="verdict ${c.verdict.kind}">
-        <span class="big">${c.verdict.big}</span>
-        <p>${c.verdict.text}</p>
-      </div></div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-head"><h3>訴願期間計算</h3><span class="note">送達日 ＋ 30 日 ＋ 在途期間</span></div>
-      <div class="box timeline">
-        <div class="tl-track"><div class="tl-fill" style="width:${tl.fill}%"></div>${pts}</div>
-        <div class="tl-note">${tl.note}</div>
-      </div>
-    </div>
-
-    <p class="foot-note">程序審查款次對應法制局資料集之標註方式：77(1) 不合法定程式不補正、77(2) 訴願逾期、77(3) 當事人不適格、77(4) 無訴願能力、77(6) 行政處分已不存在、77(7) 重行提起訴願、77(8) 非行政處分或不屬訴願救濟範圍。資料集未提供 77(5) 之案例，故此款標示為未涵蓋而非通過。</p>
-  `;
-
-  // 原文回指
-  const doc = $("#docBody");
-  $("#p0").querySelectorAll(".fields tr").forEach((tr) => {
-    const ref = tr.dataset.ref;
-    if (!ref) return;
-    const bad = c.outcome === "stop" && (ref === "served" || ref === "receiver");
-    const on = () => {
-      tr.classList.add("lit");
-      doc.querySelectorAll(`mark[data-ref="${ref}"]`).forEach((m, i) => {
-        m.classList.add(bad ? "hit-seal" : "hit");
-        if (i === 0) m.scrollIntoView({ block: "center", behavior: "smooth" });
-      });
-    };
-    const off = () => {
-      tr.classList.remove("lit");
-      doc.querySelectorAll("mark").forEach((m) => m.classList.remove("hit", "hit-seal"));
-    };
-    tr.addEventListener("mouseenter", on);
-    tr.addEventListener("mouseleave", off);
-    tr.addEventListener("click", on);
-  });
-
-  // 反向：點原文亮欄位
-  doc.querySelectorAll("mark[data-ref]").forEach((m) => {
-    m.addEventListener("click", () => {
-      const row = $("#p0").querySelector(`.fields tr[data-ref="${m.dataset.ref}"]`);
-      if (!row) return;
-      document.querySelectorAll(".tab")[0].click();
-      $("#p0").querySelectorAll(".fields tr").forEach((r) => r.classList.remove("lit"));
-      row.classList.add("lit");
-      row.scrollIntoView({ block: "center", behavior: "smooth" });
-    });
-  });
-}
-
-/* 分頁 2：法規推薦 */
-function renderLaws(c) {
-  const groups = {};
-  c.laws.forEach((l) => { (groups[l.g] = groups[l.g] || []).push(l); });
-
-  const secs = Object.entries(groups).map(([g, list]) => `
-    <div class="sec">
-      <div class="sec-head"><h3>${g}</h3><span class="note">${list.length} 筆</span></div>
-      <div class="box">
-        ${list.map((l) => `
-          <div class="law">
-            <div class="ttl"><span class="n">${l.n}</span></div>
-            <div class="rel">關聯 ${l.rel}%</div>
-            <div class="txt">${l.t}</div>
-            <div class="badges">${l.badges.join("")}</div>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `).join("");
-
-  $("#p1").innerHTML = `
-    ${c.alert ? `
-      <div class="sec">
-        <div class="sec-head"><h3>${c.alert.title}</h3><span class="note">影響決定書合法性，請優先處理</span></div>
-        <div class="alert"><span class="mk">！</span><p>${c.alert.text}</p></div>
-      </div>` : ""}
-    ${secs}
-    <p class="foot-note">每則依據均標示最新修正日期與現行效力狀態。行為時間跨越法規修正者，系統會比對施行日並發出時效性警示，避免引用已失效或尚未施行之條文。檢索範圍：資料集內 11 部法規、10 則行政函釋、19 則司法院釋字及行政判解。</p>
-  `;
-}
-
-/* 分頁 3：相似案例 */
-function renderSims(c) {
-  const total = c.simDist.reduce((a, b) => a + b[1], 0);
-  const dist = c.simDist.filter((d) => d[1] > 0).map((d) => `
-    <div style="background:${d[2]};width:${d[1] / total * 100}%">${d[1]}</div>
-  `).join("");
-  const key = c.simDist.map((d) => `<span><i style="background:${d[2]}"></i>${d[0]} ${d[1]} 件</span>`).join("");
-
-  $("#p2").innerHTML = `
-    <div class="sec">
-      <div class="sec-head"><h3>Top ${c.sims.length} 相似歷史決定書</h3><span class="note">比對範圍 110–114 年共 101 件</span></div>
-      <div class="box">
-        ${c.sims.map((s, i) => `
-          <div class="sim">
-            <div class="sim-top">
-              <span class="rank">${i + 1}</span>
-              <span class="fn">${s.fn}</span>
-              <span class="score">${s.s}%</span>
-            </div>
-            <div class="simbar"><i style="width:${s.s}%"></i></div>
-            <p class="why">${s.why}</p>
-            <div class="chips">${s.chips.map((x) => `<span class="tag ${x === "須注意" || x === "反面案例" ? "seal" : "neutral"}">${x}</span>`).join("")}</div>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-head"><h3>相似案例之決定結果分布</h3><span class="note">供預判走向參考</span></div>
-      <div class="dist">${dist}</div>
-      <div class="dist-key">${key}</div>
-    </div>
-
-    <p class="foot-note">相似度綜合案由、援引法條、爭點類型與事實敘述四項向量計算。系統會刻意納入結果相反之案例（標示為「反面案例」），提醒承辦人檢視本案是否存在相同的撤銷風險，避免推薦結果因偏向多數而失衡。</p>
-  `;
-}
-
-/* 分頁 4：草稿 */
-function renderDraft(c) {
-  $("#p3").innerHTML = `
-    <div class="sec">
-      <div class="sec-head"><h3>決定書草稿</h3><span class="note">套用「${c.draft.tmpl}」模板</span></div>
-      <div class="box">
-        <div class="draft-bar">
-          <button class="btn">匯出 ODF 公文格式</button>
-          <button class="ghost-btn">複製全文</button>
-          <span class="tag amber">黃底處待人工確認</span>
-          <span class="tag neutral">灰字為引用來源</span>
-        </div>
-        <div class="draft">
-          <div class="draft-title">${c.draft.head}</div>
-          <div class="draft-sub">${c.draft.sub}</div>
-          ${c.draft.body}
-          <p style="color:var(--ink-3);font-size:12px;margin-top:20px">（訴願審議委員會委員名單、教示條款及發文日期由公文系統自動帶入）</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="sec">
-      <div class="sec-head"><h3>本案效益</h3><span class="note">與同類案件人工作業比較</span></div>
-      <div class="box gain">
-        ${c.gain.map((g) => `<div><span class="v ${g[2]}">${g[0]}</span><span class="k">${g[1]}</span></div>`).join("")}
-      </div>
-    </div>
-
-    <p class="foot-note">草稿僅供承辦人參考，一切法律見解與事實認定仍以承辦人及訴願審議委員會之判斷為準。系統不會自動送出任何決定書；黃底標示處為模型無法自卷面確認之事項，必須由承辦人補實後始得送審。</p>
-  `;
-}
-</script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</html>
