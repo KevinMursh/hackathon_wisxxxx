@@ -25,7 +25,7 @@ for i in $(seq 1 100); do
   case "$S" in
     Success) aws ssm get-command-invocation --command-id "$CMD" --instance-id "$IID" --query StandardOutputContent --output text | tail -8; break;;
     Failed|Cancelled|TimedOut)
-      echo "部署失敗（$S）："
+      echo "部署失敗（${S}）："
       aws ssm get-command-invocation --command-id "$CMD" --instance-id "$IID" --query StandardErrorContent --output text
       exit 1;;
   esac

@@ -14,14 +14,14 @@ ssm() {   # $1=說明 $2=逾時秒 $3=指令
   local CMD
   CMD=$(aws ssm send-command --instance-ids "$IID" --document-name AWS-RunShellScript \
         --timeout-seconds "$2" --parameters "commands=[\"$3\"]" --query Command.CommandId --output text)
-  echo "── $1（$CMD）"
+  echo "── $1（${CMD}）"
   local n=$(( $2 / 5 + 20 ))
   for _ in $(seq 1 "$n"); do
     S=$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$IID" --query Status --output text 2>/dev/null || echo Pending)
     case "$S" in
       Success) aws ssm get-command-invocation --command-id "$CMD" --instance-id "$IID" --query StandardOutputContent --output text | tail -20; return 0;;
       Failed|Cancelled|TimedOut)
-        echo "失敗（$S）："
+        echo "失敗（${S}）："
         aws ssm get-command-invocation --command-id "$CMD" --instance-id "$IID" --query StandardErrorContent --output text | tail -30
         return 1;;
     esac
