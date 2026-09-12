@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif; color: #1c1b19; background: #f4f3f0; }
+    a { color: #1f5f6b; } a:hover { color: #164751; }
+    .step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; font-size: 14px; color: #6b6862; }
+    .step.on { background: #e6efef; color: #1f5f6b; font-weight: 500; }
+    .step.done { color: #1c1b19; }
+    .num { width: 22px; height: 22px; border-radius: 11px; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .doc { font-family: 'Noto Serif TC', 'PingFang TC', serif; font-size: 12.5px; line-height: 1.8; color: #1c1b19; }
+    .seg { position: relative; padding: 4px 10px 4px 12px; border-left: 3px solid transparent; border-radius: 0 4px 4px 0; }
+    .seg.tpl { border-left-color: #cfcbc3; }
+    .seg.ai { border-left-color: #1f5f6b; background: #f7fafa; }
+    .seg.edit { border-left-color: #9a6700; background: #fdf8ec; }
+    .src { position: absolute; right: 8px; top: 3px; font-family: 'Noto Sans TC', sans-serif; font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+    .src.tpl { background: #efece6; color: #6b6862; }
+    .src.ai { background: #e6efef; color: #1f5f6b; }
+    .src.edit { background: #fbf1d9; color: #9a6700; }
+    .h { text-align: center; font-weight: 600; }
+    .ref { display: flex; flex-direction: column; gap: 2px; padding: 9px 14px; border-bottom: 1px solid #efece6; font-size: 12.5px; }
+    .ref .k { font-weight: 500; display: flex; justify-content: space-between; gap: 8px; }
+    .ref .v { color: #6b6862; font-size: 11.5px; }
+    .ok { font-size: 11px; color: #2e7d4f; white-space: nowrap; }
+    .fr { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid #efece6; font-size: 12.5px; }
+    .fr .d { width: 10px; height: 10px; border-radius: 5px; flex-shrink: 0; }
+    .on { background: #2e7d4f; } .na { background: #cfcbc3; }
+  </style>
+</helmet>
+<div style="width: 1440px; height: 1300px; display: flex; flex-direction: column; background: #f4f3f0; overflow: hidden;">
+  <div style="height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: #fff; border-bottom: 1px solid #e2dfd8;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div style="font-size: 16px; font-weight: 700; color: #1f5f6b;">訴願審理輔助工作台</div>
+      <div style="font-size: 13px; color: #6b6862;">新北市政府法制局</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 20px; font-size: 13px; color: #6b6862;">
+      <div>案號 <span style="color: #1c1b19; font-weight: 500;">1147101471</span></div>
+      <div>承辦人 <span style="color: #1c1b19;">王○○</span></div>
+    </div>
+  </div>
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+    <div style="width: 200px; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid #e2dfd8; background: #fbfaf8;">
+      <div class="step done"><div class="num">1</div><div>收案擷取</div></div>
+      <div class="step done"><div class="num">2</div><div>程序檢核</div></div>
+      <div class="step done"><div class="num">3</div><div>法規與案例</div></div>
+      <div class="step on"><div class="num">4</div><div>草稿審核</div></div>
+      <div class="step"><div class="num">5</div><div>稽核匯出</div></div>
+    </div>
+    <div style="flex-grow: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 2fr); gap: 20px; padding: 20px 24px; min-height: 0;">
+      <div style="background: #fff; border: 1px solid #e2dfd8; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="padding: 10px 16px; border-bottom: 1px solid #e2dfd8; display: flex; align-items: center; gap: 14px; font-size: 12px; color: #6b6862;">
+          <div style="font-size: 14px; font-weight: 500; color: #1c1b19;">決定書草稿 · 不受理（§77 ②）</div>
+          <div style="display: flex; align-items: center; gap: 5px;"><div style="width: 9px; height: 9px; background: #cfcbc3; border-radius: 2px;"></div>模板</div>
+          <div style="display: flex; align-items: center; gap: 5px;"><div style="width: 9px; height: 9px; background: #1f5f6b; border-radius: 2px;"></div>模型</div>
+          <div style="display: flex; align-items: center; gap: 5px;"><div style="width: 9px; height: 9px; background: #9a6700; border-radius: 2px;"></div>承辦人修改</div>
+        </div>
+        <div class="doc" style="padding: 12px 20px; display: flex; flex-direction: column; gap: 3px; overflow: hidden;"><div class="seg tpl"><span class="src tpl">模板 · 抬頭</span><div class="h" style="font-size:16px;">新北市政府訴願決定書</div><div style="text-align:right;font-size:12px;">案號：1147101471 號</div></div><div class="seg tpl"><span class="src tpl">模板 · 當事人欄（§89 I ①②）</span>　　訴願人　　　林○如<br>　　原處分機關　新北市政府警察局蘆洲分局<br>上列訴願人因違反洗錢防制法事件，不服原處分機關民國 112 年 11 月 12 日書面告誡（案件編號：1124430434）所為之處分，提起訴願一案，本府依法決定如下：</div><div class="seg tpl"><span class="src tpl">模板 · §77② → 主文</span><div class="h">主　　文</div>訴願不受理。</div><div class="seg tpl"><span class="src tpl">模板 · 不受理得不記載事實（§89 I ③）</span><div class="h">理　　由</div></div><div class="seg ai"><span class="src ai">模型 · 引 §14 I、III · §77②</span>一、按訴願之提起，應自行政處分達到或公告期滿之次日起 30 日內為之，且以原行政處分機關或受理訴願機關收受訴願書之日期為準。提起訴願逾法定期間者，原處分即歸確定。此觀訴願法第 14 條第 1 項、第 3 項、第 77 條第 2 款之規定甚明。</div><div class="seg ai"><span class="src ai">模型 · 引行政程序法 §72 I</span>二、次按「送達，於應受送達人之住居所、事務所或營業所為之。…」行政程序法第 72 條第 1 項定有明文。</div><div class="seg edit"><span class="src edit">承辦人修改 · 補「已教示救濟方法」</span>三、本件系爭告誡書於 112 年 11 月 12 日送達訴願人本人，經訴願人簽收在案，又系爭告誡書內亦已教示救濟方法、期間及受理機關，此有經訴願人簽收之系爭告誡書影本附卷可稽。核計其 30 日法定期間應自 112 年 11 月 13 日起算，因訴願人居住所位於本市，毋須扣除在途期間，應至 112 年 12 月 12 日屆滿。惟訴願人遲至 114 年 10 月 20 日始提起訴願，已逾法定不變期間，本件訴願為程序不合，自不應受理。</div><div class="seg tpl"><span class="src tpl">模板 · 款次同主文</span>四、綜上論結，本件訴願為程序不合，依訴願法第 77 條第 2 款規定，決定如主文。</div><div class="seg tpl" style="font-size:12.5px;line-height:1.6;"><span class="src tpl">模板 · 審議規則 §28 II 委員名單</span>訴願審議委員會主任委員　蔡庭榕（公出）<br>委員　陳明燦（代理）　陳立夫　張文郁　蔡進良　黃源銘　劉宗德　王藹芸　劉定基　董鈺琪　林泳玲　唐美芝</div><div class="seg tpl"><span class="src tpl">模板 · §90 教示（不受理／駁回附）</span><span style="font-size:12px;color:#6b6862;">如不服本決定，得於決定書送達之次日起 2 個月內向臺北高等行政法院（地址：臺北市士林區福國路 101 號）提起行政訴訟。</span></div><div class="seg tpl"><span class="src tpl">模板 · 決定日期／發文字號</span><span style="font-size:12px;">中華民國 114 年 12 月 31 日　　新北府訴決字第 1142185543 號</span></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px; min-height: 0;">
+        <div style="background: #fff; border: 1px solid #e2dfd8; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden;">
+          <div style="padding: 10px 14px; border-bottom: 1px solid #e2dfd8; font-size: 14px; font-weight: 500;">此決定類型的欄位規則</div>
+          <div class="fr"><div style="display:flex;gap:8px;align-items:center;"><div class="d na"></div>事實段</div><div style="color:#6b6862;text-align:right;">不受理得不記載（§89 I ③）</div></div><div class="fr"><div style="display:flex;gap:8px;align-items:center;"><div class="d on"></div>救濟教示</div><div style="color:#6b6862;text-align:right;">附（不受理案）</div></div><div class="fr"><div style="display:flex;gap:8px;align-items:center;"><div class="d na"></div>另為處分期限</div><div style="color:#6b6862;text-align:right;">不適用</div></div><div class="fr"><div style="display:flex;gap:8px;align-items:center;"><div class="d na"></div>附表</div><div style="color:#6b6862;text-align:right;">無</div></div><div class="fr"><div style="display:flex;gap:8px;align-items:center;"><div class="d na"></div>主文分部</div><div style="color:#6b6862;text-align:right;">單一</div></div>
+        </div>
+        <div style="background: #fff; border: 1px solid #e2dfd8; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden;">
+          <div style="padding: 10px 14px; border-bottom: 1px solid #e2dfd8; font-size: 14px; font-weight: 500;">引據清單</div>
+          <div class="ref"><div class="k"><span>訴願法 §14 I、III</span><span class="ok">在檢索結果內</span></div><div class="v">理由一</div></div><div class="ref"><div class="k"><span>訴願法 §77 ②</span><span class="ok">在檢索結果內</span></div><div class="v">理由一、四、主文</div></div><div class="ref"><div class="k"><span>行政程序法 §72 I</span><span class="ok">在檢索結果內</span></div><div class="v">理由二 · 逐字</div></div><div class="ref"><div class="k"><span>案號 1137121361</span><span class="ok">在檢索結果內</span></div><div class="v">113 年同型 · 理由三句型</div></div>
+          <div style="padding: 8px 14px; background: #f7fafa; font-size: 11.5px; color: #1f5f6b;">條號皆來自已勾選法規，模型不得自行新增。</div>
+        </div>
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px;">
+          <div style="padding: 9px 16px; border-radius: 6px; border: 1px solid #e2dfd8; font-size: 13px; text-align: center;">重新生成理由段</div>
+          <div style="padding: 9px 16px; border-radius: 6px; background: #1f5f6b; color: #fff; font-size: 13px; font-weight: 500; text-align: center;">送稽核</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
