@@ -71,11 +71,11 @@
 
 | # | 項目 | 狀態 |
 |---|---|---|
-| F1 | `Api.chat / proposal / confirmProposal / cancelProposal` | ☐ |
-| F2 | `asstSend`：真案（`S.c.live && S.c.caseId`）→ `Api.chat`；mock 案維持本機規則 | ☐ |
-| F3 | `renderServerReply(res)`：answer → `.msg.a`＋來源＋「以此提出修改」；clarify／refuse → `.msg.a`；proposal → 走既有 `renderProposal`（items 已同形） | ☐ |
-| F4 | 提案確認：真案 → `Api.confirmProposal` → 輪詢 → `toCase` → `renderTabs`（原地、v11 進度） | ☐ |
-| F5 | 補件真案：`Api.upload(caseId)` → 輪詢 job → `listFiles` → 新檔列進結果視窗 → 匯入＝重抓 | ☐ |
+| F1 | `Api.chat / proposal / confirmProposal / cancelProposal / waitJob` | ☑ |
+| F2 | `asstSend`：真案（`S.c.live && S.c.caseId`）→ `Api.chat`；mock 案維持本機規則 | ☑ |
+| F3 | `renderServerReply(res)`：answer → `.msg.a`＋來源＋「以此提出修改」；clarify／refuse → `.msg.a`；proposal → `fromServerProposal` → 既有 `renderProposal` | ☑ |
+| F4 | 提案確認：真案 → `applyServerProposal`：`confirmProposal` → `waitJob`（逐項進度寫卡片）→ `analysis` → `toCase` → `renderTabs` 原地更新 | ☑ |
+| F5 | 補件真案：`addFilesLive`：`upload` → 輪詢 job → `listFiles` → 新檔（staged／dup）進結果視窗（改類型／來源即 PATCH）→ 匯入 | ☑ |
 | F6 | `api.js` 的 localhost 預設仍指雲端 `100.20.156.38`；`?api=` 可覆蓋 | 既有 |
 
 ## 5. 測試
@@ -97,17 +97,20 @@
 ### 5.3 端到端（MCP Chrome「roy」）
 | # | 站台 | 步驟 | 預期 |
 |---|---|---|---|
-| E1 | 本機 mock | 首頁 → case02 → 五分頁 → 助手問／改／確認 → 補件示範包 → 法規庫 → 案件庫 | 全部無主控台錯誤 |
-| E2 | 雲上 http://100.20.156.38 | 首頁 → 載入 case02 卷宗包（真跑歸戶＋分析）→ 助手問「行政罰法第 18 條第 1 項」→ answer＋來源 | `kind=answer`，有版本日期 |
-| E3 | 雲上 | 助手「爭點 1 改採訴願人，影片看不出離手」→ 提案卡 → 確認 → 原地更新 → 已執行卡 | `objections` +1、Tab2「修正後」 |
-| E4 | 雲上 | 左欄補件上傳 1 張 jpg → 結果視窗類型／來源來自 API → 匯入 | 左欄多一檔標「新」 |
-| E5 | 雲上 | 「改好一點」 | 反問無卡 |
+| E1 | 本機 mock | 首頁 → case02 → 五分頁 → 助手問／改／確認 → 補件示範包 → 法規庫 → 案件庫 | ☑ 2026-09-13：法條問答有版本＋「以此提出修改」；提案卡 3 項；確認後原地重跑 4 步、Tab2「修正後：採訴願人」、plan C、已執行卡；補件示範包 2 份匯入、標「新」；法規庫 16 列、案件庫 2 列；助手在首頁／法規庫／案件庫隱藏；主控台無錯誤 |
+| E2 | 雲上 http://100.20.156.38 | 首頁 → 載入 case02 卷宗包（真跑歸戶＋分析）→ 助手問「行政罰法第 18 條第 1 項」→ answer＋來源 | ☑ 歸戶 20/20 檔 46 s；分析 s2–s6 共 213 s；chat `answer`（8.9k tokens、7.4 s）：原文＋111-06-15 版＋來源＋「以此提出修改」 |
+| E3 | 雲上 | 助手「爭點 1 改採訴願人，影片看不出離手」→ 提案卡 → 確認 → 原地更新 → 已執行卡 | ☑ 提案卡由伺服器 items 畫出（爭點卡＋法規列＋影響範圍 3–6）；確認 → 卡片顯示「AI 重新引證中 1/1」、四分頁「更新中」→ 已執行卡：**無法採納**，AI 引 15-採證照片證 1-1-2、17-採證影片審視結論等 5 處卷證逐點反駁；`objections` +1、修改 1 次；另一提案「加引行政罰法 §18 I」採納 → 草稿 v2 |
+| E4 | 雲上 | 左欄補件上傳 1 張 jpg → 結果視窗類型／來源來自 API → 匯入 | ☑ 檔名 `messageImage_…jpg` → API 依內容判「採證照片／原處分機關」、標準檔名 `15-採證照片_114-06-27.jpg`、摘要「稽查員…煙蒂留置水溝蓋現場照片」；匯入後 23 件、標「新」；既有 22 份未重跑 |
+| E5 | 雲上 | 「改好一點」 | ☑ `clarify`：反問並給 3 個例句，無卡 |
+
+發現並修掉的雲上 bug：① `analysis-proxy.mjs` 對 POST 帶 JSON body 只轉發 content-length 不送 body → 上游等到逾時（objection／chat 全卡，既有 bug）；② Node 的 `GET /api/jobs/:id` 先攔走 `an_` job → 提案確認改輪詢 `GET proposal`（含 progress）；③ 模型 `revised_finding` 回「採機關（補強法條引用）」→ 正規化三值。
+截圖：`/var/folders/x7/6h5dyqg15cq3wzk8q3cbmmbw0000gn/T/claude-chrome-screenshots-Xsr7aq/screenshot-1789231230000-0.jpg`（雲上提案卡）、`…-2.jpg`（已執行卡）、`…-3.jpg`（補件辨識結果）
 
 ## 6. 執行順序
-1. ☐ `pipeline/assistant.py`（工具、迴圈、classify_intent、verify、scope）＋ `prompts/assistant.md`
-2. ☐ `api.py` 三個端點＋提案持久化（runs／DDB `PROPOSAL#{pid}`）＋ `server/analysis-proxy.mjs` 路徑
-3. ☐ 5.1 測試綠
-4. ☐ 前端 F1–F5
-5. ☐ 5.2 測試綠
-6. ☐ `deploy/analysis/push.sh`＋`deploy/node/push.sh`
-7. ☐ 5.3 MCP 驗收，結果寫回本文
+1. ☑ `pipeline/assistant.py`（工具、迴圈、classify_intent、verify、scope）＋ `prompts/assistant.md`
+2. ☑ `api.py` 三個端點＋提案持久化（runs／DDB `PROPOSAL#{pid}`）＋ `server/analysis-proxy.mjs` 路徑
+3. ☑ 5.1 測試綠（46 passed；LIVE 3 skipped）
+4. ☑ 前端 F1–F5
+5. ☑ 5.2 測試綠（chat-cards 15／intent 18）
+6. ☑ `deploy/analysis/push.sh`＋`deploy/node/push.sh`（順手修 proxy：POST 帶 JSON body 全卡的舊 bug）
+7. ☑ 5.3 MCP 驗收（Chrome「roy」），結果見 §5.3
