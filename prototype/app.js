@@ -26,7 +26,7 @@ try { LIB = JSON.parse(localStorage.getItem("ssz.lib") || "[]"); } catch (e) { L
 function saveLib() { try { localStorage.setItem("ssz.lib", JSON.stringify(LIB)); } catch (e) { /* 容量不足時略過 */ } }
 
 /* ---------- 主題 ---------- */
-function show(id) { $$(".screen").forEach((s) => s.classList.toggle("on", s.id === id)); window.scrollTo(0, 0); }
+function show(id) { $$(".screen").forEach((s) => s.classList.toggle("on", s.id === id)); window.scrollTo(0, 0); const inCase = id === "s-work"; $("#asstBtn").style.display = inCase ? "" : "none"; if (!inCase) $("#asst").classList.remove("on"); }
 $$("[data-close]").forEach((b) => b.addEventListener("click", () => $("#" + b.dataset.close).classList.remove("on")));
 
 /* =========================================================
@@ -234,7 +234,7 @@ function updateChips() {
   $$(".tab")[2].classList.toggle("warn", S.c.citations.some((x) => x.status !== "ok"));
 }
 function recompute() { renderExtract(); renderIssues(); renderDraft(); updateChips(); persist(); }
-$$(".tab").forEach((b) => b.addEventListener("click", () => { $$(".tab").forEach((x) => x.classList.toggle("on", x === b)); $$(".tabpage").forEach((p, i) => p.classList.toggle("on", i === +b.dataset.t)); $("#panel").scrollTop = 0; }));
+$$(".tab").forEach((b) => b.addEventListener("click", () => { $$(".tab").forEach((x) => x.classList.toggle("on", x === b)); $$(".tabpage").forEach((p, i) => p.classList.toggle("on", i === +b.dataset.t)); $("#panel").scrollTop = 0; if (S.c) asstSuggest(); }));
 
 /* ---------- 分欄拖曳、展開卷宗 ---------- */
 (function () {
@@ -514,7 +514,19 @@ $("#asstBtn").addEventListener("click", asstOpen); $("#asstClose").addEventListe
 function asstOpen() { $("#asst").classList.add("on"); $("#asstIn").focus(); }
 function asstAdd(role, html) { const log = $("#asstLog"); const el = document.createElement("div"); el.className = "msg " + role; el.innerHTML = html; log.appendChild(el); log.scrollTop = log.scrollHeight; return el; }
 function asstSay(t) { asstOpen(); asstAdd("a", esc(t)); }
-function asstReset() { $("#asstLog").innerHTML = ""; asstAdd("a", `我是本案助手。<b>問</b>：資料在哪份文件、法條原文、爭點、期間。<b>改</b>：直接說要改什麼，我會先畫出修改後的樣子，您按「確認執行」才會更新。`); $("#asstSug").innerHTML = ["送達日在哪份文件？", "行政罰法第 18 條第 1 項", "爭點 1 改採訴願人，影片看不出離手", "加引裁罰準則第 9 條", "送達日改 114-09-16", "理由二精簡一點"].map((q) => `<button class="ghost-btn">${q}</button>`).join(""); $$("#asstSug button").forEach((b) => b.addEventListener("click", () => { $("#asstIn").value = b.textContent; asstSend(); })); }
+function asstReset() { $("#asstLog").innerHTML = ""; asstAdd("a", `我是本案助手。<b>問</b>：資料在哪份文件、法條原文、爭點、期間。<b>改</b>：直接說要改什麼，我會先畫出修改後的樣子，您按「確認執行」才會更新。`); asstSuggest(); }
+/* 建議句由本案狀態＋目前分頁即時產生（規則，零模型呼叫）；正式版可再加一次便宜的模型呼叫補充 */
+function asstSuggest() {
+  const c = S.c; if (!c) return; const tab = +($(".tab.on")?.dataset.t || 0), cp = currentPlan(), can = S.status === "承辦中", out = [];
+  const stN = { agency: "採機關", appellant: "採訴願人", open: "待議" }, other = (s) => s === "appellant" ? "採機關" : "採訴願人";
+  const conflict = c.fields.find((f) => f.conflict), pend = pendingCites(), altPlan = c.plans.find((p) => p.id !== cp.id && p.id !== "X"), r2 = S.paras.find((p) => /^理由/.test(paraLabel(p)) && p.kind !== "h4");
+  if (tab === 0) { out.push(`送達日在哪份文件？`, `期間有沒有逾期？`); if (conflict && can) out.push(`送達日改 ${(/(\d{3}-\d{2}-\d{2})/.exec(conflict.a[0]) || [])[1] || "114-09-16"}`); if (can) out.push(`應依 77(2) 逾期不受理`); }
+  else if (tab === 1) { c.issues.slice(0, 2).forEach((it, i) => { out.push(`爭點 ${i + 1} 的卷證在哪？`); if (can) out.push(`爭點 ${i + 1} 改${other(S.stances[it.id] || it.stance)}`); }); }
+  else if (tab === 2) { const l = c.laws.find((x) => /行政罰法|訴願法/.test(x.n)) || c.laws[0]; if (l) out.push(l.n.replace(/ /g, "")); pend.slice(0, 1).forEach((x) => out.push(`${x.n.replace(/（.*$/, "").slice(0, 14)}是什麼？`)); if (can) out.push(`加引行政罰法第 5 條`, `加引裁罰準則第 9 條`); }
+  else if (tab === 3) { out.push(`相似案例的結論分布？`, `有沒有撤銷的案例？`); }
+  else { if (can) { if (altPlan) out.push(`結論改為${altPlan.verdict}`); if (r2) out.push(`${paraLabel(r2)}精簡一點`, `${paraLabel(r2)}語氣改平實`); out.push(`從舉證責任分配的角度重寫理由`); const it = c.issues[0]; if (it) out.push(`爭點 1 改${other(S.stances[it.id] || it.stance)}`); } else out.push(`本案判定與風險？`); }
+  $("#asstSug").innerHTML = out.slice(0, 6).map((q) => `<button class="ghost-btn">${esc(q)}</button>`).join(""); $$("#asstSug button").forEach((b) => b.addEventListener("click", () => { $("#asstIn").value = b.textContent; asstSend(); }));
+}
 function asstIndex() {
   const c = S.c, out = [];
   c.docs.forEach((d) => { if (d.include === false) return; const t = d.stdName || d.title, k = d.kind; if (d.html) { const re = /<mark data-ref="([^"]+)">([\s\S]*?)<\/mark>/g; let m; while ((m = re.exec(d.html))) out.push({ ref: m[1], doc: t, kind: k, tag: d.tag, text: plain(m[2]), where: "本文" }); } (d.boxes || []).forEach((b) => out.push({ ref: b.ref, doc: t, kind: k, tag: d.tag, text: b.label, where: "框選區" })); (d.cues || []).forEach((q) => out.push({ ref: q[0], doc: t, kind: k, tag: d.tag, text: q[2], where: "影片時間點" })); });
@@ -620,10 +632,13 @@ function asstSend() {
   const q = $("#asstIn").value.trim(); if (!q || !S.c) return; $("#asstIn").value = ""; asstAdd("u", esc(q));
   const c = S.c;
   if (S.status !== "承辦中" && EDIT_RE.test(q)) return asstAdd("a", `本案狀態為「${S.status}」，不可修改。已結案案件請用「另存為新草稿」。`);
-  const intent = parseIntent(q); if (intent) { if (intent.clarify) return asstAdd("a", intent.clarify); return renderProposal(buildProposal(intent.items, q)); }
+  const intent = /[?？]|有沒有|嗎|哪|是什麼/.test(q) ? null : parseIntent(q); if (intent) { if (intent.clarify) return asstAdd("a", intent.clarify); return renderProposal(buildProposal(intent.items, q)); }
   const lk = /([一-龥]{2,24}?(?:法|條例|準則|規則|辦法))\s*第?\s*(\d+)\s*條(?:\s*第?\s*(\d+)\s*項)?(?:\s*第?\s*(\d+)\s*款)?/.exec(q);
   if (lk) { const name = lawName(lk[1]), art = lk[2], para = lk[3], kuan = lk[4], lib = LAWLIB.find((l) => l.n === name), key = `${name} 第 ${art} 條${para ? `第 ${para} 項` : ""}${kuan ? `第 ${kuan} 款` : ""}`; const hit = c.laws.find((l) => l.n.startsWith(`${name} 第 ${art} 條`)) || (ART_TEXT[key] ? { n: key, t: ART_TEXT[key] } : null); if (!lib) return asstAdd("a", `法規庫查無「${esc(name)}」，無法提供條文；請確認法規名稱。<span class="src">來源：法規庫（${LAWLIB.length} 部）</span>`); if (lib.arts && +art > lib.arts) return asstAdd("a", `${esc(name)} 僅 ${lib.arts} 條，第 ${art} 條不存在。<span class="src">來源：法規庫・${lib.date} 版</span>`); const el = asstAdd("a", `<b>${esc(hit ? hit.n : key)}</b>（${lib.date} 版${lib.effective ? "，" + lib.effective + " 施行" : ""}）<br>${hit ? esc(hit.t) : "本條未在本案推薦清單內；正式版由後端法規字典帶入全文。"}<span class="src">來源：法規庫・全國法規資料庫同步</span><button class="ghost-btn open" data-cite="${esc(key)}">以此提出修改 →</button>`); el.querySelector("[data-cite]").addEventListener("click", () => { $("#asstIn").value = `請加引${key}`; asstSend(); }); return el; }
   if (/法條|引用|法規|援引/.test(q)) return asstAdd("a", c.citations.length ? `答辯書引用 ${c.citations.length} 則：<br>${c.citations.map((x) => `・${J(x.ref, esc(x.n))}　<span class="st ${x.status}" style="font-size:10px">${{ ok: "已驗證", amended: "已修正", gap: "漏引" }[x.status] || x.status}</span>`).join("<br>")}<span class="src">來源：法規推薦分頁・引用查核</span>` : `本案尚無答辯書可查核。<span class="src">${esc(c.citationNote || "")}</span>`);
+  { const m = /爭點\s*([一二三四五六\d])[^。]*?(卷證|證據|在哪)/.exec(q); if (m) { const it = c.issues[(CN[m[1]] || +m[1]) - 1]; if (it) return asstAdd("a", `爭點 ${(CN[m[1]] || +m[1])}「${esc(it.title)}」的卷證：<br>${it.e.map((e) => e[1] ? `・${J(e[1], esc(e[0]) + " ↗")}` : `・${esc(e[0])}`).join("<br>")}<span class="src">來源：爭點分頁・卷證顯示欄</span>`); } }
+  if (/相似|案例/.test(q) && /分布|結論|撤銷|駁回|不受理/.test(q)) { const sims = c.sims || [], want = /撤銷/.test(q) ? "撤銷" : /駁回/.test(q) ? "駁回" : /不受理/.test(q) ? "不受理" : null, hit = want ? sims.filter((s) => (s.fn || "").includes(want)) : sims; return asstAdd("a", hit.length ? `${want ? `結論為「${want}」的相似案例 ${hit.length} 件` : `相似案例 ${sims.length} 件，結論分布：${(c.simDist || []).map((d) => `${d[0]} ${d[1]}`).join("、")}`}：<br>${hit.slice(0, 5).map((s) => `・${esc(s.fn)}`).join("<br>")}<span class="src">來源：相似案例分頁（KB 檢索＋規則重排）</span>` : `相似案例中沒有結論為「${want}」者。<span class="src">來源：相似案例分頁</span>`); }
+  if (/是什麼|內容|全文/.test(q) && /函|準則|釋字|判/.test(q)) { const p = pendingCites().find((x) => q.includes(x.n.replace(/（.*$/, "").slice(0, 14))); if (p) return asstAdd("a", `「${esc(p.n)}」法規庫未收錄，無法提供內容；${esc(p.note || "")}<span class="src">來源：法規推薦分頁・引用查核</span>`); }
   if (/爭點|癥結/.test(q)) return asstAdd("a", `本案 ${c.issues.length} 個爭點：<br>${c.issues.map((it, i) => `・爭點 ${i + 1}：${esc(it.title)}（AI ${{ agency: "採機關", appellant: "採訴願人", open: "待議" }[it.stance || "open"]}）`).join("<br>")}<span class="src">來源：爭點分頁</span>`);
   if (/期間|逾期|幾天|屆滿/.test(q)) { const p = period(); return asstAdd("a", p ? `送達日 ${S.served}，起算 ${toMg(p.start)}，屆滿 ${toMg(p.due)}；收文日 ${S.recv || "—"}，${p.recv === null ? "尚無收文日" : p.over ? `<b style="color:var(--seal)">逾期 ${p.days} 日</b>` : `未逾期，尚餘 ${p.left} 日`}。${c.period.servedRef ? J(c.period.servedRef, "開啟送達證書 ↗") : ""}<span class="src">來源：期間計算模組（送達日以卷附送達證書為準）</span>` : "尚未取得送達日，無法計算期間。"); }
   if (/判定|結論|主文|風險/.test(q)) { const p = currentPlan(); return asstAdd("a", `AI 判定：<b>${esc(p.verdict)}</b>（${esc(p.art)}）。撤銷風險${{ low: "低", mid: "中", high: "高" }[p.risk[0]]}：${esc(p.risk[1])}<span class="src">來源：草稿分頁・AI 判定摘要</span>`); }
