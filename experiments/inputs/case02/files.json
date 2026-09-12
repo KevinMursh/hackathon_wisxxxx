@@ -1,0 +1,511 @@
+{
+ "caseId": "case02",
+ "cutoffDate": "114-09-16",
+ "files": [
+  {
+   "fileId": "05b089e5d95b",
+   "originalName": "訴願書_鄭○芳_1140922.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "01-訴願書.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "05b089e5d95b#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "訴願書",
+     "source": "訴願人",
+     "form": "文字PDF",
+     "date": "114-09-22",
+     "doc_no": null,
+     "summary": "不服裁處提起訴願，主張照片模糊、未丟棄",
+     "confidence": 0.9,
+     "timing": "爭訟發生後",
+     "suggestedName": "01-訴願書_114-09-22.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "fe1f12605099",
+   "originalName": "答辯書及檢送函_環保局_1141006.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "02-答辯書.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "fe1f12605099#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "答辯書",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": "114-10-06",
+     "doc_no": null,
+     "summary": "影像放大可見拋擲，維持原處分",
+     "confidence": 0.9,
+     "timing": "爭訟發生後",
+     "suggestedName": "03-答辯書_114-10-06.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "cc6e4c753dd1",
+   "originalName": "00-卷證目錄.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/00-卷證目錄.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "cc6e4c753dd1#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "卷證目錄",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": null,
+     "doc_no": null,
+     "summary": "檢卷文件清單",
+     "confidence": 0.9,
+     "timing": "未知",
+     "suggestedName": "05-卷證目錄.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "a889fa06ad27",
+   "originalName": "01-裁處書正本.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/01-裁處書正本.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "a889fa06ad27#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "裁處書",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": "114-09-16",
+     "doc_no": "新北環稽字第41-114-090351號",
+     "summary": "違反廢清法27①裁處3,600元",
+     "confidence": 0.9,
+     "timing": "處分作成",
+     "suggestedName": "06-裁處書_114-09-16.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "3ea47f1916e4",
+   "originalName": "02-裁處書送達證書.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/02-裁處書送達證書.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "3ea47f1916e4#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "裁處書送達證書",
+     "source": "原處分機關",
+     "form": "掃描",
+     "date": "114-09-18",
+     "doc_no": null,
+     "summary": "郵務送達，本人簽收",
+     "confidence": 0.9,
+     "timing": "爭訟發生後",
+     "suggestedName": "07-裁處書送達證書_114-09-18.jpg",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "1fe5f9193434",
+   "originalName": "03-民眾檢舉案件受理單.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/03-民眾檢舉案件受理單.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "1fe5f9193434#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "檢舉資料",
+     "source": "第三方",
+     "form": "文字PDF",
+     "date": "114-06-28",
+     "doc_no": null,
+     "summary": "網路檢舉附行車紀錄器影片",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "08-檢舉資料_114-06-28.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "f4e34c59b9a4",
+   "originalName": "04-稽查工作紀錄表.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/04-稽查工作紀錄表.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "f4e34c59b9a4#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "稽查紀錄",
+     "source": "原處分機關",
+     "form": "掃描",
+     "date": "114-07-08",
+     "doc_no": null,
+     "summary": "影像審視逐幀紀錄",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "09-稽查紀錄_114-07-08.jpg",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "96aeae7b32d2",
+   "originalName": "採證照片-01_20250627-124009.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/採證照片-01_20250627-124009.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "96aeae7b32d2#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "採證照片",
+     "source": "未知",
+     "form": "掃描",
+     "date": "114-06-27",
+     "doc_no": null,
+     "summary": "駕駛立於車旁",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "10-採證照片_114-06-27.jpg",
+     "manual": {
+      "source": "第三方",
+      "by": "承辦人A",
+      "at": "2026-09-12T10:00:00Z"
+     }
+    }
+   ]
+  },
+  {
+   "fileId": "cad9a0806617",
+   "originalName": "採證照片-02_20250627-124014.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/採證照片-02_20250627-124014.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "cad9a0806617#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "採證照片",
+     "source": "未知",
+     "form": "掃描",
+     "date": "114-06-27",
+     "doc_no": null,
+     "summary": "右手向下拋擲",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "10-採證照片_114-06-27.jpg",
+     "manual": {
+      "source": "第三方",
+      "by": "承辦人A",
+      "at": "2026-09-12T10:00:00Z"
+     }
+    }
+   ]
+  },
+  {
+   "fileId": "546a64230aea",
+   "originalName": "採證照片-03_20250627-124019.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/採證照片-03_20250627-124019.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "546a64230aea#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "採證照片",
+     "source": "未知",
+     "form": "掃描",
+     "date": "114-06-27",
+     "doc_no": null,
+     "summary": "煙蒂留置水溝蓋",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "10-採證照片_114-06-27.jpg",
+     "manual": {
+      "source": "第三方",
+      "by": "承辦人A",
+      "at": "2026-09-12T10:00:00Z"
+     }
+    }
+   ]
+  },
+  {
+   "fileId": "dcdc0160c7a6",
+   "originalName": "05-採證照片彙整頁.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/05-採證照片彙整頁.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "dcdc0160c7a6#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "採證照片",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": "114-06-27",
+     "doc_no": null,
+     "summary": "三幀彙整",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "10-採證照片_114-06-27.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "ad211a0ff4b8",
+   "originalName": "06-影像放大標註.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/06-影像放大標註.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "ad211a0ff4b8#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "影像放大標註",
+     "source": "原處分機關",
+     "form": "掃描",
+     "date": "114-06-27",
+     "doc_no": null,
+     "summary": "14秒幀放大標註煙蒂",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "11-影像放大標註_114-06-27.jpg",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "20c30b6d2db1",
+   "originalName": "07-車籍查詢結果.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/07-車籍查詢結果.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "20c30b6d2db1#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "車籍資料",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": "114-07-09",
+     "doc_no": null,
+     "summary": "車主為訴願人",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "13-車籍資料_114-07-09.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "b973441dd49d",
+   "originalName": "08-陳述意見通知書.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/08-陳述意見通知書.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "b973441dd49d#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "陳述意見通知書",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": "114-07-15",
+     "doc_no": "新北環稽字第1143451762號",
+     "summary": "通知陳述意見",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "14-陳述意見通知書_114-07-15.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "3c87c3498a4f",
+   "originalName": "09-陳述意見通知書送達證書.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/09-陳述意見通知書送達證書.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "3c87c3498a4f#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "通知書送達證書",
+     "source": "原處分機關",
+     "form": "掃描",
+     "date": "114-07-21",
+     "doc_no": null,
+     "summary": "通知書送達",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "15-通知書送達證書_114-07-21.jpg",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "317d4a6cafce",
+   "originalName": "10-陳述意見書.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/10-陳述意見書.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "317d4a6cafce#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "陳述意見書",
+     "source": "訴願人",
+     "form": "掃描",
+     "date": "114-07-30",
+     "doc_no": null,
+     "summary": "主張未丟、已拿回車上",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "16-陳述意見書_114-07-30.jpg",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "eae552fc2a74",
+   "originalName": "11-裁罰係數計算表.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/11-裁罰係數計算表.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "eae552fc2a74#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "係數計算表",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": null,
+     "doc_no": null,
+     "summary": "B=1,200×A=3",
+     "confidence": 0.9,
+     "timing": "未知",
+     "suggestedName": "17-係數計算表.pdf",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "0f77cf86de26",
+   "originalName": "12-裁處簽呈.jpg",
+   "kind": "image",
+   "status": "done",
+   "textPath": null,
+   "images": [
+    "卷證/12-裁處簽呈.jpg"
+   ],
+   "segments": [
+    {
+     "segId": "0f77cf86de26#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "簽呈",
+     "source": "原處分機關",
+     "form": "掃描",
+     "date": "114-08-20",
+     "doc_no": null,
+     "summary": "擬處核可",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "18-簽呈_114-08-20.jpg",
+     "manual": null
+    }
+   ]
+  },
+  {
+   "fileId": "ec1e4d1b23be",
+   "originalName": "13-採證影片截圖頁.pdf",
+   "kind": "pdf-text",
+   "status": "done",
+   "textPath": "卷證/13-採證影片截圖頁.txt",
+   "images": [],
+   "segments": [
+    {
+     "segId": "ec1e4d1b23be#0",
+     "fromPage": 1,
+     "toPage": 1,
+     "doc_type": "採證影片",
+     "source": "原處分機關",
+     "form": "文字PDF",
+     "date": "114-06-27",
+     "doc_no": null,
+     "summary": "12秒影片截圖",
+     "confidence": 0.9,
+     "timing": "處分作成前",
+     "suggestedName": "12-採證影片_114-06-27.pdf",
+     "manual": null
+    }
+   ]
+  }
+ ]
+}

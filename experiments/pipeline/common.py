@@ -94,19 +94,27 @@ def _save(case: str | None, step: str, payload, meta: dict):
 
 def call_json(step: str, schema: Type[T], *, system: str, user: str, case: str | None = None,
               images: list[Path] | None = None, cache: bool = False, max_tokens: int = 4096) -> T:
-    """tool-use 強制模型輸出符合 pydantic schema 的 JSON，回傳驗證後的物件。"""
-    sys_blocks, msgs = _build(system, user, images, cache)
-    t = time.monotonic()
-    r = _converse(modelId=MODEL_ID, system=sys_blocks, messages=msgs,
-                  inferenceConfig={"maxTokens": max_tokens, "temperature": 0.1},
-                  toolConfig={"tools": [{"toolSpec": {"name": step, "description": schema.__doc__ or step,
-                                                       "inputSchema": {"json": schema.model_json_schema()}}}],
-                              "toolChoice": {"tool": {"name": step}}})
-    raw = next(c["toolUse"]["input"] for c in r["output"]["message"]["content"] if "toolUse" in c)
-    obj = schema.model_validate(raw)
-    u = r["usage"]
+    """tool-use 強制模型輸出符合 pydantic schema 的 JSON。驗證失敗時把錯誤訊息附回去重試一次（Bedrock 不強制 required）。"""
+    from pydantic import ValidationError
+    tool = {"tools": [{"toolSpec": {"name": step, "description": schema.__doc__ or step, "inputSchema": {"json": schema.model_json_schema()}}}],
+            "toolChoice": {"tool": {"name": step}}}
+    t = time.monotonic(); usage = {"inputTokens": 0, "outputTokens": 0}; last_err = None
+    for attempt in range(2):
+        u = user if not last_err else user + f"\n\n【上次輸出未通過 schema 驗證，請修正並完整填寫所有必填欄位】\n{last_err}"
+        sys_blocks, msgs = _build(system, u, images, cache)
+        r = _converse(modelId=MODEL_ID, system=sys_blocks, messages=msgs,
+                      inferenceConfig={"maxTokens": max_tokens, "temperature": 0.1}, toolConfig=tool)
+        for k in usage:
+            usage[k] += r["usage"][k]
+        raw = next(c["toolUse"]["input"] for c in r["output"]["message"]["content"] if "toolUse" in c)
+        try:
+            obj = schema.model_validate(raw); break
+        except ValidationError as e:
+            last_err = str(e)[:1500]
+            if attempt == 1:
+                raise
     _save(case, step, obj.model_dump(), {"model": MODEL_ID, "latency_s": round(time.monotonic() - t, 1),
-                                          "input_tokens": u["inputTokens"], "output_tokens": u["outputTokens"]})
+                                          "input_tokens": usage["inputTokens"], "output_tokens": usage["outputTokens"], "retried": bool(last_err)})
     return obj
 
 
