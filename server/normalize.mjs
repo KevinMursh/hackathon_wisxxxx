@@ -34,6 +34,15 @@ const TEXT_EXT = new Set(["txt", "md", "csv"]);
 const IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/gif", "image/tiff", "image/bmp"]);
 const VIDEO_MIME = new Set(["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm", "video/x-matroska"]);
 
+/* 外部工具可用性：缺工具不讓整台服務掛掉，改為該格式回 unsupported（附原因） */
+const toolCache = new Map();
+export async function hasTool(bin) {
+  if (!toolCache.has(bin)) toolCache.set(bin, run("which", [bin]).then(() => true).catch(() => false));
+  return toolCache.get(bin);
+}
+export const REQUIRED_TOOLS = ["pdftotext", "pdftoppm", "pdfinfo", "file"];
+export const OPTIONAL_TOOLS = { soffice: "Office 檔（doc/docx/odt/xls/xlsx/ppt/pptx）", ffmpeg: "影片", ffprobe: "影片", qpdf: "PDF 拆檔", unzip: "zip 解壓" };
+
 class NormalizeError extends Error {
   constructor(code, message, cause) { super(message); this.code = code; this.cause = cause; }
 }
@@ -58,9 +67,18 @@ export async function normalize(buffer, originalName, { outDir, fileId } = {}) {
 
     if (mime === "application/pdf") return ok(await fromPdf(buffer, base, dir));
     if (mime && IMAGE_MIME.has(mime)) return ok(await fromImage(buffer, base, dir));
-    if (mime && VIDEO_MIME.has(mime)) return ok(await fromVideo(buffer, base, dir, ext || ft.ext));
-    if (mime === "application/zip" || ft?.ext === "zip") return ok(await fromZip(buffer, base, dir));
-    if (isOffice(ft, ext)) return ok(await fromOffice(buffer, base, dir, ft?.ext ?? ext));
+    if (mime && VIDEO_MIME.has(mime)) {
+      if (!(await hasTool("ffprobe")) || !(await hasTool("ffmpeg"))) { base.warnings.push("ffmpeg/ffprobe 未安裝，影片未解析"); return ok(base); }
+      return ok(await fromVideo(buffer, base, dir, ext || ft.ext));
+    }
+    if (isOffice(ft, ext)) {
+      if (!(await hasTool("soffice"))) { base.warnings.push("LibreOffice 未安裝，Office 檔未解析"); return ok(base); }
+      return ok(await fromOffice(buffer, base, dir, ft?.ext ?? ext));
+    }
+    if (mime === "application/zip" || ft?.ext === "zip") {
+      if (!(await hasTool("unzip"))) { base.warnings.push("unzip 未安裝，壓縮檔未解開"); return ok(base); }
+      return ok(await fromZip(buffer, base, dir));
+    }
     if (mime === "text/plain" || (!ft && TEXT_EXT.has(ext)) || (!ft && looksLikeText(buffer))) return ok(fromText(buffer, base));
     base.warnings.push(`unsupported: mime=${mime ?? "?"} ext=${ext || "?"}`);
     return ok(base);                                     // unsupported 不是錯，是「不呼叫模型」

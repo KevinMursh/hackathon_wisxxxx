@@ -1,0 +1,21 @@
+[Unit]
+Description=訴願智審臺 後端（Node）
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/app/server
+EnvironmentFile=/opt/app/server/env.production
+Environment=NODE_ENV=production
+Environment=PORT=80
+Environment=FRONTEND_DIR=/opt/app/prototype
+ExecStart=/usr/bin/env node server.mjs
+Restart=always
+RestartSec=3
+# 正規化會同時跑 LibreOffice 與 pdftoppm；限制記憶體，OOM 時只有該檔失敗不拖垮整台
+MemoryMax=3G
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

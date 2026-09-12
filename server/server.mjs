@@ -9,16 +9,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { EventEmitter } from "node:events";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-import { normalize, flatten } from "./normalize.mjs";
+import { normalize, flatten, hasTool, REQUIRED_TOOLS, OPTIONAL_TOOLS } from "./normalize.mjs";
 import { classifyAll, DOC_TYPES, SOURCES, NATURE, suggestedName, trueExt, annotateTiming, MODEL } from "./classify.mjs";
 import { ping, REGION } from "./bedrock.mjs";
 import * as s3 from "./store/s3.mjs";
 import * as ddb from "./store/ddb.mjs";
 
-const run = promisify(execFile);
 const PORT = +(process.env.PORT || 8080);
 const MAX_FILE = 100 * 1024 * 1024;
 const MAX_BATCH = 500 * 1024 * 1024;
@@ -271,21 +267,21 @@ app.get("/api/cases/:caseId/audit", async (req, res) => res.json({ entries: awai
 
 /* 自檢 */
 app.get("/api/health", async (_req, res) => {
-  const tools = {};
-  await Promise.all(["pdftotext", "pdftoppm", "pdfinfo", "ffmpeg", "ffprobe", "soffice", "file", "qpdf"].map(async (t) => {
-    try { await run("which", [t]); tools[t] = true; } catch { tools[t] = false; }
-  }));
+  const names = [...REQUIRED_TOOLS, ...Object.keys(OPTIONAL_TOOLS)];
+  const tools = Object.fromEntries(await Promise.all(names.map(async (t) => [t, await hasTool(t)])));
+  const missingRequired = REQUIRED_TOOLS.filter((t) => !tools[t]);
+  const degraded = Object.entries(OPTIONAL_TOOLS).filter(([t]) => !tools[t]).map(([t, what]) => `${t} 缺少 → ${what}無法處理`);
   const [bedrockOk, s3Ok, ddbOk] = await Promise.all([
     ping().then(() => true).catch((e) => { console.error("health bedrock", e.code, e.message); return false; }),
     s3.health(), ddb.health(),
   ]);
-  const ok = bedrockOk && s3Ok && ddbOk && Object.values(tools).every(Boolean);
+  const ok = bedrockOk && s3Ok && ddbOk && !missingRequired.length;
   res.status(ok ? 200 : 503).json({
     ok, version: "0.1.0", region: REGION,
     bedrock: { model: MODEL, reachable: bedrockOk, concurrency: +(process.env.BEDROCK_CONCURRENCY || 3), startInterval: +(process.env.BEDROCK_MIN_INTERVAL || 2) },
     s3: { bucket: s3.BUCKET, prefix: process.env.S3_PREFIX || "", ok: s3Ok },
     dynamodb: { table: ddb.TABLE, ok: ddbOk },
-    tools,
+    tools, missingRequired, degraded,
   });
 });
 

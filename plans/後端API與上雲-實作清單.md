@@ -67,18 +67,18 @@ S3 78 個物件（raw + normalized meta/頁圖），DynamoDB 23 FILE + 44 EVT + 
 
 ## 4. 部署檔 `deploy/`
 
-27. ☐ `ec2-userdata.sh`、`appeal.service`（加 `MemoryMax=1.6G`）、`nginx.conf`、`iam-policy.json` 從部署方案文件落成檔案
-28. ☐ `server/.env.example` 補 `S3_BUCKET`/`S3_PREFIX`/`DDB_TABLE`/`BOX_FILES`/`MODEL`；根 README 環境需求改 Node 20＋外部工具，移除 `requirements.txt` 說明
-29. ☐ 若 IAM Role 建不了：user-data 改為讀 `/home/app/repo/server/.env.production` 裡的 `AWS_ACCESS_KEY_ID/SECRET/SESSION_TOKEN`（機器上手填、不進 repo、賽後撤銷）
+27. ☑ `deploy/node/{setup-tools,user-data,redeploy,push}.sh` + `app.service` + `README.md`（**與隊友 FastAPI 那套並存，未覆蓋**；不用 nginx，Node 直接聽 80 並 serve prototype/）
+28. ☑ `server/.env.example` 補 `S3_BUCKET`/`S3_PREFIX`/`DDB_TABLE`/`BOX_FILES`/`MODEL`；根 README 環境需求改 Node 20＋外部工具，移除 `requirements.txt` 說明
+29. ✗ 若 IAM Role 建不了：user-data 改為讀 `/home/app/repo/server/.env.production` 裡的 `AWS_ACCESS_KEY_ID/SECRET/SESSION_TOKEN`（機器上手填、不進 repo、賽後撤銷）
 
 ## 5. 上雲（你跑，指令在 `docs/部署方案-後端.md` §3）
 
-30. ☐ S3 bucket（block public）＋ CORS
-31. ☐ DynamoDB `appeal-cases`
-32. ☐ IAM Role + Instance Profile（或 §4 第 29 條退路）
-33. ☐ EC2 t3.small、SG 22/80/443、user-data
-34. ☐ ssh 上去填 `.env.production`、`systemctl status appeal`
-35. ☐ HTTPS：`certbot --nginx -d <ip>.nip.io`
+30. ☑ S3 沿用 `ntpc-law3-deploy-229004791954`（已 block public），案件存 `cases/` 前綴
+31. ☑ DynamoDB `appeal-cases`（us-west-2，PAY_PER_REQUEST）
+32. ☑ 沿用 `ntpc-law3-ec2-role`，已補 DynamoDB inline policy
+33. ☑ 沿用現有 `i-0317e2f9af300f2bf`（t3.large、SG 只開 80 給會場四組 IP）——**待隊友點頭才切換 runtime**
+34. ☐ 首次切換要先 SSM 跑 `setup-tools.sh`（LibreOffice 250MB，5–10 分鐘）
+35. ✗ HTTPS：現況 SG 只開 80 給會場 IP，暫不做（要的話走 CloudFront）
 
 ## 6. 雲上驗證
 
@@ -87,6 +87,11 @@ S3 78 個物件（raw + normalized meta/頁圖），DynamoDB 23 FILE + 44 EVT + 
 38. ☐ 瀏覽器開 `https://<host>/` 前端載入（仍 mock，接線是下一輪）
 39. ☐ `journalctl -u appeal` 看 Bedrock 耗時／token log
 40. ☐ 記錄 Live Demo 網址進 `docs/提案/url.md`
+
+## 6.1 待隊友確認才執行
+
+切換會**停掉目前的 Live URL**（http://100.20.156.38/ 現在跑 FastAPI）。步驟與回退方式見 `deploy/node/README.md`。
+兩個 systemd service（`app` / `app-node`）都綁 port 80，不能同時開。
 
 ## 7. 不在本輪
 
