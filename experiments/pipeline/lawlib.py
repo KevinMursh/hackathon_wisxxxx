@@ -37,7 +37,9 @@ def build() -> dict:
         for k in db:
             if k in t:
                 counts[k] += 1
-    sync = json.loads((RUNS / "lawsync.json").read_text(encoding="utf-8")) if (RUNS / "lawsync.json").exists() else None
+    # 同步結果：優先 runs/（雲上按過「同步」），否則用 repo 內快照 kb/lawsync.json
+    _sp = next((p for p in (RUNS / "lawsync.json", Path(__file__).resolve().parents[1] / "kb/lawsync.json") if p.exists()), None)
+    sync = json.loads(_sp.read_text(encoding="utf-8")) if _sp else None
     official = {r["n"]: r for r in (sync or {}).get("results", []) if r.get("officialDate")}
     laws = []
     for k, v in db.items():
