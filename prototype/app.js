@@ -1139,7 +1139,7 @@ async function addFilesLive(list) {
     openAddModal();
   } catch (e) { c.docs = c.docs.filter((d) => !d.pending); renderDocs(); alert(`補件失敗：${e.message || e.code}`); }
 }
-function addFiles(list) {
+function addSupplement(list) {
   const c = S.c; if (!c) return; if (S.status !== "承辦中") return asstSay(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`);
   if (c.live && c.caseId) return addFilesLive(list);
   const pend = [];
@@ -1176,9 +1176,9 @@ $("#amImport").addEventListener("click", () => {
   $("#addModal").classList.remove("on"); renderDocs(); persist(); if (staged[0]) openDoc(staged[0].id); if (S.c.docs.some((d) => d.imported)) asstSuggest();
 });
 $("#addBtn").addEventListener("click", () => { if (S.status !== "承辦中") return alert(`本案狀態為「${S.status}」，不可補件；請先「另存為新草稿」。`); $("#addFile").click(); });
-$("#addFile").addEventListener("change", () => { const fs = [...$("#addFile").files].map((f) => ({ name: f.name, size: f.size, file: f })); $("#addFile").value = ""; if (fs.length) addFiles(fs); });
-$("#addDemo").addEventListener("click", () => { const sup = S.c?.supplement; if (!sup) return; addFiles(sup.files.map(([name, size], i) => ({ name, size, mock: sup.docs[i] }))); $("#addDemo").style.display = "none"; });
-{ const pane = $("#docPane"); ["dragenter", "dragover"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.add("over"); })); ["dragleave", "drop"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.remove("over"); })); pane.addEventListener("drop", (e) => { const fs = [...(e.dataTransfer?.files || [])].map((f) => ({ name: f.name, size: f.size, file: f })); if (fs.length) addFiles(fs); }); }
+$("#addFile").addEventListener("change", () => { const fs = [...$("#addFile").files].map((f) => ({ name: f.name, size: f.size, file: f })); $("#addFile").value = ""; if (fs.length) addSupplement(fs); });
+$("#addDemo").addEventListener("click", () => { const sup = S.c?.supplement; if (!sup) return; addSupplement(sup.files.map(([name, size], i) => ({ name, size, mock: sup.docs[i] }))); $("#addDemo").style.display = "none"; });
+{ const pane = $("#docPane"); ["dragenter", "dragover"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.add("over"); })); ["dragleave", "drop"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.remove("over"); })); pane.addEventListener("drop", (e) => { const fs = [...(e.dataTransfer?.files || [])].map((f) => ({ name: f.name, size: f.size, file: f })); if (fs.length) addSupplement(fs); }); }
 /* ---------- 助手：真案走後端 chat；mock 案走本機規則 ---------- */
 const CHAT_HIST = [];   // 目前案件的對話（重整頁面自 sessionStorage 還原）
 function histKey() { return "ssz.chat." + (S.c?.caseId || S.c?.id || ""); }
