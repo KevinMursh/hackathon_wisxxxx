@@ -10,11 +10,35 @@ const PACK = "../資料集/評測用（勿用於RAG）/case02-廢清法79I駁回
 const tag = (cls, t) => `<span class="tag ${cls}">${t}</span>`;
 
 /* ---------- 共用：文件類型標籤顏色 ---------- */
+/* 27 類色標，與 server/schemas/enums.json 的 doc_type 一一對應；缺色會變成無樣式 */
 const DOCTAG = {
-  "訴願書": "accent", "答辯書": "accent", "裁處書": "neutral", "送達證書": "seal", "檢舉資料": "neutral",
-  "稽查紀錄": "neutral", "採證照片": "amber", "影像放大": "amber", "車籍資料": "neutral", "通知書": "neutral",
-  "陳述意見書": "accent", "係數計算": "neutral", "簽呈": "neutral", "影片": "amber", "卷證目錄": "neutral",
-  "調查筆錄": "neutral", "其他": "neutral",
+  "訴願書": "accent",
+  "訴願委任書": "accent",
+  "答辯書": "accent",
+  "答辯書檢送函": "neutral",
+  "卷證目錄": "neutral",
+  "裁處書": "neutral",
+  "裁處書送達證書": "seal",
+  "陳述意見通知書": "neutral",
+  "通知書送達證書": "seal",
+  "陳述意見書": "accent",
+  "檢舉資料": "neutral",
+  "稽查紀錄": "neutral",
+  "調查筆錄": "neutral",
+  "採證照片": "amber",
+  "影像放大標註": "amber",
+  "採證影片": "amber",
+  "車籍資料": "neutral",
+  "係數計算表": "neutral",
+  "簽呈": "neutral",
+  "檢驗報告": "amber",
+  "契約書": "neutral",
+  "委員會決定書": "seal",
+  "閱覽卷宗申請書": "accent",
+  "言詞辯論申請書": "accent",
+  "言詞陳述申請書": "accent",
+  "參加訴願申請書": "accent",
+  "其他": "neutral",
 };
 
 /* =========================================================
@@ -26,6 +50,7 @@ const CASE_B = {
   cardDesc: "訴願書＋答辯書＋卷證 14 件（含掃描件、採證照片、影片）。訴願人否認拋棄並主張照片模糊；三方對照有兩處衝突。",
   cardTags: [tag("neutral", "廢棄物清理法"), tag("amber", "實體審查"), tag("accent", "20 頁卷宗")],
   expect: "訴願法 79I ・ 駁回", outcome: "go", subj: "廢棄物清理法", art: "79I",
+  hasDemoPack: true,          // S3 demo/case02/ 有 20 檔，可打 POST /api/cases/{id}/demo 真跑
 
   files: [
     ["訴願書_鄭○芳_1140922.pdf", 1496, "訴願書", "appeal"],
@@ -99,7 +124,7 @@ const CASE_B = {
         <h4>裁處內容</h4><p><mark data-ref="pn-amount">處罰鍰新臺幣 3,600 元整。</mark></p>
         <h4>注意事項</h4><p><mark data-ref="pn-coef">依行政罰法第 18 條第 1 項規定，審酌違反義務行為應受責難程度、所生影響，於裁罰準則係數範圍內認定污染程度係數 A＝3。</mark></p>
         <h4>救濟教示</h4><p>受處分人如不服本處分，得於本處分書送達之次日起 30 日內，繕具訴願書並檢附本處分書影本，經由本局向新北市政府提起訴願。</p>` },
-    { id: "served", title: "裁處書送達證書", tag: "送達證書", kind: "image", pages: 1, file: PACK + "03-卷證/02-裁處書送達證書.jpg",
+    { id: "served", title: "裁處書送達證書", tag: "裁處書送達證書", kind: "image", pages: 1, file: PACK + "03-卷證/02-裁處書送達證書.jpg",
       boxes: [
         { ref: "sv-date", x: 26, y: 45.5, w: 64, h: 4.5, label: "送達日期　114 年 9 月 18 日" },
         { ref: "sv-self", x: 26, y: 35.8, w: 48, h: 3, label: "已交付應受送達人本人" },
@@ -117,11 +142,11 @@ const CASE_B = {
       boxes: [{ ref: "ph2-throw", x: 56, y: 50, w: 11, h: 18, label: "右手向下拋擲，煙蒂離手" }] },
     { id: "ph3", title: "採證照片 03（12:40:19）", tag: "採證照片", kind: "image", pages: 1, file: PACK + "03-卷證/05-採證照片/採證照片-03_20250627-124019.jpg",
       boxes: [{ ref: "ph3-butt", x: 57, y: 79, w: 12, h: 10, label: "煙蒂留置於水溝蓋上，駕駛已返回車旁" }] },
-    { id: "zoom", title: "影像放大標註（300%）", tag: "影像放大", kind: "image", pages: 1, file: PACK + "03-卷證/06-影像放大標註.jpg",
+    { id: "zoom", title: "影像放大標註（300%）", tag: "影像放大標註", kind: "image", pages: 1, file: PACK + "03-卷證/06-影像放大標註.jpg",
       boxes: [{ ref: "zoom-butt", x: 52, y: 36, w: 12, h: 10, label: "煙蒂（拋擲中）" }] },
     { id: "vehicle", title: "車籍查詢結果", tag: "車籍資料", kind: "pdf", pages: 1, file: PACK + "03-卷證/07-車籍查詢結果.pdf" },
-    { id: "notice", title: "陳述意見通知書", tag: "通知書", kind: "pdf", pages: 1, file: PACK + "03-卷證/08-陳述意見通知書.pdf" },
-    { id: "served2", title: "通知書送達證書", tag: "送達證書", kind: "image", pages: 1, file: PACK + "03-卷證/09-陳述意見通知書送達證書.jpg",
+    { id: "notice", title: "陳述意見通知書", tag: "陳述意見通知書", kind: "pdf", pages: 1, file: PACK + "03-卷證/08-陳述意見通知書.pdf" },
+    { id: "served2", title: "通知書送達證書", tag: "通知書送達證書", kind: "image", pages: 1, file: PACK + "03-卷證/09-陳述意見通知書送達證書.jpg",
       boxes: [{ ref: "sv2-date", x: 26, y: 45.5, w: 64, h: 4.5, label: "送達日期　114 年 7 月 21 日" }] },
     { id: "statement", title: "訴願人陳述意見書", tag: "陳述意見書", kind: "image", pages: 1, file: PACK + "03-卷證/10-陳述意見書.jpg",
       boxes: [
@@ -129,13 +154,13 @@ const CASE_B = {
         { ref: "st-arg1", x: 11, y: 41.5, w: 79, h: 10.5, label: "二、照片很模糊、看不到煙蒂" },
         { ref: "st-date", x: 8, y: 82, w: 26, h: 3, label: "114 年 7 月 30 日" },
       ] },
-    { id: "coef", title: "裁罰係數計算表", tag: "係數計算", kind: "pdf", pages: 1, file: PACK + "03-卷證/11-裁罰係數計算表.pdf" },
+    { id: "coef", title: "裁罰係數計算表", tag: "係數計算表", kind: "pdf", pages: 1, file: PACK + "03-卷證/11-裁罰係數計算表.pdf" },
     { id: "memo", title: "裁處簽呈", tag: "簽呈", kind: "image", pages: 1, file: PACK + "03-卷證/12-裁處簽呈.jpg",
       boxes: [
         { ref: "memo-review", x: 12, y: 38, w: 78, h: 14, label: "說明二：逐幀複審，14 秒拋擲、19 秒留置，車主所稱不予採信" },
         { ref: "memo-ok", x: 8, y: 73, w: 30, h: 6, label: "局長　可　9/10" },
       ] },
-    { id: "video", title: "違規採證影片（12 秒）", tag: "影片", kind: "video", pages: 1, file: PACK + "03-卷證/13-採證影片/違規採證影片_20250627-1240.mp4",
+    { id: "video", title: "違規採證影片（12 秒）", tag: "採證影片", kind: "video", pages: 1, file: PACK + "03-卷證/13-採證影片/違規採證影片_20250627-1240.mp4",
       cues: [["vid-9", 1, "12:40:09 駕駛立於車旁"], ["vid-14", 6, "12:40:14 拋擲煙蒂"], ["vid-19", 11, "12:40:19 煙蒂留置、返回車內"]] },
   ],
 
@@ -341,7 +366,7 @@ const CASE_A = {
         <p class="num"><mark data-ref="ap-recv">環保局收文 114.09.25</mark></p>` },
     { id: "penalty", title: "裁處書影本", tag: "裁處書", kind: "text", pages: 1, file: null,
       html: `<div class="doc-meta num">發文日期：112-01-10　發文字號：新北環稽字第 41-112-010273 號</div><h4>違反事實</h4><p><mark data-ref="pn-fact">受處分人於 111 年 12 月 3 日在本市○○區○○路旁棄置一般廢棄物。</mark></p><h4>裁處內容</h4><p><mark data-ref="pn-amount">處罰鍰新臺幣 1,200 元整。</mark></p><h4>救濟教示</h4><p>如不服本處分，得於送達之次日起 30 日內提起訴願。</p>` },
-    { id: "served", title: "送達證書（轉錄）", tag: "送達證書", kind: "text", pages: 1, file: null,
+    { id: "served", title: "送達證書（轉錄）", tag: "裁處書送達證書", kind: "text", pages: 1, file: null,
       html: `<div class="doc-meta num">文件類型：送達證書（掃描件 OCR 轉錄）</div><h4>送達文書</h4><p>新北環稽字第 41-112-010273 號裁處書</p><h4>送達方式</h4><p>☑ 郵務送達（掛號）</p><h4>送達結果</h4><p><mark data-ref="sv-self">☐ 已交付應受送達人本人　☑ 已交付有辨別事理能力之同居人（行政程序法第 73 條）</mark></p><h4>送達日期</h4><p><mark data-ref="sv-date">中華民國 112 年 2 月 7 日</mark></p><h4>收領人簽章</h4><p><mark data-ref="sv-sign">洪○○（弟）　蓋章</mark></p>` },
   ],
   refs: { "ap-applicant": ["appeal", "mark"], "ap-agent": ["appeal", "mark"], "ap-agency": ["appeal", "mark"], "ap-orderdate": ["appeal", "mark"], "ap-orderno": ["appeal", "mark"], "ap-claim": ["appeal", "mark"], "ap-served": ["appeal", "mark"], "ap-receiver": ["appeal", "mark"], "ap-recv": ["appeal", "mark"], "pn-fact": ["penalty", "mark"], "pn-amount": ["penalty", "mark"], "sv-self": ["served", "mark"], "sv-date": ["served", "mark"], "sv-sign": ["served", "mark"] },
@@ -762,7 +787,11 @@ const SAMPLE_TEXT = `訴 願 書
 /* =========================================================
    v3 補充：文件來源、異議處理規則、AI 判定、最終決定文本
    ========================================================= */
-const SRC_ORDER = ["訴願人", "原處分機關", "第三方", "本局"];
+/* 來源五類（與後端 server/schemas/enums.json 的 source 對齊）。
+   「未知」是正式值：文件內容沒有印信／抬頭／署名可判定提出方時不猜。 */
+const SRC_ORDER = ["訴願人", "原處分機關", "第三方", "本局", "未知"];
+/* 進三方對照的來源：本局是受理機關、未知無從歸屬，都不進對照欄 */
+const SRC_IN_TRI = new Set(["訴願人", "原處分機關", "第三方"]);
 const DOC_SRC = {
   appeal: "訴願人", statement: "訴願人", contract: "訴願人",
   defense: "原處分機關", index: "原處分機關", penalty: "原處分機關", insp: "原處分機關", zoom: "原處分機關",

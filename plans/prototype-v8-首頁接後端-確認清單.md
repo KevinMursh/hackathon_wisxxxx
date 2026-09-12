@@ -23,9 +23,9 @@
 
 | # | 項目 | 說明 | 估時 |
 |---|---|---|---|
-| B1 | ☐ `GET /api/cases/{id}/files/{fileId}/text` | 回 `{fileId, pages, textPerPage:[…]}`，從 S3 `normalized/{fileId}/meta.json` 讀。供「擷取文字」檢視與分析階段 `refs` 的 `text` 型錨點反白 | 0.5h |
-| B2 | ☐ `POST /api/cases/{id}/demo` | body `{pack:"case02", messy:false}`。從 S3 `demo/case02/**` 讀檔 → 走與上傳相同的 job 流程（不是查表）。需先把卷宗包上傳到 S3 一次 | 1h |
-| B3 | ☐ `GET files` 增補欄位 | 每檔加 `textUrl`（B1 的路徑）、`segments[].pageImageUrl`（該段首頁圖，清單縮圖用） | 0.3h |
+| B1 | ☑ `GET /api/cases/{id}/files/{fileId}/text` | 回 `{fileId, pages, textPerPage:[…]}`，從 S3 `normalized/{fileId}/meta.json` 讀。供「擷取文字」檢視與分析階段 `refs` 的 `text` 型錨點反白 | 0.5h |
+| B2 | ☑ `POST /api/cases/{id}/demo` | body `{pack:"case02", messy:false}`。從 S3 `demo/case02/**` 讀檔 → 走與上傳相同的 job 流程（不是查表）。需先把卷宗包上傳到 S3 一次 | 1h |
+| B3 | ☑ `GET files` 增補欄位 | 每檔加 `textUrl`（B1 的路徑）、`segments[].pageImageUrl`（該段首頁圖，清單縮圖用） | 0.3h |
 | B4 | ☐ `GET /api/cases` | 案件清單（案件庫卡要用）：`[{caseId, files, updatedAt, 主要 doc_type}]`。DynamoDB 需加 GSI 或用固定 PK 存索引 | 0.5h |
 | B5 | ☐ 保留期與清理 | demo 反覆上傳會累積 S3／DynamoDB；加 `DELETE /api/cases/{id}` 或 S3 lifecycle 7 天 | 0.3h |
 | B6 | ☐ 部署 + 雲上驗證 B1–B4 | `push.sh` | 0.3h |
@@ -36,18 +36,18 @@
 
 | # | 項目 | 說明 |
 |---|---|---|
-| F1 | ☐ `SRC_ORDER` 加「未知」 | 卷宗瀏覽器四組 → **五組**；三方對照仍只吃訴願人／原處分機關／第三方，「未知」與「本局」不進對照 |
-| F2 | ☐ `DOCTAG` 補到 27 類 | 色標對照表照 `server/schemas/enums.json`；缺色會變無樣式 |
-| F3 | ☐ doc 物件改形狀 | `{fileId, segId, doc_type, source, nature, timing, suggestedName, originalName, summary, status, pages, fromPage, toPage, rawUrl, pageImageUrls}`；`autoClassify()` 退場 |
-| F4 | ☐ 卷宗清單支援 multi-segment | 依 D2：一個 segment 一列，顯示 `doc_type` 與頁碼範圍 |
-| F5 | ☐ `status` 呈現 | `duplicate` 灰字「重複」、`error` 紅字＋錯誤碼、`container` 不單獨列（只列子檔）、`excluded` 灰字 |
-| F6 | ☐ 保留 File 物件 | `addFiles()` 目前只留 name/size，改存原始 `File` 以便 FormData |
+| F1 | ☑ `SRC_ORDER` 加「未知」 | 卷宗瀏覽器四組 → **五組**；三方對照仍只吃訴願人／原處分機關／第三方，「未知」與「本局」不進對照 |
+| F2 | ☑ `DOCTAG` 補到 27 類 | 色標對照表照 `server/schemas/enums.json`；缺色會變無樣式 |
+| F3 | ☑ doc 物件改形狀 | `{fileId, segId, doc_type, source, nature, timing, suggestedName, originalName, summary, status, pages, fromPage, toPage, rawUrl, pageImageUrls}`；`autoClassify()` 退場 |
+| F4 | ☑ 卷宗清單支援 multi-segment | 依 D2：一個 segment 一列，顯示 `doc_type` 與頁碼範圍 |
+| F5 | ☑ `status` 呈現 | `duplicate` 灰字「重複」、`error` 紅字＋錯誤碼、`container` 不單獨列（只列子檔）、`excluded` 灰字 |
+| F6 | ☑ 保留 File 物件 | `addFiles()` 目前只留 name/size，改存原始 `File` 以便 FormData |
 
 ### 2.2 要後端（接線）
 
 | # | 項目 | 依賴 |
 |---|---|---|
-| F7 | ☐ `prototype/api.js` | 統一入口：`health / uploadFiles / streamJob / listFiles / patchFile / audit / loadDemo / fetchText`；含錯誤物件與 403 重取（D5） | — |
+| F7 | ◐ `prototype/api.js`（端點與 toDocs 已寫並驗過，尚未被畫面呼叫） | 統一入口：`health / uploadFiles / streamJob / listFiles / patchFile / audit / loadDemo / fetchText`；含錯誤物件與 403 重取（D5） | — |
 | F8 | ☐ 首頁上傳接 `POST files` | 產 caseId（D4）→ 202 → 進 s-run；`health` 不 ok 禁用按鈕（D6） | — |
 | F9 | ☐ 分析中步驟一吃 SSE | `normalized` 先顯示格式／頁數；`result` 逐箱到、前端排隊演出逐檔浮現；`container` 顯示「壓縮檔展開 N 份」；`fatal` 顯示錯誤 | — |
 | F10 | ☐ 進工作畫面改讀 `GET files` | `groups` 直接畫五組；`cutoffDate` 存起來給分析階段 | — |
@@ -92,6 +92,16 @@
 | L9 | 關掉後端（或斷網）後上傳 | 顯示錯誤碼與訊息，**不出現假資料** |
 | L10 | 放置 20 分鐘後再點文件 | presigned 過期自動換新 URL，仍可開啟 |
 | L11 | 400px 寬 | 無橫向捲動；主控台無錯誤 |
+
+## 4.1 本輪額外決定（2026-09-12）
+
+| 決定 | 內容 |
+|---|---|
+| demo 入口只留一個 | 上傳區的「載入 case02 卷宗包／以亂檔名載入」小字連結**移除**，只留「清除」；示範案件卡成為唯一 demo 入口 |
+| 亂檔名不砍 | 「以亂檔名 →」移到 case02 卡片上當次要動作——它證明判定看內容不看檔名，是系統重點 |
+| 只有 case02 有卷宗包 | 卡片以 `hasDemoPack` 標記；A／C 兩案沒有 S3 卷宗包，不顯示亂檔名入口，維持 mock |
+| mock 詞彙對齊後端 | `data.js` 的 5 個舊粗標籤（送達證書／影像放大／通知書／係數計算／影片）改成後端 27 類的正式名稱，mock 與真資料不再兩套詞 |
+| 內嵌大圖也送模型 | 見 `文件歸戶與自動命名-實作計畫.md`：`pdfimages` 偵測 ≥500×300，解決「有文字層但頁面壓著照片」的流失 |
 
 ## 5. 不在本輪
 

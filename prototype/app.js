@@ -16,7 +16,8 @@ const today = () => toMg(Date.now());
 const J = (ref, text) => ref ? `<span class="jump" data-jump="${ref}">${text}</span>` : text;
 const plain = (h) => String(h ?? "").replace(/<[^>]+>/g, "");
 const PN = { A: "甲", B: "乙", C: "丙", X: "甲" };
-const TYPES = ["訴願書", "答辯書", "裁處書", "送達證書", "檢舉資料", "稽查紀錄", "採證照片", "影像放大", "車籍資料", "通知書", "陳述意見書", "係數計算", "簽呈", "影片", "卷證目錄", "調查筆錄", "決定書", "其他"];
+/* 修正歸戶下拉用；與後端 doc_type 封閉清單一致（server/schemas/enums.json） */
+const TYPES = ["訴願書", "訴願委任書", "答辯書", "答辯書檢送函", "卷證目錄", "裁處書", "裁處書送達證書", "陳述意見通知書", "通知書送達證書", "陳述意見書", "檢舉資料", "稽查紀錄", "調查筆錄", "採證照片", "影像放大標註", "採證影片", "車籍資料", "係數計算表", "簽呈", "檢驗報告", "契約書", "委員會決定書", "閱覽卷宗申請書", "言詞辯論申請書", "言詞陳述申請書", "參加訴願申請書", "其他"];
 
 /* ---------- 全域狀態 ---------- */
 const S = { c: null, live: false, libId: null, status: "承辦中", served: null, recv: null, stances: {}, plan: null, paras: [], versions: [], audit: [], objections: [], doc: null, zoom: 1, final: null, court: null, finalDiff: null, labels: [] };
@@ -45,7 +46,14 @@ function renderFiles() {
   $("#runBtn").disabled = n === 0;
   $("#fileHint").textContent = n === 0 ? "尚未加入檔案" : `${n} 個檔案・${(kb / 1024).toFixed(1)} MB・由 Claude 判定類型與來源後直接分析`;
 }
-function addFiles(list) { Array.from(list).forEach((f) => { if (FILES.some((x) => x.name === f.name)) return; FILES.push({ name: f.name, kb: Math.max(1, Math.round((f.size || 0) / 1024)), docId: undefined, base: "B" }); }); renderFiles(); }
+function addFiles(list) {
+  // 保留原始 File 物件：接後端時要用 FormData 上傳，只有檔名是不夠的
+  Array.from(list).forEach((f) => {
+    if (FILES.some((x) => x.name === f.name && x.kb === Math.round((f.size || 0) / 1024))) return;
+    FILES.push({ name: f.name, kb: Math.max(1, Math.round((f.size || 0) / 1024)), file: f, docId: undefined, base: "B" });
+  });
+  renderFiles();
+}
 const drop = $("#drop"), fileInput = $("#file");
 drop.addEventListener("click", () => fileInput.click());
 drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
@@ -53,12 +61,6 @@ fileInput.addEventListener("change", (e) => { addFiles(e.target.files); fileInpu
 ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
-function loadPack(messy) {
-  FILES = CASE_B.files.map(([name, kb, tagName, docId]) => ({ name: messy ? (MESSY_NAMES[docId] || name) : name, kb, docId, base: "B" }));
-  renderFiles();
-}
-$("#packBtn").addEventListener("click", (e) => { e.preventDefault(); loadPack(false); });
-$("#messyBtn").addEventListener("click", (e) => { e.preventDefault(); loadPack(true); });
 $("#clearBtn").addEventListener("click", (e) => { e.preventDefault(); FILES = []; renderFiles(); });
 $("#runBtn").addEventListener("click", () => runCase(autoClassify()));
 
@@ -66,8 +68,20 @@ $("#runBtn").addEventListener("click", () => runCase(autoClassify()));
 // v7：貼上訴願書文字的即時解析入口自首頁移除；parseAppeal／buildLive 保留供 pipeline 參考
 
 /* ---------- 示範案件卡與案件庫卡 ---------- */
-$("#caseGrid").innerHTML = CASES.map((c, i) => `<button class="case-card" data-i="${i}"><span class="no num">案號 ${c.no}</span><h3>${c.cardTitle}</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${c.cardTags.slice(1, 2).join("")}</div><div class="foot"><span>${c.name}</span><span class="go">開始分析 →</span></div></button>`).join("");
-$$(".case-card").forEach((el) => el.addEventListener("click", () => runCase(structuredClone(CASES[+el.dataset.i]))));
+/* 示範案件卡是唯一的 demo 入口（v8：上傳區的小字連結移除）。
+   「以亂檔名」保留在卡片上——它證明判定看內容不看檔名，是這套系統的重點之一。 */
+$("#caseGrid").innerHTML = CASES.map((c, i) => `<div class="case-card" data-i="${i}"><span class="no num">案號 ${c.no}</span><h3>${c.cardTitle}</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${c.cardTags.slice(1, 2).join("")}</div><div class="foot"><span>${c.name}</span><span style="display:flex;gap:14px;align-items:center">${c.hasDemoPack ? `<span class="alt" data-messy="${i}" title="檔名換成 IMG_3985.jpg／scan_0001.pdf，證明判定看內容不看檔名">以亂檔名 →</span>` : ""}<span class="go" data-run="${i}">開始分析 →</span></span></div></div>`).join("");
+$$("#caseGrid .go").forEach((el) => el.addEventListener("click", () => startDemo(+el.dataset.run, false)));
+$$("#caseGrid .alt").forEach((el) => el.addEventListener("click", (e) => { e.stopPropagation(); startDemo(+el.dataset.messy, true); }));
+$$(".case-card").forEach((el) => el.addEventListener("click", (e) => { if (!e.target.closest(".go,.alt")) startDemo(+el.dataset.i, false); }));
+
+/* 目前仍走 mock；F13 會改成打 POST /api/cases/{id}/demo 真跑一次 */
+function startDemo(i, messy) {
+  const c = structuredClone(CASES[i]);
+  if (messy) c.docs = c.docs.map((d) => ({ ...d, origName: MESSY_NAMES[d.id] || d.origName || d.title }));
+  runCase(c);
+}
+
 function renderLibCard() {}
 
 $("#libBtn").addEventListener("click", openLibrary);
@@ -233,12 +247,25 @@ $$(".tab").forEach((b) => b.addEventListener("click", () => { $$(".tab").forEach
 })();
 
 /* ---------- 卷宗瀏覽器 ---------- */
-const KIND = { text: "文字", image: "掃描/照片", pdf: "PDF", video: "影片", missing: "—" };
+/* 後端 kind（normalize 的判定）→ 畫面文字 */
+const KIND = { "pdf-text": "文字 PDF", "pdf-scan": "掃描 PDF", image: "掃描/照片", video: "影片", office: "Office", text: "純文字", unsupported: "不支援",
+               text_: "文字", pdf: "PDF", missing: "—" };
 S.docMode = {};
 function renderDocs() {
   const c = S.c; $("#docCount").textContent = `${c.docs.length} 件`;
   const groups = SRC_ORDER.map((src) => [src, c.docs.filter((d) => (d.src || "原處分機關") === src)]).filter(([, l]) => l.length);
-  $("#docList").innerHTML = groups.map(([src, list]) => `<div class="grp" data-g="${src}"><span class="tri">▾</span><span class="srct ${src}" style="margin:0">${src}</span><span>${src === "第三方" ? "獨立證據" : src === "本局" ? "受理機關" : ""}</span><span class="n">${list.length}</span></div><div class="items">${list.map((d) => `<div class="item ${d.include === false ? "skip" : ""}" data-doc="${d.id}" title="${esc(d.origName ? "原檔名：" + d.origName : d.title)}"><i></i><span class="t">${esc(d.stdName || d.title)}</span><span class="m">${d.pages || 1} 頁・${KIND[d.kind] || ""}</span><span class="tag neutral tagbtn" data-edit="${d.id}" title="修正類型／來源" style="font-size:10px">${d.tag} ✎</span><span class="sum">${esc(d.summary || "")}</span></div>`).join("")}</div>`).join("");
+  const GNOTE = { "第三方": "獨立證據", "本局": "受理機關", "未知": "內容無從判定提出方" };
+  $("#docList").innerHTML = groups.map(([src, list]) => `<div class="grp" data-g="${src}"><span class="tri">▾</span><span class="srct ${src}" style="margin:0">${src}</span><span>${GNOTE[src] || ""}</span><span class="n">${list.length}</span></div><div class="items">${list.map((d) => {
+    const bad = d.err ? "err" : d.dup ? "dup" : d.container ? "box" : "";
+    const meta = d.partOf ? `第 ${d.fromPage}–${d.toPage} 頁・${d.partOf.n}/${d.partOf.total}`
+      : d.duration ? `${d.duration}s・影片`
+      : `${d.pages || 1} 頁・${KIND[d.kind] || ""}`;
+    const badge = d.err ? `<span class="tag err" style="font-size:10px">讀取失敗</span>`
+      : d.dup ? `<span class="tag neutral" style="font-size:10px">重複</span>`
+      : d.container ? `<span class="tag neutral" style="font-size:10px">壓縮檔</span>`
+      : `<span class="tag ${DOCTAG[d.tag] || "neutral"} tagbtn" data-edit="${d.id}" title="修正類型／來源" style="font-size:10px">${esc(d.tag)} ✎</span>`;
+    return `<div class="item ${d.include === false ? "skip" : ""} ${bad}" data-doc="${d.id}" title="${esc(d.origName ? "原檔名：" + d.origName : d.title)}"><i></i><span class="t">${esc(d.stdName || d.title)}</span><span class="m">${meta}</span>${badge}<span class="sum">${esc(d.summary || "")}</span></div>`;
+  }).join("")}</div>`).join("");
   $$("#docList .grp").forEach((g) => g.addEventListener("click", () => { g.classList.toggle("closed"); g.querySelector(".tri").textContent = g.classList.contains("closed") ? "▸" : "▾"; }));
   $$("#docList .item").forEach((b) => b.addEventListener("click", () => openDoc(b.dataset.doc)));
   $$("#docList .tagbtn").forEach((t) => t.addEventListener("click", (e) => { e.stopPropagation(); openTagPop(t.dataset.edit, t); }));
