@@ -1,0 +1,120 @@
+{
+  "checkedAt": "2026-09-12 21:27",
+  "source": "law.moj.gov.tw LawAll.aspx",
+  "results": [
+    {
+      "n": "訴願法",
+      "datasetDate": "101-06-27",
+      "officialDate": "101-06-27",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 101,
+      "status": "same"
+    },
+    {
+      "n": "廢棄物清理法",
+      "datasetDate": "106-06-14",
+      "officialDate": "115-07-15",
+      "effective": "117-07-15",
+      "pendingArticles": true,
+      "arts": 91,
+      "status": "changed"
+    },
+    {
+      "n": "洗錢防制法",
+      "datasetDate": "113-07-31",
+      "officialDate": "113-07-31",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 31,
+      "status": "same"
+    },
+    {
+      "n": "空氣污染防制法",
+      "datasetDate": "107-08-01",
+      "officialDate": "107-08-01",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 100,
+      "status": "same"
+    },
+    {
+      "n": "噪音管制法",
+      "datasetDate": "114-12-26",
+      "officialDate": "114-12-26",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 37,
+      "status": "same"
+    },
+    {
+      "n": "建築法",
+      "datasetDate": "111-05-11",
+      "officialDate": "111-05-11",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 123,
+      "status": "same"
+    },
+    {
+      "n": "行政罰法",
+      "datasetDate": "111-06-15",
+      "officialDate": "111-06-15",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 46,
+      "status": "same"
+    },
+    {
+      "n": "行政程序法",
+      "datasetDate": "110-01-20",
+      "officialDate": "110-01-20",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 176,
+      "status": "same"
+    },
+    {
+      "n": "行政執行法",
+      "datasetDate": "99-02-03",
+      "officialDate": "99-02-03",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 45,
+      "status": "same"
+    },
+    {
+      "n": "民法",
+      "datasetDate": "110-01-20",
+      "officialDate": "115-08-17",
+      "effective": null,
+      "pendingArticles": true,
+      "arts": 1439,
+      "status": "changed"
+    },
+    {
+      "n": "政府資訊公開法",
+      "datasetDate": "94-12-28",
+      "officialDate": "94-12-28",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 24,
+      "status": "same"
+    },
+    {
+      "n": "違反廢棄物清理法罰鍰額度裁罰準則",
+      "datasetDate": "110-03-18",
+      "officialDate": "110-03-18",
+      "effective": null,
+      "pendingArticles": false,
+      "arts": 6,
+      "status": "same"
+    }
+  ],
+  "summary": {
+    "checked": 12,
+    "changed": 2,
+    "same": 10,
+    "added": 0
+  }
+}
