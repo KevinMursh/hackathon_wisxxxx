@@ -99,8 +99,8 @@ v6 加的「法規庫」畫面（法規／函釋、修正日期、三時點、�
 | P8 | s6 草稿 | 主文與款次＝標準答案（case02：駁回、§79 I）；純文字含主文／事實／理由／據上論結／教示；草稿內所有條號查核非 `unknown_law`；理由段涵蓋標準答案 7 點中 ≥ 6 |
 | P9 | case03 不改任何東西 | 主文＝撤銷、§81 I；爭點含行政罰法 §27 裁處權時效；草稿無 case02 字眼 |
 | P10 | 異議 | 對爭點 2 填「照片模糊」→ 無法採納＋指向影像放大標註與影片幀；對爭點 3 填「未個別審酌」→ 回覆有理由且引裁罰係數表 |
-| P11 ✅本機／☐雲上 | API | `POST analyze` → SSE 五個 step 事件順序正確 → `GET analysis` 形狀通過前端 `data.js` 同名欄位 |
-| P12 | 雲上 | 同一組 curl 在 `http://100.20.156.38/api/…` 跑過；journal 有每次呼叫的 ms／tokens |
+| P11 ✅ | API | `POST analyze` → SSE 五個 step 事件順序正確 → `GET analysis` 形狀通過前端 `data.js` 同名欄位 |
+| P12 ✅ | 雲上 | 同一組 curl 在 `http://100.20.156.38/api/…` 跑過；journal 有每次呼叫的 ms／tokens |
 | P14 | 法規庫 | `lawlib.laws` 12 部日期／條數與前端 LAWLIB 一致；函釋 12、判解 19 |
 | P15 | 同步 | `sync_laws` 回 12 部比對結果；廢清法標 changed（官方 115-07-15）；裁罰準則 added；`lawsync.json` 可餵前端 syncLog |
 | P16 | 三時點 | case02 每條法規 version 為「一致」；case C（洗錢防制法，行為 113-02-07，修正 113-07-31）→ 「須依行政罰法 §5 比較」且 alert 由比對產生 |
@@ -120,3 +120,11 @@ v6 加的「法規庫」畫面（法規／函釋、修正日期、三時點、�
 - 自訓／微調模型、Textract OCR、Agent 自主規劃
 - 主管核可流程、登入
 - 合併卷宗真拆檔（隊友 v5）
+
+
+## 9. 雲上驗收紀錄（2026-09-12 晚）
+
+- 分析服務 `analysis.service` 在 `i-0317e2f9af300f2bf` :8100（localhost），`/api/analysis/health` ok、ddb=true
+- `final01`（隊友雲端真實上傳的 case02 亂檔名版，29 檔）：`POST analyze` → 5 步 237 秒 → 駁回 §79 I、3 爭點、相似 5 件（3 件 borrow）、引用 0 unknown、三時點警示（廢清法 115-07-15）、錨點 60、未定位引句 1
+- 異議：case02「照片模糊」「未個別審酌」→ 無法採納（附卷證）；case03「機關未附複查證據」→ 採納 → drafts.v2
+- 尚未：Node 加 `analysis-proxy.mjs` 兩行（隊友）→ 外部才打得到 :8100；前端把樣本 URL 換成 `/api/cases/{id}/analysis`
