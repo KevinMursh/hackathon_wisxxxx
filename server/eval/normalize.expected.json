@@ -1,0 +1,266 @@
+{
+  "_comment": "正規化驗證正解。path 相對於 server/eval/；正解由檔案本身推得（頁數、時長、必含文字），不需人工標註。",
+  "_pack": "../../資料集/評測用（勿用於RAG）/case02-廢清法79I駁回/卷宗包",
+  "_samples": "../../docs/訴願書跟答辯書範例",
+  "cases": [
+    {
+      "path": "$pack/01-訴願書/訴願書_鄭○芳_1140922.pdf",
+      "kind": "pdf-text",
+      "pages": 3,
+      "images": 2,
+      "mustContain": [
+        "訴願",
+        "鄭○芳",
+        "41-114-090351"
+      ]
+    },
+    {
+      "path": "$pack/02-答辯書/答辯書及檢送函_環保局_1141006.pdf",
+      "kind": "pdf-text",
+      "pages": 3,
+      "images": 2,
+      "mustContain": [
+        "答辯",
+        "1143520188"
+      ]
+    },
+    {
+      "path": "$pack/03-卷證/00-卷證目錄.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/01-裁處書正本.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1,
+      "mustContain": [
+        "41-114-090351",
+        "114",
+        "9",
+        "16"
+      ]
+    },
+    {
+      "path": "$pack/03-卷證/02-裁處書送達證書.jpg",
+      "kind": "image",
+      "pages": 1,
+      "images": 1,
+      "textMax": 0
+    },
+    {
+      "path": "$pack/03-卷證/03-民眾檢舉案件受理單.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1,
+      "mustContain": [
+        "檢舉"
+      ]
+    },
+    {
+      "path": "$pack/03-卷證/04-稽查工作紀錄表.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/05-採證照片彙整頁.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/05-採證照片/採證照片-01_20250627-124009.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/05-採證照片/採證照片-02_20250627-124014.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/05-採證照片/採證照片-03_20250627-124019.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/06-影像放大標註.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/07-車籍查詢結果.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1,
+      "mustContain": [
+        "車"
+      ]
+    },
+    {
+      "path": "$pack/03-卷證/08-陳述意見通知書.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1,
+      "mustContain": [
+        "陳述意見",
+        "1143451762"
+      ]
+    },
+    {
+      "path": "$pack/03-卷證/09-陳述意見通知書送達證書.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/10-陳述意見書.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/11-裁罰係數計算表.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1,
+      "mustContain": [
+        "1,200",
+        "3,600"
+      ]
+    },
+    {
+      "path": "$pack/03-卷證/12-裁處簽呈.jpg",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/13-採證影片截圖頁.pdf",
+      "kind": "pdf-text",
+      "pages": 1,
+      "images": 1
+    },
+    {
+      "path": "$pack/03-卷證/13-採證影片/違規採證影片_20250627-1240.mp4",
+      "kind": "video",
+      "duration": [
+        11,
+        13
+      ],
+      "images": 3
+    },
+    {
+      "path": "$pack/卷宗全卷合併.pdf",
+      "kind": "pdf-text",
+      "pages": 20,
+      "images": 2,
+      "mustContain": [
+        "訴願",
+        "答辯",
+        "送達證書",
+        "41-114-090351"
+      ]
+    },
+    {
+      "path": "$samples/訴願委任書.odt",
+      "kind": "office",
+      "pages": [
+        1,
+        2
+      ],
+      "mustContain": [
+        "委任"
+      ]
+    },
+    {
+      "path": "$samples/閱覽卷宗申請書.odt",
+      "kind": "office",
+      "pages": [
+        1,
+        2
+      ],
+      "mustContain": [
+        "閱覽"
+      ]
+    },
+    {
+      "path": "$samples/言詞辯論申請書.odt",
+      "kind": "office",
+      "pages": [
+        1,
+        2
+      ],
+      "mustContain": [
+        "言詞辯論"
+      ]
+    },
+    {
+      "path": "$samples/訴願書範例(地價稅).pdf",
+      "kind": "pdf-text",
+      "mustContain": [
+        "地價稅"
+      ]
+    },
+    {
+      "path": "fixtures/其實是jpg.pdf",
+      "kind": "image",
+      "images": 1,
+      "warningsMatch": "does not match"
+    },
+    {
+      "path": "fixtures/其實是pdf.doc",
+      "kind": "pdf-text",
+      "pages": 1,
+      "warningsMatch": "does not match"
+    },
+    {
+      "path": "fixtures/沒副檔名",
+      "kind": "pdf-text",
+      "pages": 1
+    },
+    {
+      "path": "fixtures/照片.heic",
+      "kind": "image",
+      "images": 1
+    },
+    {
+      "path": "fixtures/訴願委任書.docx",
+      "kind": "office",
+      "mustContain": [
+        "委任"
+      ]
+    },
+    {
+      "path": "fixtures/備忘.txt",
+      "kind": "text",
+      "mustContain": [
+        "114年9月22日"
+      ]
+    },
+    {
+      "path": "fixtures/亂碼.bin",
+      "kind": "unsupported"
+    },
+    {
+      "path": "fixtures/truncated.pdf",
+      "ok": false,
+      "error": "NORMALIZE_FAILED"
+    },
+    {
+      "path": "fixtures/掃描兩頁.pdf",
+      "kind": "pdf-scan",
+      "pages": 2,
+      "images": 2,
+      "textMax": 20
+    },
+    {
+      "path": "fixtures/卷證打包.zip",
+      "kind": "zip",
+      "children": 3,
+      "childKinds": [
+        "pdf-text",
+        "image",
+        "text"
+      ]
+    }
+  ]
+}
