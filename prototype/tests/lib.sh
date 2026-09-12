@@ -6,7 +6,7 @@ B="${B:-$HOME/.claude/skills/gstack/browse/dist/browse}"
 [ -x "$B" ] || { echo "需要 gstack browse：$B"; exit 2; }
 PORT="${PORT:-8765}"
 if ! curl -s -m 2 "http://localhost:$PORT/prototype/index.html" >/dev/null; then (cd "$ROOT" && python3 -m http.server "$PORT" >/dev/null 2>&1 &); sleep 1; fi
-URL="http://localhost:$PORT/prototype/index.html"
+URL="http://localhost:$PORT/prototype/index.html?cb=$RANDOM$RANDOM"   # 防 Chromium 對 http.server 的啟發式快取拿到舊 index.html
 PASS=0; FAIL=0
 js() { "$B" js "$1"; }
 check() { # check "名稱" "JS 運算式（回 true 才過）"
