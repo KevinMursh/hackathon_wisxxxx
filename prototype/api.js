@@ -121,7 +121,7 @@ function toDocs(payload) {
     const base = {
       fileId: f.fileId, origName: f.originalName, status: f.status,
       kind: f.kind, pages: f.pages, duration: f.duration,
-      file: f.rawUrl || null, textUrl: f.textUrl || null,
+      file: f.rawUrl || null, downloadUrl: f.downloadUrl || f.rawUrl || null, textUrl: f.textUrl || null,
       pageImageUrls: f.pageImageUrls || [], imagePages: f.imagePages || [],
       contentImagePages: f.contentImagePages || [], warnings: f.warnings || [],
     };

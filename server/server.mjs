@@ -361,7 +361,9 @@ app.get("/api/cases/:caseId/files", async (req, res) => {
     const seg = f.segments?.[0];
     if (seg) (groups[seg.source] ??= []).push(f.fileId);
     if (f.rawKey) {
-      f.rawUrl = await s3.presignGet(f.rawKey, { filename: seg?.suggestedName || f.originalName });
+      const name = seg?.suggestedName || f.originalName;
+      f.rawUrl = await s3.presignGet(f.rawKey, { filename: name, inline: true });        // 檢視用（iframe/img）
+      f.downloadUrl = await s3.presignGet(f.rawKey, { filename: name });                // 下載用（attachment，檔名＝標準檔名）
       f.pageImageUrls = await Promise.all((f.imageKeys ?? []).map((k) => s3.presignGet(k)));
     }
     if (f.metaKey) f.textUrl = `/api/cases/${encodeURIComponent(caseId)}/files/${f.fileId}/text`;

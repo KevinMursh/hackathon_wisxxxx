@@ -615,7 +615,7 @@ function openLiveDoc(d, view, tools, head) {
   const paint = () => {
     const m = S.docMode[d.id] || modes[0][0];
     tools.innerHTML = modes.map(([k, label]) => `<button class="ghost-btn ${m === k ? "on" : ""}" data-m="${k}">${label}</button>`).join("")
-      + (d.file ? `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">下載</a>` : "");
+      + (d.file ? `<a class="ghost-btn" href="${d.downloadUrl || d.file}" style="text-decoration:none">下載</a>` : "");
     if (m === "pdf") view.innerHTML = pdfFrame();
     else if (m === "img") paintImages();
     else paintText();

@@ -37,8 +37,9 @@ export async function putNormalized(caseId, fileId, norm) {
   return { metaKey: `${base}/meta.json`, imageKeys: images };
 }
 
-export async function presignGet(k, { filename } = {}) {
-  const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: k, ...(filename ? { ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(filename)}` } : {}) });
+/** filename 給了就帶 Content-Disposition；inline=true 供 iframe/img 直接檢視（attachment 會讓瀏覽器跳下載） */
+export async function presignGet(k, { filename, inline = false } = {}) {
+  const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: k, ...(filename ? { ResponseContentDisposition: `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(filename)}` } : {}) });
   return getSignedUrl(s3, cmd, { expiresIn: PRESIGN_TTL });
 }
 
