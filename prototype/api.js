@@ -67,6 +67,21 @@ const Api = {
   analyze: (caseId) => req(`/cases/${encodeURIComponent(caseId)}/analyze`, { method: "POST" }),
   analysis: (caseId) => req(`/cases/${encodeURIComponent(caseId)}/analysis`),
   objection: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/objection`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  /* ---- 助手：plans/助手API-契約與實作清單.md ---- */
+  chat: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  proposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}`),
+  confirmProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/confirm`, { method: "POST" }),
+  cancelProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/cancel`, { method: "POST" }),
+  /** 輪詢 GET /jobs/{id} 直到 done／fatal；onEvent(e) 每個新事件叫一次 */
+  async waitJob(jobId, onEvent, { interval = 2000, timeout = 600000 } = {}) {
+    const t0 = Date.now(); let seen = 0;
+    for (;;) {
+      const j = await Api.job(jobId);
+      for (const e of (j.events || []).slice(seen)) { seen++; onEvent?.(e); if (e.event === "done") return e.data; if (e.event === "fatal") throw new ApiError(e.data?.code || "FATAL", e.data?.message); }
+      if (Date.now() - t0 > timeout) throw new ApiError("TIMEOUT", "工作超過 10 分鐘未完成");
+      await new Promise((r) => setTimeout(r, interval));
+    }
+  },
   lawlib: () => req("/lawlib"),
   lawSync: () => req("/lawlib/sync", { method: "POST" }),
   /** 每 interval ms 輪詢 GET analysis，直到 done/failed；onTick(doc) 每次都叫 */
