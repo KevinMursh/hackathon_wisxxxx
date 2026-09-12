@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
+import { constants as fsc } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileTypeFromBuffer } from "file-type";
@@ -36,8 +37,17 @@ const VIDEO_MIME = new Set(["video/mp4", "video/quicktime", "video/x-msvideo", "
 
 /* 外部工具可用性：缺工具不讓整台服務掛掉，改為該格式回 unsupported（附原因） */
 const toolCache = new Map();
+// 自己掃 PATH，不依賴 which（AL2023 minimal 不一定有 which，缺了會讓所有工具誤判為不存在）
 export async function hasTool(bin) {
-  if (!toolCache.has(bin)) toolCache.set(bin, run("which", [bin]).then(() => true).catch(() => false));
+  if (!toolCache.has(bin)) {
+    toolCache.set(bin, (async () => {
+      for (const dir of (process.env.PATH || "").split(path.delimiter)) {
+        if (!dir) continue;
+        try { await fs.access(path.join(dir, bin), fsc.X_OK); return true; } catch { /* 下一個 */ }
+      }
+      return false;
+    })());
+  }
   return toolCache.get(bin);
 }
 export const REQUIRED_TOOLS = ["pdftotext", "pdftoppm", "pdfinfo", "file"];

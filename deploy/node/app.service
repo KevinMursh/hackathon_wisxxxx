@@ -5,7 +5,8 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=/opt/app/server
-EnvironmentFile=/opt/app/server/env.production
+# 設定檔放 /etc：每次部署會清掉 /opt/app/server，設定檔不能放在那裡
+EnvironmentFile=/etc/app-node.conf
 Environment=NODE_ENV=production
 Environment=PORT=80
 Environment=FRONTEND_DIR=/opt/app/prototype

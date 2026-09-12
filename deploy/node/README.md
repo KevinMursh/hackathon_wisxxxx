@@ -24,22 +24,32 @@ IAM Role `ntpc-law3-ec2-role` 沿用，已補 DynamoDB `appeal-cases` 權限。
 
 ## 切換步驟（隊友點頭後）
 
+**第一次**用 `first-switch.sh`——順序不能顛倒：機器上原本沒有 node，要先把部署包解開、裝完工具，
+才能跑 `redeploy.sh`（它會 `npm ci`）。
+
 ```bash
 cd ~/Desktop/hackathon_wisxxxx
-./deploy/node/push.sh          # 打包上傳 + SSM 重新部署，約 1 分鐘
+./deploy/node/first-switch.sh     # 打包上傳 → 解壓 → 裝工具（5–10 分鐘）→ 停 FastAPI → 起 Node
 ```
 
-第一次切換機器上還沒有工具，要先跑一次 setup（約 5–10 分鐘，LibreOffice 250MB）：
+**之後日常更新**：
 
 ```bash
-source deploy/config.sh
-aws ssm send-command --instance-ids i-0317e2f9af300f2bf --document-name AWS-RunShellScript \
-  --timeout-seconds 1800 \
-  --parameters 'commands=["bash /opt/app/deploy/node/setup-tools.sh"]'
+./deploy/node/push.sh             # 約 1 分鐘
 ```
 
 回頭切回 FastAPI：`systemctl disable --now app-node && systemctl restart app`。
 兩個 service 名稱不同（`app-node` vs `app`），但都綁 port 80，**不能同時開**。
+
+## 已踩過的坑（2026-09-12 首次切換）
+
+| 症狀 | 原因 | 已修 |
+|---|---|---|
+| `CMD?: unbound variable` | `$CMD）` 全形括號被 bash 3.2 當成變數名的一部分 | 改 `${CMD}` |
+| service 啟動失敗 `unavailable resources` | 設定檔放 `/opt/app/server/`，被 `redeploy.sh` 的 `rm -rf` 刪掉 | 移到 `/etc/app-node.conf`，由 redeploy 產生 |
+| LibreOffice 下載 404 | 24.8.x 已從 stable 目錄下架 | 改成自動抓目錄內最新版 |
+| tar 警告 `LIBARCHIVE.xattr.com.apple.provenance` | macOS 擴充屬性 | 打包加 `COPYFILE_DISABLE=1 --no-xattrs` |
+| profile 找不到 | `config.sh` 預設 `ntpc-hackathon`（隊友的） | 跑之前帶 `AWS_PROFILE=hackathon` |
 
 ## AL2023 的坑
 
@@ -58,7 +68,8 @@ aws ssm send-command --instance-ids i-0317e2f9af300f2bf --document-name AWS-RunS
 
 ## 設定檔
 
-機器上的 `/opt/app/server/env.production`（**不進 repo**，user-data 首次開機自動產生）：
+機器上的 `/etc/app-node.conf`（**不進 repo**，`redeploy.sh` 首次部署自動產生）。
+放 `/etc` 而不是 `/opt/app/server/` 是因為每次部署都會 `rm -rf /opt/app/server`，放那裡會被自己刪掉：
 
 ```
 AWS_REGION=us-west-2
