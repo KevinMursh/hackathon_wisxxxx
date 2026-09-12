@@ -217,6 +217,7 @@ def _run_proposal(job: dict):
         replies = []
         for i, rq in enumerate(reqs):
             _emit(job, "step", {"step": "objection", "status": "running", "i": i + 1, "n": len(reqs), "label": rq["label"]})
+            p["progress"] = {"i": i + 1, "n": len(reqs), "label": rq["label"]}; _psave(p)   # 前端輪詢 GET proposal 看進度（Node 的 GET /jobs 先攔走 an_ job）
             sub = {"jobId": job["jobId"], "caseId": case_id, "payload": {"issueId": rq["issueId"], "reason": rq["reason"], "cites": rq["cites"], "by": "承辦人", "proposalId": pid}, "events": job["events"], "subscribers": job["subscribers"]}
             _run_objection(sub, emit_done=False)
             doc = _load(case_id); ob = doc["objections"][-1]

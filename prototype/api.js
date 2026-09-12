@@ -82,6 +82,18 @@ const Api = {
       await new Promise((r) => setTimeout(r, interval));
     }
   },
+  /** 輪詢 GET proposal 直到 applied／failed／cancelled；onTick(p) 每次都叫（p.progress 有逐項進度） */
+  async waitProposal(caseId, pid, onTick, { interval = 2500, timeout = 600000 } = {}) {
+    const t0 = Date.now();
+    for (;;) {
+      const p = await Api.proposal(caseId, pid); onTick?.(p);
+      if (p.state === "applied") return p;
+      if (p.state === "failed") throw new ApiError("PROPOSAL_FAILED", p.error || "執行失敗");
+      if (p.state === "cancelled") throw new ApiError("PROPOSAL_CANCELLED", "提案已取消");
+      if (Date.now() - t0 > timeout) throw new ApiError("TIMEOUT", "執行超過 10 分鐘未完成");
+      await new Promise((r) => setTimeout(r, interval));
+    }
+  },
   lawlib: () => req("/lawlib"),
   lawSync: () => req("/lawlib/sync", { method: "POST" }),
   /** 每 interval ms 輪詢 GET analysis，直到 done/failed；onTick(doc) 每次都叫 */

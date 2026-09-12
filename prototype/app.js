@@ -829,7 +829,7 @@ async function applyServerProposal(p) {
     const r = await Api.confirmProposal(c.caseId, p.id);
     if (head) head.textContent = "已送出，等待 AI 重新引證…";
     (p.scope || []).forEach((i) => { const sp = strip?.children[i]; if (sp) { sp.classList.add("run"); sp.textContent = `${i + 1} ${RV_STEPS[i]}…`; } });
-    const done = await Api.waitJob(r.jobId, (e) => { if (e.event === "step" && head) head.textContent = e.data.status === "running" ? `AI 重新引證中 ${e.data.i}/${e.data.n}：${e.data.label || ""}` : `第 ${e.data.i}/${e.data.n} 項：${e.data.result || "完成"}`; });
+    const done = await Api.waitProposal(c.caseId, p.id, (pd) => { if (pd.progress && head) head.textContent = `AI 重新引證中 ${pd.progress.i}/${pd.progress.n}：${pd.progress.label || ""}`; });
     const doc = await Api.analysis(c.caseId); c.analysis = doc;
     const replies = (done.replies || []).map((x) => ({ label: x.label, result: D[x.result] || "reject", reply: x.reply, evidence: (x.evidence || []).map((q) => q.file ? `${q.file}「${(q.quote || "").slice(0, 30)}」` : String(q)), revised: x.revised_finding, issueId: x.issueId }));
     replies.forEach((x) => { S.audit.push({ ts: now(), who: "hu", para: x.label.split("：")[0], action: `修改提案：${x.label}` }, { ts: now(), who: "ai", para: x.label.split("：")[0], action: `${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}：${(x.reply || "").slice(0, 40)}…` }); if (x.revised && x.issueId) S.stances[x.issueId] = x.revised === "採機關" ? "agency" : x.revised === "採訴願人" ? "appellant" : "open"; });
