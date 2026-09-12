@@ -3,7 +3,7 @@
 > 日期：2026-09-12　依據：`docs/API-文件歸戶.md`（契約）、`docs/部署方案-後端.md`（基礎設施）
 > 前置已完成：`server/normalize.mjs`（35 案綠）、`server/classify.mjs`（41 檔全對、亂檔名全對、本機 cache）
 > 狀態標記：☐ 待做　☑ 完成　✗ 取消
-> 更新：2026-09-12　後端語言定為 **Node 統一**；Bedrock 改併發；store 層完成
+> 更新：2026-09-12　**已上線** http://100.20.156.38/（SG 僅開會場四組 IP ＋ 開發者 IP，無公開存取）
 
 ---
 
@@ -77,16 +77,41 @@ S3 78 個物件（raw + normalized meta/頁圖），DynamoDB 23 FILE + 44 EVT + 
 31. ☑ DynamoDB `appeal-cases`（us-west-2，PAY_PER_REQUEST）
 32. ☑ 沿用 `ntpc-law3-ec2-role`，已補 DynamoDB inline policy
 33. ☑ 沿用現有 `i-0317e2f9af300f2bf`（t3.large、SG 只開 80 給會場四組 IP）——**待隊友點頭才切換 runtime**
-34. ☐ 首次切換要先 SSM 跑 `setup-tools.sh`（LibreOffice 250MB，5–10 分鐘）
+34. ☑ 首次切換要先 SSM 跑 `setup-tools.sh`（LibreOffice 250MB，5–10 分鐘）
 35. ✗ HTTPS：現況 SG 只開 80 給會場 IP，暫不做（要的話走 CloudFront）
 
 ## 6. 雲上驗證
 
-36. ☐ `curl https://<host>/api/health` → ok
-37. ☐ 雲上重跑 §3 第 19–23 條（case02 亂檔名、合併卷宗、壞檔、PATCH）
-38. ☐ 瀏覽器開 `https://<host>/` 前端載入（仍 mock，接線是下一輪）
-39. ☐ `journalctl -u appeal` 看 Bedrock 耗時／token log
+36. ☑ `curl http://100.20.156.38/api/health` → ok
+37. ☑ 雲上重跑 §3 第 19–23 條（case02 亂檔名、合併卷宗、壞檔、PATCH）
+38. ☑ 瀏覽器開 `https://<host>/` 前端載入（仍 mock，接線是下一輪）
+39. ☑ `journalctl -u app-node` 看 Bedrock 耗時／token log
 40. ☐ 記錄 Live Demo 網址進 `docs/提案/url.md`
+
+### 雲上驗收結果（2026-09-12，http://100.20.156.38/）
+
+27 檔（case02 卷宗 18 ＋ 20 頁合併卷宗 ＋ 重複檔 ＋ 壞檔 ＋ xlsx/docx/heic/zip/負樣本）：
+**85 秒、3 箱、26 ok / 1 error / 3 duplicate、孤兒紀錄 0**
+
+| 檢查項 | 結果 |
+|---|---|
+| 卷宗 18 檔分類與建議檔名 | 全對 |
+| 合併卷宗 20 頁 | 17 段 |
+| 答辯書拆檢送函 | 2 段 |
+| docx 委任書 | 訴願委任書／訴願人 |
+| heic | 採證照片（ffmpeg 解碼） |
+| zip | 母檔 container、子檔各自分類；與既有檔同內容者標 duplicate |
+| 負樣本風景照 | 其他／未知 |
+| truncated.pdf | `NORMALIZE_FAILED`，其餘檔照跑 |
+| PATCH 未知→第三方 | 分組即時變更、nature 重算、稽核一筆 |
+| 非法枚舉 | 400 `VALIDATION` |
+| presigned 原檔 | HTTP 200 application/pdf |
+| SSE `Last-Event-ID: 30` 重連 | 補推 30 筆 |
+| health | ok:true、missingRequired 空、degraded 空 |
+
+**部署中踩到並修掉的**：設定檔被 redeploy 的 `rm -rf` 刪掉（移到 `/etc/app-node.conf`）、
+LibreOffice 24.8.x 下架 404（改抓 stable 最新）、AL2023 缺 X11 函式庫導致 soffice 裝了卻跑不動、
+AL2023 無 heif-convert（改走 ffmpeg）、zip 子檔覆蓋正本檔名、bash 3.2 把全形括號當變數名。
 
 ## 6.1 待隊友確認才執行
 
