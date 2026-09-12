@@ -369,7 +369,8 @@ function toCase(caseId, docs, doc) {
   const finding = (f) => /^採機關/.test(f || "") ? "agency" : /^採訴願人/.test(f || "") ? "appellant" : "open";
   const plan = { id: "A", name: "AI 判定", verdict: j.verdict || "—", art: j.art || "", when: {}, basis: [], facts: (j.issues || []).map((x) => `${x[0]}（${x[1]}）`), cases: [], risk: [j.risk || "mid", j.riskNote || ""] };
   let sect = "", n = 0;
-  const paras = (o.drafts?.A?.paras || []).map((p) => {
+  const dv = Object.keys(o.drafts || {}), latestDraft = dv.length ? o.drafts[dv[dv.length - 1]] : null;   // 修改提案後重產的 vN 是現行版
+  const paras = (latestDraft?.paras || []).map((p) => {
     if (p.kind === "h4") { sect = p.text; n = 0; return { id: `h-${p.text}`, kind: "h4", text: p.text }; }
     n++;
     const id = sect === "主文" ? "main" : sect === "事實" ? `fact${n}` : sect === "理由" ? `r${n}` : `p${n}`;
@@ -829,20 +830,27 @@ async function applyServerProposal(p) {
     const r = await Api.confirmProposal(c.caseId, p.id);
     if (head) head.textContent = "已送出，等待 AI 重新引證…";
     (p.scope || []).forEach((i) => { const sp = strip?.children[i]; if (sp) { sp.classList.add("run"); sp.textContent = `${i + 1} ${RV_STEPS[i]}…`; } });
-    const done = await Api.waitProposal(c.caseId, p.id, (pd) => { if (pd.progress && head) head.textContent = `AI 重新引證中 ${pd.progress.i}/${pd.progress.n}：${pd.progress.label || ""}`; });
+    const STEP_IDX = { s2: [0, 1], s3: [2], s4: [3], s5: [4], s6: [5] }, lit = new Set();
+    const done = await Api.waitProposal(c.caseId, p.id, (pd) => {
+      const pg = pd.progress; if (!pg || !head) return;
+      if (pg.phase === "objection") head.textContent = `AI 重新引證中 ${pg.i}/${pg.n}：${pg.label || ""}`;
+      else if (pg.phase === "rerun") { head.textContent = `重新產生中：${RV_STEPS[STEP_IDX[pg.step]?.[0] ?? 5]}（從第 ${STEP_IDX[pg.step]?.[0] + 1} 步起，上游維持）`; (pg.steps || []).forEach((s) => { const cur = STEP_IDX[s] || []; cur.forEach((i) => { const sp = strip?.children[i]; if (!sp) return; if (s === pg.step) { sp.classList.add("run"); sp.classList.remove("ok"); sp.textContent = `${i + 1} ${RV_STEPS[i]}…`; } else if ((pg.steps || []).indexOf(s) < (pg.steps || []).indexOf(pg.step)) { sp.classList.remove("run"); sp.classList.add("ok"); sp.textContent = `✓ ${RV_STEPS[i]}`; lit.add(i); } }); }); }
+    });
     const doc = await Api.analysis(c.caseId); c.analysis = doc;
     const replies = (done.replies || []).map((x) => ({ label: x.label, result: D[x.result] || "reject", reply: x.reply, evidence: (x.evidence || []).map((q) => q.file ? `${q.file}「${(q.quote || "").slice(0, 30)}」` : String(q)), revised: x.revised_finding, issueId: x.issueId }));
     replies.forEach((x) => { S.audit.push({ ts: now(), who: "hu", para: x.label.split("：")[0], action: `修改提案：${x.label}` }, { ts: now(), who: "ai", para: x.label.split("：")[0], action: `${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}：${(x.reply || "").slice(0, 40)}…` }); if (x.revised && x.issueId) S.stances[x.issueId] = x.revised === "採機關" ? "agency" : x.revised === "採訴願人" ? "appellant" : "open"; });
     const nc = toCase(c.caseId, c.docs, doc); Object.assign(c, { issues: nc.issues, drafts: nc.drafts, refs: nc.refs, plans: nc.plans });
-    const vers = Object.keys(doc.output.drafts || {}), latest = vers[vers.length - 1]; let diff = null;
-    if (latest && latest !== "A") { const nd = toCase(c.caseId, c.docs, { output: { ...doc.output, drafts: { A: doc.output.drafts[latest] } } }); c.drafts.A = nd.drafts.A; S.paras = nd.drafts.A.paras.map((x) => ({ ...x, tpl: x.text, src: "ai-edit", refs: x.refs ? x.refs.slice() : [] })); diff = diffParas(before, S.paras); pushVersion(`修改提案後重產（${latest}）`, "AI"); }
+    const vers = Object.keys(doc.output.drafts || {}), latest = done.version || vers[vers.length - 1]; let diff = null;
+    if (done.version) { S.paras = nc.drafts.A.paras.map((x) => ({ ...x, tpl: x.text, src: "ai-edit", refs: x.refs ? x.refs.slice() : [] })); diff = diffParas(before, S.paras); pushVersion(`修改提案後重產（${latest}・重跑 ${(done.rerun || []).length} 步）`, "AI"); }
+    (done.rerun || []).forEach((s) => (STEP_IDX[s] || []).forEach((i) => { const sp = strip?.children[i]; if (sp) { sp.classList.remove("run"); sp.classList.add("ok"); sp.textContent = `✓ ${RV_STEPS[i]}`; } }));
+    (p.scope || []).filter((i) => !(done.rerun || []).some((s) => (STEP_IDX[s] || []).includes(i))).forEach((i) => { const sp = strip?.children[i]; if (sp) { sp.classList.remove("run", "ok", "re"); sp.textContent = `${i + 1} ${RV_STEPS[i]}（維持）`; } });
     const worst = replies.every((x) => x.result === "accept") ? "accept" : replies.some((x) => x.result !== "reject") ? "partial" : "reject";
     S.objections.push({ ts: now(), issue: `${p.items.length} 項`, issueId: replies[0]?.issueId || "multi", text: p.q, ev: [], result: worst, reply: replies.map((x) => `${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}：${x.reply}`).join(" "), evidence: [], plan: null, items: replies.map((x) => ({ label: x.label, result: x.result, reply: x.reply, evidence: [] })), scope: p.scope, diff, proposalId: p.id });
-    (p.scope || []).forEach((i) => { const sp = strip?.children[i]; if (sp) { sp.classList.remove("run"); sp.classList.add("ok"); sp.textContent = `✓ ${RV_STEPS[i]}`; } });
-    renderTabs(tabs); updateChips(); persist(); asstOpen();
+    renderTabs(tabs); if (done.rerun?.includes("s3") || done.rerun?.includes("s2")) renderExtract(); updateChips(); persist(); asstOpen();
     const anyAcc = replies.some((x) => x.result !== "reject");
-    if (head) head.textContent = `已執行・AI 重新引證 ${replies.length} 項${anyAcc ? (diff ? "，草稿已重產" : "，已採納") : "，維持原認定"}`;
-    const el = asstAdd("a card rc", `<div class="pc-head"><b>已執行</b><span>${anyAcc ? "爭點認定與草稿已更新" : "AI 維持原認定，理由如下"}</span></div><div class="pc-body"><div>${replies.map((x) => `<div class="rc-item"><span class="note">${esc(x.label)}</span><br>AI：<b class="${x.result === "accept" ? "a" : x.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}</b>　${esc(x.reply || "")}${x.evidence.length ? `<span class="note">　依據：${x.evidence.map(esc).join("、")}</span>` : ""}</div>`).join("")}</div></div><div class="pc-foot"><span class="note">${diff ? `草稿新版本 ${latest}，原版本可於版本紀錄回復` : "草稿未變動"}</span><button class="ghost-btn" data-tab="4">看草稿 ↗</button></div>`);
+    const rerunTxt = (done.rerun || []).length ? `重新產生 ${[...new Set((done.rerun || []).flatMap((s) => STEP_IDX[s] || []))].map((i) => RV_STEPS[i]).join("、")}；其餘維持` : "未重跑任何步驟";
+    if (head) head.textContent = `已執行・${replies.length} 項${anyAcc ? "，" + rerunTxt : "，維持原認定"}`;
+    const el = asstAdd("a card rc", `<div class="pc-head"><b>已執行</b><span>${anyAcc ? rerunTxt : "AI 維持原認定，理由如下"}</span></div><div class="pc-body"><div>${replies.map((x) => `<div class="rc-item"><span class="note">${esc(x.label)}</span><br>AI：<b class="${x.result === "accept" ? "a" : x.result === "partial" ? "p" : "r"}">${{ accept: "採納", partial: "部分採納", reject: "無法採納" }[x.result]}</b>　${esc(x.reply || "")}${x.evidence.length ? `<span class="note">　依據：${x.evidence.map(esc).join("、")}</span>` : ""}</div>`).join("")}</div></div><div class="pc-foot"><span class="note">${diff ? `草稿新版本 ${latest}，原版本可於版本紀錄回復` : "草稿未變動"}</span><button class="ghost-btn" data-tab="4">看草稿 ↗</button></div>`);
     el.querySelector("[data-tab]").addEventListener("click", () => $$(".tab")[4].click());
     tabs.forEach((t) => { const pg = $("#p" + t); pg.classList.add("flash"); setTimeout(() => pg.classList.remove("flash"), 1600); });
   } catch (e) { if (head) head.textContent = `執行失敗：${e.code || ""} ${e.message || ""}`; asstSay(`執行失敗：${e.message || e.code}`); }
@@ -956,7 +964,7 @@ $("#asstBtn").addEventListener("click", asstOpen); $("#asstClose").addEventListe
 function asstOpen() { $("#asst").classList.add("on"); $("#asstIn").focus(); }
 function asstAdd(role, html) { const log = $("#asstLog"); const el = document.createElement("div"); el.className = "msg " + role; el.innerHTML = html; log.appendChild(el); log.scrollTop = log.scrollHeight; return el; }
 function asstSay(t) { asstOpen(); asstAdd("a", esc(t)); }
-function asstReset() { $("#asstLog").innerHTML = ""; asstAdd("a", `我是本案助手。<b>問</b>：資料在哪份文件、法條原文、爭點、期間。<b>改</b>：直接說要改什麼，我會先畫出修改後的樣子，您按「確認執行」才會更新。`); asstSuggest(); }
+function asstReset() { $("#asstLog").innerHTML = ""; histLoad(); CHAT_HIST.forEach((h) => asstAdd(h.role === "user" ? "u" : "a", esc(h.text).replace(/\n/g, "<br>"))); if (CHAT_HIST.length) asstAdd("a", `<span class="note">（以上為本案先前對話；提案卡不重播）</span>`); asstAdd("a", `我是本案助手。<b>問</b>：資料在哪份文件、法條原文、爭點、期間。<b>改</b>：直接說要改什麼，我會先畫出修改後的樣子，您按「確認執行」才會更新。`); asstSuggest(); }
 /* 建議句由本案狀態＋目前分頁即時產生（規則，零模型呼叫）；正式版可再加一次便宜的模型呼叫補充 */
 function asstSuggest() {
   const c = S.c; if (!c) return; const tab = +($(".tab.on")?.dataset.t || 0), cp = currentPlan(), can = S.status === "承辦中", ask = [], edit = [];
@@ -1151,20 +1159,23 @@ $("#addFile").addEventListener("change", () => { const fs = [...$("#addFile").fi
 $("#addDemo").addEventListener("click", () => { const sup = S.c?.supplement; if (!sup) return; addFiles(sup.files.map(([name, size], i) => ({ name, size, mock: sup.docs[i] }))); $("#addDemo").style.display = "none"; });
 { const pane = $("#docPane"); ["dragenter", "dragover"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.add("over"); })); ["dragleave", "drop"].forEach((ev) => pane.addEventListener(ev, (e) => { e.preventDefault(); pane.classList.remove("over"); })); pane.addEventListener("drop", (e) => { const fs = [...(e.dataTransfer?.files || [])].map((f) => ({ name: f.name, size: f.size, file: f })); if (fs.length) addFiles(fs); }); }
 /* ---------- 助手：真案走後端 chat；mock 案走本機規則 ---------- */
-const CHAT_HIST = [];
+const CHAT_HIST = [];   // 目前案件的對話（重整頁面自 sessionStorage 還原）
+function histKey() { return "ssz.chat." + (S.c?.caseId || S.c?.id || ""); }
+function histLoad() { CHAT_HIST.length = 0; try { (JSON.parse(sessionStorage.getItem(histKey()) || "[]")).forEach((h) => CHAT_HIST.push(h)); } catch {} }
+function histSave() { try { sessionStorage.setItem(histKey(), JSON.stringify(CHAT_HIST.slice(-20))); } catch {} }
 function isLiveCase() { const c = S.c; return !!(c && c.live && c.caseId && !c.analysisPending); }
 async function asstSendLive(q) {
   const c = S.c, tab = +($(".tab.on")?.dataset.t || 0);
   const wait = asstAdd("a", `<span class="typing">查詢中…</span>`);
   try {
     const res = await Api.chat(c.caseId, { message: q, tab, readonly: S.status !== "承辦中", history: CHAT_HIST.slice(-6) });
-    wait.remove(); CHAT_HIST.push({ role: "user", text: q }, { role: "assistant", text: res.text || "" });
+    wait.remove(); CHAT_HIST.push({ role: "user", text: q }, { role: "assistant", text: res.text || "" }); histSave();
     renderServerReply(res);
   } catch (e) { wait.remove(); asstAdd("a", `助手暫時無法回應：${esc(e.message || e.code)}<span class="src">${esc(e.code || "")}</span>`); }
 }
 /* 後端回覆 → 畫面；answer／clarify／refuse 是文字卡，proposal 走 renderProposal（同一套元件） */
 function renderServerReply(res) {
-  if (res.kind === "proposal" && res.proposal) return renderProposal(fromServerProposal(res.proposal, res.text));
+  if (res.kind === "proposal" && res.proposal) { const p = fromServerProposal(res.proposal, res.text), el = renderProposal(p); loadPreview(p, el); return el; }
   const src = (res.sources || []).map((s) => {
     if (s.type === "doc" && s.fileId) { const d = S.c.docs.find((x) => x.fileId === s.fileId); return d ? `<span class="jump" data-doc="${d.id}">《${esc(s.title)}》${s.page ? " 第 " + s.page + " 頁" : ""} ↗</span>` : esc(s.title); }
     return `${{ law: "法規", decision: "決定書", state: "分析結果" }[s.type] || ""}：${esc(s.title)}${s.version ? `（${esc(s.version)} 版）` : ""}`;
@@ -1174,6 +1185,20 @@ function renderServerReply(res) {
   el.querySelectorAll("[data-doc]").forEach((j) => j.addEventListener("click", () => openDoc(j.dataset.doc)));
   el.querySelector("[data-cite]")?.addEventListener("click", () => { const o = res.cite_offer; $("#asstIn").value = `請加引${o.law}第 ${o.article} 條${o.para ? `第 ${o.para} 項` : ""}`; asstSend(); });
   return el;
+}
+/* 提案預覽：後端只改寫受影響段落（≤3 段），回來後把卡片裡的「將改寫的段落」換成真 diff */
+async function loadPreview(p, el) {
+  const c = S.c; if (!(c && c.live && c.caseId && p.server)) return;
+  const need = p.items.some((it) => ["text", "frame", "verdict"].includes(it.type) || (it.type === "law" && it.ok));
+  if (!need) return;
+  const body = el.querySelector(".pc-body"), note = document.createElement("div"); note.className = "pc-item"; note.innerHTML = `<div class="lab">草稿變動預覽</div><div class="bd"><span class="typing">AI 正在改寫受影響段落以供預覽（約 10–20 秒）…</span></div>`;
+  body.insertBefore(note, body.lastElementChild);
+  try {
+    const r = await Api.previewProposal(c.caseId, p.id);
+    if (!r.previews || !r.previews.length) { note.querySelector(".bd").innerHTML = `<span class="note">${r.busy ? "後端忙碌中，確認執行後仍會重產" : "此提案無段落級預覽；確認執行後於草稿頁版本 diff 檢視"}</span>`; return; }
+    note.querySelector(".bd").innerHTML = r.previews.map((x) => `<div class="pc-diff diffbox"><span class="pl">${esc(x.para)}（修改前 → 修改後）</span>${fillDates(diffHtml(x.before, x.after))}</div>`).join("") + `<div class="note">預覽由 AI 改寫該段產生；確認執行後會依影響範圍重產整份草稿，最終文字可能略有不同。</div>`;
+    el.querySelectorAll(".pc-item").forEach((it) => { if (it !== note && /將改寫的段落/.test(it.textContent)) it.remove(); });
+  } catch (e) { note.querySelector(".bd").innerHTML = `<span class="note">預覽失敗：${esc(e.message || e.code)}</span>`; }
 }
 /* 伺服器提案（契約 §2）→ renderProposal 期望的欄位 */
 function fromServerProposal(sp, text) {

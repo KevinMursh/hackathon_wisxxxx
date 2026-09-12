@@ -78,3 +78,18 @@ def test_history_and_brief_go_into_prompt(state):
     assert msgs[0]["content"][0]["text"] == "上一句" and msgs[1]["role"] == "assistant"
     last = msgs[-1]["content"][0]["text"]
     assert "【本案摘要】" in last and "案件擷取與分類" in last and "【意圖判定】問" in last
+
+
+def test_preview_rewrites_only_targets(state):
+    calls = []
+    def fake_call(step, *, system, user, case=None, max_tokens=0):
+        calls.append(user); return "（改寫後）" + user.split("：\n", 1)[1].split("\n\n指示")[0][:20]
+    pv = A.preview("case02", state, [{"type": "text", "para": "理由二", "how": "精簡"}, {"type": "verdict", "to": "撤銷"}, {"type": "law", "ok": True, "key": "行政罰法 第 18 條第 1 項", "text": "裁處罰鍰…"}, {"type": "issue", "id": "I1"}], call=fake_call)
+    assert [x["para"] for x in pv] == ["理由二", "主文", pv[2]["para"]] and pv[2]["para"].startswith("理由")
+    assert all(x["after"].startswith("（改寫後）") and x["before"] for x in pv) and len(calls) == 3
+    assert "精簡" in calls[0] and "撤銷" in calls[1] and "第 18 條" in calls[2]
+
+
+def test_label_paras():
+    paras = [{"kind": "h4", "text": "主文"}, {"kind": "p", "text": "訴願駁回。"}, {"kind": "h4", "text": "理由"}, {"kind": "p", "text": "一、"}, {"kind": "p", "text": "二、"}]
+    assert [l for l, _ in A.label_paras(paras)] == ["主文", "理由一", "理由二"]

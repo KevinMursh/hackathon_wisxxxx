@@ -84,3 +84,19 @@ def test_tools_read_only(state):
     assert d.get("fileId") and d["doc_type"] == "訴願書" and d["text"]
     assert A.run_tool(ctx, "get_case_doc", {"name": "不存在"})["status"] == "not_found"
     assert "error" in A.run_tool(ctx, "nope", {})
+
+
+def test_build_revision_maps_items():
+    import api
+    items = [{"type": "issue", "id": "I1", "n": 1, "title": "T", "to": "appellant", "why": "w"},
+             {"type": "law", "ok": True, "key": "行政罰法 第 18 條第 1 項", "art": "18", "p": "1"},
+             {"type": "law", "ok": False, "key": "裁罰準則 第 9 條", "art": "9", "msg": "僅 6 條"},
+             {"type": "law-rm", "key": "訴願法 第 58 條"},
+             {"type": "served", "v": "114-09-16", "deadline": "114-10-16", "inTime": True},
+             {"type": "proc", "v": "77-2"}, {"type": "verdict", "to": "撤銷"}, {"type": "text", "para": "理由二", "how": "精簡"}]
+    replies = [{"result": "採納", "revised_finding": "採訴願人", "reply": "r"}] + [{"result": "採納", "reply": ""}] * 7
+    rev = api._build_revision(items, replies, "舊草稿")
+    ov = rev["overrides"]
+    assert ov["findings"] == {"I1": "採訴願人"} and ov["add_laws"] == [{"name": "行政罰法", "article": "18", "paragraph": "1"}]
+    assert ov["rm_laws"] == ["訴願法 第 58 條"] and ov["served"] == "114-09-16" and ov["in_time"] is False and ov["verdict"] == "撤銷" and ov["prev_draft"] == "舊草稿"
+    assert rev["instructions"]["s5"] and any("理由二" in s for s in rev["instructions"]["s6"]) and not any("第 9 條" in s for s in rev["instructions"]["s4"])

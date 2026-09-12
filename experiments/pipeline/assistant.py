@@ -13,7 +13,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from . import lawdb, lawlib
-from .common import MODEL_ID, RUNS, _converse, prompt
+from .common import MODEL_ID, RUNS, _converse, call_text, prompt
 
 # ---------- 意圖（規則層） ----------
 Q_RE = re.compile(r"[?？]|有沒有|嗎$|嗎[。？]?$|在哪|哪份|哪個|哪一|是什麼|多少|幾天|幾件|為何|為什麼|怎麼算|查一下|請問|告訴我")
@@ -233,7 +233,7 @@ def chat(case_id: str, message: str, *, state: dict | None = None, tab: int | No
     sys_txt = prompt("system") + "\n\n" + prompt("assistant")
     brief = {"issues": [[i["id"], i["title"], i.get("afterObjection") or i.get("finding")] for i in (ctx.state.get("issues") or [])],
              "judge": (ctx.state.get("judge") or {}).get("verdict"), "period": {k: (ctx.state.get("period") or {}).get(k) for k in ("served", "recv", "deadline", "inTime")},
-             "laws": [l["n"] for l in (ctx.state.get("laws") or [])][:20], "files": [[f[0], f[2], f[3]] for f in (ctx.state.get("files") or [])][:40]}
+             "laws": [l["n"] for l in (ctx.state.get("laws") or [])][:20], "files": [[f[0], f[2], f[3], f[1]] for f in (ctx.state.get("files") or [])][:40]}   # [檔名, 類型, 來源, fileId]；reissue 的 docs 填 fileId
     tab_name = ["案件擷取與分類", "爭點", "法規推薦", "相似案例", "決定書草稿"][tab] if tab is not None and 0 <= tab <= 4 else "未知"
     msgs = []
     for h in (history or [])[-6:]:
@@ -300,3 +300,49 @@ if __name__ == "__main__":
     cid = sys.argv[1] if len(sys.argv) > 1 else "case02"
     q = " ".join(sys.argv[2:]) or "行政罰法第 18 條第 1 項全文"
     print(json.dumps(chat(cid, q, state=load_state(cid)), ensure_ascii=False, indent=1))
+
+
+# ---------- 提案預覽：只改寫受影響段落（每段 1 次小呼叫），供提案卡畫「修改前 → 修改後」；不落地 ----------
+CN_NUM = "一二三四五六七八九十"
+
+
+def label_paras(paras: list[dict]) -> list[tuple[str, dict]]:
+    """與前端 paraLabel 同規則：主文／事實N／理由N／前言。"""
+    out, sect, n = [], "", 0
+    for p in paras:
+        if p.get("kind") == "h4":
+            sect, n = p["text"].strip(), 0; continue
+        n += 1
+        lab = "主文" if sect == "主文" else f"事實{CN_NUM[n-1] if n <= 10 else n}" if sect == "事實" else f"理由{CN_NUM[n-1] if n <= 10 else n}" if sect == "理由" else sect or "前言"
+        out.append((lab, p))
+    return out
+
+
+def preview(case_id: str, state: dict, items: list[dict], call=None) -> list[dict]:
+    call = call or call_text
+    drafts = state.get("drafts") or {}
+    if not drafts:
+        return []
+    latest = list(drafts.values())[-1]
+    labeled = label_paras(latest.get("paras") or [])
+    targets = []
+    for it in items:
+        t = it.get("type")
+        if t == "text":
+            hit = next((x for x in labeled if x[0] == it.get("para")), None)
+            if hit: targets.append((it, hit[0], hit[1]["text"], f"依承辦人指示改寫：{it.get('how')}"))
+        elif t == "frame":
+            hit = next((x for x in labeled if x[0].startswith("理由")), None)
+            if hit: targets.append((it, hit[0], hit[1]["text"], f"改從「{it.get('angle')}」的角度論述"))
+        elif t == "verdict":
+            hit = next((x for x in labeled if x[0] == "主文"), None)
+            if hit: targets.append((it, hit[0], hit[1]["text"], f"結論改為「{it.get('to')}」，主文句式須符合訴願決定書慣例"))
+        elif t == "law" and it.get("ok"):
+            hit = next((x for x in labeled if x[0].startswith("理由") and ("裁量" in x[1]["text"] or "審酌" in x[1]["text"])), None) or next((x for x in labeled if x[0].startswith("理由")), None)
+            if hit: targets.append((it, hit[0], hit[1]["text"], f"補入引用 {it.get('key')}（{(it.get('text') or '')[:120]}），其餘內容維持"))
+    out = []
+    for it, lab, before, instr in targets[:3]:
+        after = call("preview_para", system=prompt("system") + "\n\n你只改寫承辦人指定的這一段訴願決定書文字，輸出改寫後的段落本身，不加標題、不加說明、不加引號。",
+                     user=f"段落（{lab}）：\n{before}\n\n指示：{instr}", case=None, max_tokens=1500).strip()
+        out.append({"type": it.get("type"), "para": lab, "before": before, "after": after})
+    return out

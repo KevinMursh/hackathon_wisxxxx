@@ -65,10 +65,27 @@ def verify_quotes(docs: list[Doc], issues: dict) -> int:
 
 
 # ---------- 主流程 ----------
-def run(case: str, start="s2", images=True, api: str | None = None, docs: list[Doc] | None = None, progress=None) -> dict:
-    """progress(step, status, payload) 在每步開始／完成時呼叫（API 用）。回傳前端物件。"""
+REV_HINT = "\n\n【承辦人修正意見——必須遵守；若卷證不支持，須在對應欄位說明無法採納之理由】\n"
+
+
+def _rev_block(revision: dict | None, step: str) -> str:
+    """該步驟要附進 prompt 的承辦人意見（沒有就空字串）。"""
+    lines = (revision or {}).get("instructions", {}).get(step) or []
+    return (REV_HINT + "\n".join(f"- {l}" for l in lines)) if lines else ""
+
+
+def run(case: str, start="s2", images=True, api: str | None = None, docs: list[Doc] | None = None, progress=None, revision: dict | None = None) -> dict:
+    """progress(step, status, payload) 在每步開始／完成時呼叫（API 用）。回傳前端物件。
+    revision（局部重跑，助手提案確認後）：
+      {"instructions": {"s3": [...], "s4": [...], "s5": [...], "s6": [...]},      # 各步 prompt 附承辦人意見
+       "overrides": {"served": "114-09-16", "in_time": True|False|None,          # s2 期間覆寫（不重打 s2 模型）
+                     "add_laws": [{"name","article","paragraph"}], "rm_laws": ["行政罰法 第 18 條"],   # s4 程式保證加入／移除
+                     "findings": {"I1": "採訴願人"}, "drop_issues": ["I3"],       # s3 快取直接改（重引證已判過）
+                     "verdict": "撤銷"|"駁回"|"不受理", "prev_draft": "…"}}       # s5 排序提示；s6 附前一版草稿以「未受影響段落維持原文」
+    """
     docs = docs or (load_remote(case, api) if api else load_any(case))
     db = lawdb.load()
+    ov = (revision or {}).get("overrides", {})
     order = ["s2", "s3", "s4", "s5", "s6"]
     todo = order[order.index(start):] if start in order else []  # --from fe：全部讀快取，只重做程式步驟與 adapter
     t0 = time.monotonic()
@@ -84,7 +101,16 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
                            user=prompt_block(d2) + _img_note(d2), images=_imgs(d2) if images else []).model_dump()
     else:
         fields = _load(case, "s2_fields")
-    period = period_and_checks(fields); _save(case, "s2_period", period)
+    if ov.get("served"):  # 承辦人更正送達日：期間與程序重算，三方對照該列註記
+        fields["disposition_served_date"] = ov["served"]
+        for row in fields.get("compare", []):
+            if "送達" in row.get("k", ""):
+                row["conflict"] = f"承辦人更正送達日為 {ov['served']}（原依卷證 {row.get('evidence', {}).get('value', '')}）"
+        _save(case, "s2_fields", fields)
+    period = period_and_checks(fields)
+    if "in_time" in ov and ov["in_time"] is not None:  # 承辦人改程序判定
+        period["in_time"] = ov["in_time"]; period["checks"][0]["ok"] = ov["in_time"]; period["checks"][0]["note"] += "（承辦人指定）"
+    _save(case, "s2_period", period)
     log(f"[s2] {fields['appellant_masked']} / {fields['disposition_no']} / 送達 {period['served']} 收文 {period['recv']} → 在期間內 {period['in_time']}；三方對照 {len(fields['compare'])} 列")
     emit("s2", "done", {"fields": fields, "period": period})
     emit("s3", "running", None)
@@ -93,11 +119,17 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
     if "s3" in todo:
         issues = call_json("s3_issues", Issues, case=case, system=SYS + "\n\n" + prompt("s3_issues"),
                            user=prompt_block(docs) + "\n\n已擷取欄位：\n" + json.dumps({k: fields[k] for k in ("appellant_claims", "agency_replies", "violation_fact", "law_basis")}, ensure_ascii=False)
-                                + "\n\n程序檢核：\n" + json.dumps(period, ensure_ascii=False) + _img_note(docs),
+                                + "\n\n程序檢核：\n" + json.dumps(period, ensure_ascii=False) + _rev_block(revision, "s3") + _img_note(docs),
                            images=_imgs(docs) if images else []).model_dump()
         bad = verify_quotes(docs, issues); _save(case, "s3_issues", issues)
     else:
         issues = _load(case, "s3_issues"); bad = sum(not q.get("verified", True) for i in issues["issues"] for q in i["evidence"])
+    if ov.get("findings") or ov.get("drop_issues"):  # 重引證已判過的認定直接寫入；刪除的爭點移除
+        for i in issues["issues"]:
+            if i["id"] in (ov.get("findings") or {}):
+                i["finding"] = ov["findings"][i["id"]]; i["reason"] = "承辦人修正後：" + i.get("reason", "")
+        issues["issues"] = [i for i in issues["issues"] if i["id"] not in set(ov.get("drop_issues") or [])]
+        _save(case, "s3_issues", issues)
     for i in issues["issues"]:
         log(f"[s3] {i['id']} {i['title']} → {i['finding']}：{i['reason'][:36]}")
     log(f"[s3] 引句回查失敗 {bad} 則")
@@ -122,9 +154,17 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
                          user="可用法規清單：\n" + law_list + "\n\n候選函釋判解（KB 檢索）：\n" + cand_txt +
                               "\n\n本案欄位：\n" + json.dumps({k: fields[k] for k in ("agency", "violation_fact", "violation_date", "disposition_date", "law_basis", "case_type")}, ensure_ascii=False) +
                               "\n\n本案爭點：\n" + json.dumps(issues, ensure_ascii=False) +
-                              "\n\n答辯書／裁處書引用查核：\n" + json.dumps(cites, ensure_ascii=False)).model_dump()
+                              "\n\n答辯書／裁處書引用查核：\n" + json.dumps(cites, ensure_ascii=False) + _rev_block(revision, "s4")).model_dump()
     else:
         laws = _load(case, "s4_laws")
+    for L in ov.get("add_laws") or []:  # 程式保證：承辦人指定且法規庫查得到的條文一定在推薦清單
+        key = (L["name"], str(L.get("article") or ""))
+        if not any(r["kind"] == "法規" and r["name"] == key[0] and str(r.get("article") or "") == key[1] for r in laws["recommended"]):
+            laws["recommended"].append({"kind": "法規", "name": L["name"], "article": key[1], "paragraph": L.get("paragraph") or "", "role": L.get("role") or "裁量", "why": "承辦人指定加引", "rel": 90})
+    if ov.get("rm_laws"):
+        laws["recommended"] = [r for r in laws["recommended"] if not any(f"{r['name']} 第 {r.get('article')} 條".startswith(x) or x.startswith(f"{r['name']} 第 {r.get('article')} 條") for x in ov["rm_laws"])]
+    if ov.get("add_laws") or ov.get("rm_laws"):
+        _save(case, "s4_laws", laws)
     verified = []
     def _canon(name: str) -> str:  # 模型可能把「（修正 …）」或全形括號一起抄進來
         base = re.split(r"[（(｜|]", name)[0].strip()
@@ -153,9 +193,11 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
             kb_ids.append(h["title"])
     allc = {c["id"]: c for c in casedb.load() if not c["excluded"]}
     hint = "77(2)" if period["in_time"] is False else None
+    want = {"撤銷": "81", "駁回": "79", "不受理": "77"}.get((ov.get("verdict") or "")[:3].replace("原處分", "").replace("訴願", ""))
     def score(cid):
         c = allc[cid]; s = 100 - kb_ids.index(cid) * 5
-        if hint and c["clause"].startswith(hint): s += 40
+        if want and c["clause"].startswith(want): s += 60      # 承辦人改結論 → 優先同結論案例
+        elif hint and c["clause"].startswith(hint): s += 40
         elif not hint and c["clause"][:2] in ("79", "81"): s += 40
         return -s
     sims = [allc[cid] for cid in sorted([i for i in kb_ids if i in allc], key=score)[:5]]
@@ -179,7 +221,9 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
         ex = "相似案例可借用段落（論理架構）：\n" + json.dumps(borrow, ensure_ascii=False) + "\n\n" + ex
         user = ("本案卷宗：\n" + prompt_block(docs, 6000) + "\n\n本案欄位：\n" + json.dumps({k: v for k, v in fields.items() if k != "compare"}, ensure_ascii=False) +
                 "\n\n程序檢核：\n" + json.dumps(period, ensure_ascii=False) + "\n\n本案爭點：\n" + json.dumps(issues, ensure_ascii=False) +
-                "\n\n推薦法條、函釋、判解（含原文）：\n" + json.dumps(verified, ensure_ascii=False) + "\n\n" + ex + "\n\n請撰擬本案訴願決定書草稿。")
+                "\n\n推薦法條、函釋、判解（含原文）：\n" + json.dumps(verified, ensure_ascii=False) + "\n\n" + ex +
+                (("\n\n前一版草稿（未受修正意見影響的段落請維持原文）：\n" + ov["prev_draft"][:12000]) if ov.get("prev_draft") else "") +
+                _rev_block(revision, "s6") + "\n\n請撰擬本案訴願決定書草稿。")
         buf = []
         for ch in stream_text("s6_draft", case=case, system=SYS + "\n\n" + prompt("s6_draft"), user=user):
             buf.append(ch); print(ch, end="", flush=True)

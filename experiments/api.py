@@ -205,30 +205,109 @@ def _item_reason(it: dict) -> str:
     return json.dumps(it, ensure_ascii=False)
 
 
+STEP_OF_TYPE = {"served": 0, "proc": 1, "issue": 2, "reissue": 2, "law": 3, "law-rm": 3, "verdict": 4, "text": 5, "frame": 5}
+START_OF_SCOPE = {0: "s3", 1: "s3", 2: "s4", 3: "s4", 4: "s5", 5: "s6"}   # 0/1 只覆寫期間不重打 s2；2 的爭點認定由重引證決定，接著從 s4 起
+
+
+def _build_revision(items: list[dict], replies: list[dict], prev_draft: str) -> dict:
+    """把提案 items ＋ 重引證結果整理成 run_all 的 revision（instructions 各步／overrides 程式覆寫）。"""
+    ins = {"s3": [], "s4": [], "s5": [], "s6": []}
+    ov = {"prev_draft": prev_draft, "findings": {}, "drop_issues": [], "add_laws": [], "rm_laws": []}
+    for it, rp in zip(items, replies):
+        t, reason = it.get("type"), _item_reason(it)
+        if t in ("issue", "reissue"):
+            if rp.get("revised_finding"):
+                ov["findings"][it["id"]] = rp["revised_finding"]
+                ins["s6"].append(f"爭點 {it.get('n', it['id'])}（{it.get('title', '')}）認定已改為「{rp['revised_finding']}」：{rp.get('reply', '')[:200]}")
+            if it.get("to") == "drop" and rp.get("result") in ("採納",):
+                ov["drop_issues"].append(it["id"])
+        elif t == "law" and it.get("ok"):
+            ov["add_laws"].append({"name": it.get("key", "").split(" 第 ")[0], "article": it.get("art"), "paragraph": it.get("p") or ""})
+            ins["s4"].append(reason); ins["s6"].append(f"理由中須引用 {it.get('key')}")
+        elif t == "law-rm":
+            ov["rm_laws"].append(it.get("key", "")); ins["s4"].append(reason); ins["s6"].append(f"草稿不得引用 {it.get('key')}")
+        elif t == "served":
+            ov["served"] = it.get("v"); ins["s6"].append(reason)
+        elif t == "proc":
+            ov["in_time"] = True if it.get("v") == "merit" else (False if str(it.get("v", "")).startswith("77-2") else None)
+            ins["s3"].append(reason); ins["s6"].append(reason)
+        elif t == "verdict":
+            ov["verdict"] = it.get("to"); ins["s5"].append(reason); ins["s6"].append(f"結論應為「{it.get('to')}」，主文、理由、據上論結與教示均須一致")
+        elif t in ("text", "frame"):
+            ins["s6"].append(reason + "（其餘段落維持原文）")
+    return {"instructions": ins, "overrides": ov}
+
+
 def _run_proposal(job: dict):
-    """confirm：爭點類 item 各跑一次 objection；其餘 item 併成一則 objection 的 reason（掛在第一個或指定爭點）。"""
+    """confirm：① 爭點類 item 逐一重引證（不重產草稿）② 其餘 item 程式判定 ③ 依影響範圍從第 N 步起局部重跑，上游輸出當 context。"""
     case_id, pid = job["caseId"], job["payload"]["pid"]
     p = _pload(case_id, pid); doc = _load(case_id)
     p["state"] = "running"; _psave(p)
+    D_OK = {"law": lambda it: ("採納", f"{it.get('key')} 已加入法規推薦並於草稿引用。") if it.get("ok") else ("無法採納", f"{it.get('msg')}；未寫入草稿。"),
+            "law-rm": lambda it: ("採納", f"{it.get('key')} 已自推薦與草稿移除。"),
+            "served": lambda it: ("採納", f"送達日改為 {it.get('v')}，期間截止 {it.get('deadline')}，{'在期間內' if it.get('inTime') else '已逾期'}；三方對照已註記承辦人更正。"),
+            "proc": lambda it: ("採納" if it.get("v") in ("merit", "77-2") else "部分採納", "程序判定已依指示調整，期間欄位同步更新。" if it.get("v") in ("merit", "77-2") else "已於爭點與草稿附記承辦人指定之不受理事由；程序清單各款仍依卷面。"),
+            "verdict": lambda it: ("採納", f"結論改為「{it.get('to')}」，相似案例改檢索同結論案例，草稿依此重寫。"),
+            "text": lambda it: ("採納", f"{it.get('para')} 已依「{it.get('how')}」改寫，其餘段落維持。"),
+            "frame": lambda it: ("採納", f"理由已依「{it.get('angle')}」角度重寫。")}
     try:
-        issue_items = [it for it in p["items"] if it.get("type") in ("issue", "reissue") and it.get("id")]
-        others = [it for it in p["items"] if it not in issue_items]
-        reqs = [{"issueId": it["id"], "reason": _item_reason(it), "cites": it.get("docs") or [], "label": f"爭點 {it.get('n', '')}：{_item_reason(it)}"} for it in issue_items]
-        if others:
-            first = (issue_items[0]["id"] if issue_items else (doc["output"]["issues"][0]["id"] if doc["output"].get("issues") else "I1"))
-            reqs.append({"issueId": first, "reason": "；".join(_item_reason(it) for it in others), "cites": [], "label": "；".join(_item_reason(it) for it in others)})
-        replies = []
-        for i, rq in enumerate(reqs):
-            _emit(job, "step", {"step": "objection", "status": "running", "i": i + 1, "n": len(reqs), "label": rq["label"]})
-            p["progress"] = {"i": i + 1, "n": len(reqs), "label": rq["label"]}; _psave(p)   # 前端輪詢 GET proposal 看進度（Node 的 GET /jobs 先攔走 an_ job）
-            sub = {"jobId": job["jobId"], "caseId": case_id, "payload": {"issueId": rq["issueId"], "reason": rq["reason"], "cites": rq["cites"], "by": "承辦人", "proposalId": pid}, "events": job["events"], "subscribers": job["subscribers"]}
-            _run_objection(sub, emit_done=False)
-            doc = _load(case_id); ob = doc["objections"][-1]
-            replies.append({"label": rq["label"], "result": ob.get("result"), "reply": ob.get("reply"), "evidence": ob.get("evidence") or [], "revised_finding": ob.get("revised_finding"), "issueId": ob.get("issueId")})
-            _emit(job, "step", {"step": "objection", "status": "done", "i": i + 1, "n": len(reqs), "result": ob.get("result")})
-        p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"]); _psave(p)
-        _emit(job, "done", {"proposalId": pid, "replies": replies})
+        docs = load_any(case_id)
+        fe = doc["output"]
+        vers = list(fe.get("drafts") or {})
+        prev_draft = "\n".join(x["text"] for x in fe["drafts"][vers[-1]]["paras"]) if vers else ""
+        s4 = json.loads((RUNS / case_id / "s4_verified.json").read_text(encoding="utf-8"))["output"]["laws"]
+        issues_raw = json.loads((RUNS / case_id / "s3_issues.json").read_text(encoding="utf-8"))["output"]
+        items = p["items"]; replies = [None] * len(items)
+        issue_idx = [i for i, it in enumerate(items) if it.get("type") in ("issue", "reissue") and it.get("id")]
+        n_ob = len(issue_idx)
+        for k, i in enumerate(issue_idx):
+            it = items[i]; label = f"爭點 {it.get('n', '')}：{_item_reason(it)}"
+            p["progress"] = {"phase": "objection", "i": k + 1, "n": n_ob, "label": label}; _psave(p)
+            _emit(job, "step", {"step": "objection", "status": "running", "i": k + 1, "n": n_ob, "label": label})
+            ob = {"issueId": it["id"], "reason": _item_reason(it), "cites": it.get("docs") or [], "by": "承辦人", "proposalId": pid}
+            res = objection.run(case_id, docs, issues_raw, fe["judge"], ob, prev_draft, s4, {}, regen=False)
+            rf = res.get("revised_finding")
+            if rf and rf not in ("採機關", "採訴願人", "待議"):
+                res["revised_finding"] = next((x for x in ("採訴願人", "採機關", "待議") if rf.startswith(x)), None)
+            entry = {k2: v for k2, v in res.items() if k2 not in ("newDraft", "newIssues", "newDraftCitations")}
+            entry.update(at=_now(), jobId=job["jobId"]); doc.setdefault("objections", []).append(entry); _save(case_id, doc)
+            replies[i] = {"label": label, "result": res["result"], "reply": res["reply"], "evidence": res.get("evidence") or [], "revised_finding": res.get("revised_finding"), "issueId": it["id"]}
+            _emit(job, "step", {"step": "objection", "status": "done", "i": k + 1, "n": n_ob, "result": res["result"]})
+        for i, it in enumerate(items):
+            if replies[i] is None:
+                r, txt = D_OK.get(it.get("type"), lambda x: ("部分採納", "已附記於草稿。"))(it)
+                replies[i] = {"label": _item_reason(it), "result": r, "reply": txt, "evidence": [], "revised_finding": None, "issueId": None}
+        # 局部重跑：影響起點取「有效 item」的最小步驟（無法採納的爭點 item 不算）
+        eff = [STEP_OF_TYPE.get(it.get("type"), 5) for it, rp in zip(items, replies) if not (it.get("type") in ("issue", "reissue") and rp["result"] == "無法採納") and not (it.get("type") == "law" and not it.get("ok"))]
+        if not eff:
+            p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], rerun=[]); _psave(p)
+            _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": []}); return
+        start = START_OF_SCOPE[min(eff)]
+        revision = _build_revision(items, replies, prev_draft)
+        steps = STEPS[STEPS.index(start):]
+        p["rerun"] = steps; p["progress"] = {"phase": "rerun", "step": start, "steps": steps}; _psave(p)
+        lib = lawlib.build()
+        def progress(step, status, payload):
+            if status == "running":
+                p["progress"] = {"phase": "rerun", "step": step, "steps": steps}; _psave(p)
+            _emit(job, "step", {"step": step, "status": status})
+        new_fe = run_all.run(case_id, start, images=True, docs=docs, progress=progress, revision=revision)
+        # 保留草稿版本：舊版全部留下，新版加 vN；issues 標 afterObjection 供前端「修正後」
+        old_drafts = fe.get("drafts") or {}
+        ver = f"v{len(old_drafts) + 1}"
+        new_fe["drafts"] = {**old_drafts, ver: {**new_fe["drafts"]["A"], "sub": f"（修改提案後重產 {ver}・待承辦人審核）", "proposalId": pid}}
+        for iss in new_fe.get("issues", []):
+            rf = revision["overrides"]["findings"].get(iss["id"])
+            if rf:
+                iss["afterObjection"] = rf
+        if revision["overrides"]["findings"]:
+            k0, v0 = next(iter(revision["overrides"]["findings"].items()))
+            new_fe.setdefault("judge", {})["afterObjection"] = {"issueId": k0, "finding": v0, "version": ver}
+        doc["output"] = new_fe; doc["status"]["rerunAt"] = _now(); _save(case_id, doc)
+        p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], version=ver); p.pop("progress", None); _psave(p)
+        _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": steps, "version": ver})
     except Exception as e:
+        import traceback; traceback.print_exc()
         p.update(state="failed", error=str(e)[:300]); _psave(p)
         _emit(job, "fatal", {"code": "PROPOSAL_FAILED", "message": str(e)[:300]})
 
@@ -329,8 +408,12 @@ def post_chat(case_id: str, body: ChatIn):
         raise HTTPException(400, {"code": "VALIDATION", "message": "message 必填", "retryable": False})
     doc = _load(case_id)
     state = (doc or {}).get("output") or {}
-    with _lock:  # 與分析 job 共用 1 RPS
+    if not _lock.acquire(timeout=3):  # 與分析 job 共用 1 RPS；分析／重跑進行中不排隊卡住，直接告知
+        return {"kind": "refuse", "text": "本案分析或修改正在進行中，請稍候再問。", "sources": [], "cite_offer": None, "proposal": None, "tool_calls": [], "intent": assistant.classify_intent(body.message), "usage": {"input": 0, "output": 0, "ms": 0}, "busy": True}
+    try:
         res = assistant.chat(case_id, body.message, state=state, tab=body.tab, history=body.history, readonly=body.readonly)
+    finally:
+        _lock.release()
     if res.get("proposal"):
         pid = f"pp_{uuid.uuid4().hex[:8]}"
         p = {"id": pid, "caseId": case_id, "message": body.message, "createdAt": _now(), **res["proposal"]}
@@ -344,6 +427,25 @@ def get_proposal(case_id: str, pid: str):
     if not p:
         raise HTTPException(404, {"code": "PROPOSAL_NOT_FOUND", "message": pid, "retryable": False})
     return p
+
+
+@app.post("/api/cases/{case_id}/proposals/{pid}/preview")
+def preview_proposal(case_id: str, pid: str):
+    """提案卡的「修改後」預覽：只改寫受影響段落（≤3 段、各 1 次小呼叫），不落地。"""
+    p = _pload(case_id, pid)
+    if not p:
+        raise HTTPException(404, {"code": "PROPOSAL_NOT_FOUND", "message": pid, "retryable": False})
+    if p.get("previews") is not None:
+        return {"id": pid, "previews": p["previews"]}
+    doc = _load(case_id)
+    if not _lock.acquire(timeout=3):
+        return {"id": pid, "previews": None, "busy": True}
+    try:
+        pv = assistant.preview(case_id, (doc or {}).get("output") or {}, p["items"])
+    finally:
+        _lock.release()
+    p["previews"] = pv; _psave(p)
+    return {"id": pid, "previews": pv}
 
 
 @app.post("/api/cases/{case_id}/proposals/{pid}/confirm", status_code=202)

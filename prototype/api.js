@@ -71,6 +71,7 @@ const Api = {
   chat: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
   proposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}`),
   confirmProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/confirm`, { method: "POST" }),
+  previewProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/preview`, { method: "POST" }),
   cancelProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/cancel`, { method: "POST" }),
   /** 輪詢 GET /jobs/{id} 直到 done／fatal；onEvent(e) 每個新事件叫一次 */
   async waitJob(jobId, onEvent, { interval = 2000, timeout = 600000 } = {}) {

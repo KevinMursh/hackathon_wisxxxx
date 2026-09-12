@@ -20,7 +20,8 @@ class ObjectionResult(BaseModel):
     draft_changes: list[str] = Field(description="若採納或部分採納，草稿需調整的段落與方向，每項一句；無法採納則空")
 
 
-def run(case: str, docs: list[Doc], issues: dict, judge: dict, objection: dict, draft: str, verified: list, sims_notes: dict, progress=None) -> dict:
+def run(case: str, docs: list[Doc], issues: dict, judge: dict, objection: dict, draft: str, verified: list, sims_notes: dict, progress=None, regen: bool = True) -> dict:
+    """regen=False：只重引證不重產草稿（提案流程會在所有 item 判完後統一局部重跑）。"""
     emit = progress or (lambda *a: None)
     issue = next((i for i in issues["issues"] if i["id"] == objection["issueId"]), None)
     if not issue:
@@ -36,7 +37,7 @@ def run(case: str, docs: list[Doc], issues: dict, judge: dict, objection: dict, 
                     images=[p for d in cited for p in d.images][:10]).model_dump()
     out = {**objection, **res, "issueId": issue["id"], "issueTitle": issue["title"], "originalFinding": issue["finding"]}
     emit("objection", "done", out)
-    if res["result"] in ("採納", "部分採納"):
+    if regen and res["result"] in ("採納", "部分採納"):
         emit("s6", "running", None)
         new_issues = json.loads(json.dumps(issues))
         for i in new_issues["issues"]:
