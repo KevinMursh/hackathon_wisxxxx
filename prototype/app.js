@@ -337,7 +337,12 @@ const STEP_OUT = {
 async function runAnalysis(caseId, { post = true } = {}) {
   $("#runTitle").textContent = "正在分析卷宗";
   for (let i = 1; i < LIVE_STEPS.length; i++) { $("#st" + i).style.opacity = ""; $("#so" + i).textContent = ""; }
-  if (post) await Api.analyze(caseId);
+  if (post) {  // 分析服務重佈時會有幾秒 ECONNREFUSED（502 ANALYSIS_UNAVAILABLE）：等它起來再送，不要直接判失敗
+    for (let k = 0; ; k++) {
+      try { await Api.analyze(caseId); break; }
+      catch (e) { if (!(e.status === 502 || e.code === "ANALYSIS_UNAVAILABLE" || e.code === "NETWORK") || k >= 8) throw e; $("#so1").textContent = `分析服務啟動中，${5 * (k + 1)} 秒後重試（${k + 1}/8）…`; await new Promise((r) => setTimeout(r, 5000)); }
+    }
+  }
   Router.set(`/run/${caseId}`);
   $("#st1").classList.add("active"); $("#so1").textContent = "欄位擷取中…";
   return new Promise((resolve, reject) => {
