@@ -481,7 +481,7 @@ function updateChips() {
     return;
   }
   const p = currentPlan();
-  $("#judgeChip").classList.add("on"); $("#judgeText").textContent = `${p.verdict.length > 12 ? p.verdict.slice(0, 12) + "…" : p.verdict}（${p.art.replace("訴願法 ", "")}）・修改 ${S.objections.length} 次`;
+  $("#judgeChip").classList.add("on"); $("#judgeText").textContent = `${p.verdict.length > 12 ? p.verdict.slice(0, 12) + "…" : p.verdict}${p.art ? `（${p.art.replace("訴願法 ", "")}）` : ""}・修改 ${S.objections.length} 次`;
   const sc = $("#statusChip"); sc.className = "chip status on " + S.status; $("#statusText").textContent = statusLabel();
   $$(".tab")[1].classList.toggle("warn", Object.values(S.stances).includes("open"));
   $$(".tab")[2].classList.toggle("warn", S.c.citations.some((x) => x.status !== "ok"));
