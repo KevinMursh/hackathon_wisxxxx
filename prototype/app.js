@@ -1262,7 +1262,13 @@ function asstSend() {
   if (!top.length) return asstAdd("a", `卷宗內無此資訊。<span class="src">已檢索 ${c.docs.filter((d) => d.include !== false).length} 份文件之 ${idx.length} 個定位點</span>`);
   asstAdd("a", `找到 ${top.length} 處：<br>${top.map((e) => `・《${esc(e.doc)}》第 1 頁・${e.where}：「${esc(e.text.length > 40 ? e.text.slice(0, 40) + "…" : e.text)}」<button class="ghost-btn open" data-jump="${e.ref}">開啟</button>`).join("<br>")}<span class="src">來源：卷宗歸戶後之定位索引</span>`);
 }
-$("#asstSend").addEventListener("click", asstSend); $("#asstIn").addEventListener("keydown", (e) => { if (e.key === "Enter") asstSend(); });
+$("#asstSend").addEventListener("click", asstSend);
+/* 中文輸入法：組字中的 Enter 是選字不是送出。isComposing 為主；Safari 在 compositionend 那一下 keyCode 229 且 isComposing 已 false，用旗標多擋一拍 */
+let composing = false, composedAt = 0;
+$("#asstIn").addEventListener("compositionstart", () => { composing = true; });
+$("#asstIn").addEventListener("compositionend", () => { composing = false; composedAt = Date.now(); });
+function enterIsSend(e) { return e.key === "Enter" && !e.isComposing && !composing && e.keyCode !== 229 && Date.now() - composedAt > 60; }
+$("#asstIn").addEventListener("keydown", (e) => { if (enterIsSend(e)) { e.preventDefault(); asstSend(); } });
 
 /* ---------- 字元級 diff ---------- */
 function diffHtml(a, b) {
