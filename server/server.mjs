@@ -20,6 +20,8 @@ const PORT = +(process.env.PORT || 8080);
 const MAX_FILE = 100 * 1024 * 1024;
 const MAX_BATCH = 500 * 1024 * 1024;
 
+const BOOT_AT = new Date();
+
 const app = express();
 
 /* CORS：前端與 API 同源時用不到，但隊友在本機跑前端打這台時需要。
@@ -436,6 +438,7 @@ app.get("/api/health", async (_req, res) => {
   const ok = bedrockOk && s3Ok && ddbOk && !missingRequired.length;
   res.status(ok ? 200 : 503).json({
     ok, version: "0.1.0", region: REGION,
+    uptimeSec: Math.round((Date.now() - BOOT_AT) / 1000), startedAt: BOOT_AT.toISOString(),
     bedrock: { model: MODEL, reachable: bedrockOk, concurrency: +(process.env.BEDROCK_CONCURRENCY || 3), startInterval: +(process.env.BEDROCK_MIN_INTERVAL || 2) },
     s3: { bucket: s3.BUCKET, prefix: process.env.S3_PREFIX || "", ok: s3Ok },
     dynamodb: { table: ddb.TABLE, ok: ddbOk },

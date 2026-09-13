@@ -5,7 +5,7 @@
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node eval/normalize.test.mjs",
+    "test": "node eval/doctypes.test.mjs && node eval/normalize.test.mjs",
     "eval:classify": "node eval/run.mjs",
     "start": "node server.mjs"
   },

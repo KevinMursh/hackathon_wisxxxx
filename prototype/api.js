@@ -22,12 +22,35 @@ async function req(path, opts = {}) {
   let res;
   const ctl = opts.timeoutMs ? new AbortController() : null, tm = ctl ? setTimeout(() => ctl.abort(), opts.timeoutMs) : null;
   try { res = await fetch(API_BASE + path, ctl ? { ...opts, signal: ctl.signal } : opts); }
-  catch (e) { if (e.name === "AbortError") throw new ApiError("TIMEOUT", `後端超過 ${Math.round(opts.timeoutMs / 1000)} 秒未回應，請再試一次`, 0); throw new ApiError("NETWORK", `連不到後端（${API_BASE}）。請確認服務是否運行、你的 IP 是否在允許清單內。`, 0); }
+  catch (e) {
+    if (e.name === "AbortError") throw new ApiError("TIMEOUT", `後端超過 ${Math.round(opts.timeoutMs / 1000)} 秒未回應，請再試一次`, 0);
+    throw await diagnoseNetwork(path);   // 分辨「剛重啟」與「真的連不到」
+  }
   finally { if (tm) clearTimeout(tm); }
   const ct = res.headers.get("content-type") || "";
   const body = ct.includes("json") ? await res.json().catch(() => ({})) : {};
   if (!res.ok) throw new ApiError(body.code || `HTTP_${res.status}`, body.message || res.statusText, res.status);
   return body;
+}
+
+/** 連線失敗時追打一次 health：服務剛重啟（部署會 systemctl restart）與 IP 被擋是兩件事，
+    訊息混在一起對排查沒幫助。 */
+async function diagnoseNetwork(path) {
+  try {
+    const r = await fetch(API_BASE + "/health", { cache: "no-store" });
+    if (r.ok) {
+      const h = await r.json().catch(() => ({}));
+      const boot = typeof h.uptimeSec === "number" ? h.uptimeSec : null;
+      return new ApiError("SERVICE_RESTARTING",
+        boot !== null && boot < 120
+          ? `後端剛重新啟動（${boot} 秒前），這次請求沒送達，請重試。`
+          : `後端運作中，但這次請求失敗（${path}），可能是暫時性網路問題，請重試。`, 0);
+    }
+    return new ApiError("SERVICE_UNHEALTHY", `後端回報異常（HTTP ${r.status}）`, r.status);
+  } catch {
+    return new ApiError("NETWORK",
+      `連不到後端（${API_BASE}）。可能是服務未啟動，或你的 IP 不在 Security Group 允許清單內。`, 0);
+  }
 }
 
 /* ---------- 端點 ---------- */

@@ -234,7 +234,7 @@ Response `200`：更新後的 File。
 ### 2.7 `GET /health`
 
 ```json
-{ "ok": true, "version": "0.1.0", "region": "us-west-2",
+{ "ok": true, "version": "0.1.0", "region": "us-west-2", "uptimeSec": 842, "startedAt": "2026-09-13T01:49:23.936Z",
   "bedrock": { "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "reachable": true, "concurrency": 3, "startInterval": 2 },
   "s3": { "bucket": "ntpc-law3-deploy-229004791954", "prefix": "", "ok": true },
   "dynamodb": { "table": "appeal-cases", "ok": true },
@@ -244,6 +244,8 @@ Response `200`：更新後的 File。
 `ok=false` → HTTP 503，條件是 **必要工具**（`pdftotext/pdftoppm/pdfinfo/file`）缺少，或 Bedrock／S3／DynamoDB 不通。
 選配工具（soffice／ffmpeg／qpdf／unzip）缺少不影響 `ok`，只會列在 `degraded`，該格式回 `unsupported`。
 前端開頁先打它；掛了就顯示錯誤，**不退回假資料**。
+`uptimeSec` 供前端分辨「部署重啟窗」與「真的連不到」：請求失敗時追打一次 health，
+通得過且 `uptimeSec < 120` → `SERVICE_RESTARTING`（請重試）；health 也不通 → `NETWORK`（服務未啟動或 IP 不在白名單）。
 
 ## 3. 儲存
 
