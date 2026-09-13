@@ -646,12 +646,14 @@ function openLiveDoc(d, view, tools, head) {
     const m = S.docMode[d.id] || modes[0][0];
     tools.innerHTML = modes.map(([k, label]) => `<button class="ghost-btn ${m === k ? "on" : ""}" data-m="${k}">${label}</button>`).join("")
       + (d.file ? `<a class="ghost-btn" href="${d.downloadUrl || d.file}" style="text-decoration:none">下載</a>` : "")
-      + `<button class="ghost-btn expand" data-full="1" title="全螢幕檢視（Esc 關閉）">⤢ 放大</button>`;
+;
     if (m === "pdf") view.innerHTML = pdfFrame();
     else if (m === "img") paintImages();
     else paintText();
     $$("#docTools button[data-m]").forEach((b) => b.addEventListener("click", () => { S.docMode[d.id] = b.dataset.m; S.zoom = 1; paint(); }));
-    $("#docTools button[data-full]")?.addEventListener("click", () => openViewer(d));
+    // 放大鈕疊在預覽區右上角（屬於這份文件，不屬於整個瀏覽器表頭）
+    view.insertAdjacentHTML("beforeend", `<button class="doc-full" title="全螢幕檢視（Esc 關閉）">⤢ 放大</button>`);
+    $(".doc-full", view)?.addEventListener("click", () => openViewer(d));
   };
   paint();
 }
@@ -667,10 +669,14 @@ async function openViewer(d) {
   const vw = $("#viewer"), body = $("#vwBody"), tools = $("#vwTools");
   $("#vwName").textContent = d.stdName || d.title;
   $("#vwMeta").textContent = `${d.origName ? "原檔名 " + d.origName + "・" : ""}${d.pages || 1} 頁・${KIND[d.kind] || d.kind}`;
-  const modes = d.kind === "video" ? [] :
-    d.kind === "pdf-text" || d.kind === "office" ? [["pdf", "原始 PDF"], ["text", "擷取文字"], ["img", "頁面影像"]] :
-    d.kind === "pdf-scan" ? [["pdf", "原始 PDF"], ["img", "頁面影像"]] :
-    d.kind === "image" ? [["img", "影像"]] : [["text", "內容"]];
+  const isLive = !!d.fileId;
+  const modes = d.kind === "video" ? [] : isLive
+    ? (d.kind === "pdf-text" || d.kind === "office" ? [["pdf", "原始 PDF"], ["text", "擷取文字"], ["img", "頁面影像"]]
+       : d.kind === "pdf-scan" ? [["pdf", "原始 PDF"], ["img", "頁面影像"]]
+       : d.kind === "image" ? [["img", "影像"]] : [["text", "內容"]])
+    // mock 文件：kind 是 text/image/pdf/video，內容在 d.html、原檔在 d.file
+    : (d.kind === "text" ? (d.file ? [["pdf", "原始 PDF"], ["text", "擷取文字"]] : [["text", "內容"]])
+       : d.kind === "image" ? [["img", "影像"]] : d.kind === "pdf" ? [["pdf", "原始 PDF"]] : [["text", "內容"]]);
   let m = S.docMode[d.id] || modes[0]?.[0] || "pdf";
 
   const paint = async () => {
@@ -679,6 +685,7 @@ async function openViewer(d) {
     if (d.kind === "video") body.innerHTML = `<video controls preload="metadata" src="${d.file}"></video>`;
     else if (m === "pdf") body.innerHTML = `<iframe src="${d.file}#${d.fromPage > 1 ? `page=${d.fromPage}&` : ""}toolbar=1&view=FitH"></iframe>`;
     else if (m === "img") body.innerHTML = (d.pageImageUrls?.length ? d.pageImageUrls : [d.file]).map((u) => `<img src="${u}" loading="lazy">`).join("");
+    else if (!isLive) body.innerHTML = `<div class="doc-body">${d.html || "<p class=\"note\">此文件沒有可顯示的文字內容</p>"}</div>`;
     else {
       body.innerHTML = `<div class="doc-body"><p class="note">讀取文字中…</p></div>`;
       try {
@@ -729,6 +736,10 @@ function openDoc(id, after) {
   } else if (d.kind === "pdf") { tools.innerHTML = `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">新分頁開啟</a>`; view.innerHTML = `<div style="padding:10px 12px 0">${head}</div><iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>`; }
   else if (d.kind === "video") { view.innerHTML = `<div class="doc-video">${head}<video id="vid" controls preload="metadata" src="${d.file}"></video><div class="cues">${(d.cues || []).map((q) => `<button class="ghost-btn" data-t="${q[1]}">${q[2]}</button>`).join("")}</div><p class="note" style="margin-top:8px">來源：${esc(d.srcNote || "檢舉人行車紀錄器")}；時間戳 2025/06/27 12:40:08–19。</p></div>`; $$(".cues button", view).forEach((b) => b.addEventListener("click", () => seek(+b.dataset.t))); $("#vid").addEventListener("error", () => { view.innerHTML = missing; }); }
   else view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "")}</div>`;
+  if (d.kind !== "missing" && (d.file || d.html)) {      // mock 路徑也要有放大鈕
+    view.insertAdjacentHTML("beforeend", `<button class="doc-full" title="全螢幕檢視（Esc 關閉）">⤢ 放大</button>`);
+    $(".doc-full", view)?.addEventListener("click", () => openViewer(d));
+  }
   if (after) after();
 }
 /** 真上傳案件的錨點：開檔並用 /text 反白 {page,start,end}；掃描件無文字則開頁圖 */
@@ -805,7 +816,7 @@ function renderExtract() {
     const raw = [[p.served, servedLab, ""], [p.due, "30 日屆滿", ""]];
     if (p.recv !== null) {
       raw.push([p.recv, p.over ? "收文（逾期）" : "收文（訴願提起）", "pivot"],
-               [due58, "答辯期限 §58 III", ""], [due85, "應決定 §85 I", ""], [ext85, "延長上限 ＋2 月", ""]);
+               [due58, "答辯期限 §58 III", ""], [due85, "應決定 §85 I", ""], [ext85, "得延長至此 §85 I 但書", "opt"]);
       if (decided) raw.push([decided, "實際決定", "pivot"]);
     } else raw.push([p.due, "收文待補", "dim"]);
 
@@ -825,19 +836,22 @@ function renderExtract() {
       <span class="cap">§14 訴願人 30 日</span>
       <span class="res">${p.recv === null ? "收文待補" : p.over ? `逾期 ${p.days} 日` : `未逾期・餘 ${p.left} 日`}</span></div>`;
 
-    let span85 = "";
+    let span85 = "", over85bar = "";
     if (p.recv !== null) {
       const over85 = !decided && now > due85;
-      const end = decided || (over85 ? ext85 : due85);
-      const a85 = xOf(p.recv), b85 = xOf(end);
+      // 括號＝法定 3 個月（收文 → 應決定），延長是「必要時得延長一次」的例外，不算在裡面
+      const a85 = xOf(p.recv), b85 = xOf(decided || due85);
       span85 = `<div class="tl-span dn ${over85 ? "bad" : ""}" style="left:${a85}%;width:${Math.max(6, b85 - a85)}%">
-        <span class="cap">§85 I 本局 3 個月${over85 ? "（＋延長 2 月）" : ""}</span>
+        <span class="cap">§85 I 法定審理 3 個月</span>
         <span class="res">${decided ? `歷時 ${Math.round((decided - p.recv) / DAY)} 日`
-          : over85 ? `已逾 ${Math.round((now - due85) / DAY)} 日` : `尚餘 ${Math.round((due85 - now) / DAY)} 日`}</span></div>`;
+          : over85 ? `已逾期` : `尚餘 ${Math.round((due85 - now) / DAY)} 日`}</span></div>`;
+      // 逾期段：從應決定畫到軸右端（今天多半已在軸外），末端箭頭表示仍在累積
+      if (over85) over85bar = `<div class="tl-over" style="left:${xOf(due85)}%;width:${Math.max(4, 100 - xOf(due85))}%">
+        <span class="arrow">▶</span><span class="lb">已逾 ${Math.round((now - due85) / DAY)} 日（至今）</span></div>`;
     }
     const nowMark = now >= min && now <= max ? `<div class="tl-now" style="left:${pos(now)}%"><span>今天</span></div>` : "";
 
-    const track = `<div class="tl-track">${span14}${span85}${nowMark}${laid.map((z) =>
+    const track = `<div class="tl-track">${span14}${span85}${over85bar}${nowMark}${laid.map((z) =>
       `<div class="tl-pt ${z.cl}" style="left:${z.x}%"><div class="up"><div class="d">${toMg(z.t)}</div></div><div class="dot"></div><div class="lab">${esc(z.lab)}</div></div>`).join("")}</div>`;
 
     const note1 = `起算日 <b>${toMg(p.start)}</b>（送達之次日）＋ 30 日 ＝ 屆滿日 <b>${toMg(p.due)}</b>。${
