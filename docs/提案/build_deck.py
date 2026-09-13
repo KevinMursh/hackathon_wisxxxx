@@ -165,6 +165,7 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .pil .c{background:#F4F6F9;border-radius:16px;padding:24px 26px;min-height:225px;display:grid;grid-template-columns:52px 1fr;gap:16px;align-items:start}
 .pil .c i{width:52px;height:52px;border-radius:50%;background:#16304F;color:#fff;font-style:normal;font-weight:900;font-size:24px;display:flex;align-items:center;justify-content:center}
 .pil .c b{display:block;font-size:26px;color:#16304F;margin-bottom:8px}.pil .c p{margin:0;font-size:18px;color:#334;line-height:1.5}
+.pil .c.big{align-items:center;min-height:235px;grid-template-columns:72px 1fr}.pil .c.big i{width:72px;height:72px;font-size:34px}.pil .c.big b{font-size:40px;margin:0}
 .pil .c em{display:block;font-style:normal;font-size:15px;color:#8A5A00;margin-top:10px;border-left:3px solid #D98E04;padding-left:10px}
 .fw{display:grid;grid-template-columns:1fr 1.3fr;gap:30px;align-items:start}
 .fw .why{background:#F4F6F9;border-radius:14px;padding:20px 22px}
@@ -252,7 +253,7 @@ def h_slide(i, s):
     elif k == "board":
         b = '<div class="board">' + "".join(f'<div class="it"><span class="d {st}"></span>{a}<small>{c}</small></div>' for a, c, st in s["items"]) + f'</div><div class="note">{s["foot"]}</div>'
     elif k == "pillars":
-        b = '<div class="pil">' + "".join(f'<div class="c"><i>{j}</i><div><b>{a}</b><p>{c}</p><em>{d}</em></div></div>' for j, (a, c, d) in enumerate(s["items"], 1)) + '</div>'
+        b = '<div class="pil">' + "".join(f'<div class="c big"><i>{j}</i><div><b>{a}</b></div></div>' for j, a in enumerate(s["items"], 1)) + '</div>'
     elif k == "flywheel":
         n_ = len(s["loop"]); cx, cy, R = 370, 245, 140; nodes = ""
         for j, (a, c) in enumerate(s["loop"]):
@@ -444,12 +445,11 @@ def build_pptx(png):
                 rect(sl, x, y + 0.62, 5.85, 0.01, "E6EAF0")
             note(sl, s["foot"])
         elif k == "pillars":
-            for j, (a, c, d) in enumerate(s["items"]):
+            for j, a in enumerate(s["items"]):
                 x, y = 0.7 + (j % 2) * 6.05, 1.65 + (j // 2) * 2.55
                 rect(sl, x, y, 5.9, 2.35, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
-                circle_txt(sl, x + 0.25, y + 0.28, 0.55, str(j + 1), size=18)
-                tb(sl, x + 1.0, y + 0.2, 4.75, 0.5, a, 19, True, NAVY); tb(sl, x + 1.0, y + 0.72, 4.75, 0.95, c, 13.5, False, "334455")
-                rect(sl, x + 1.0, y + 1.7, 0.05, 0.45, AMBER); tb(sl, x + 1.15, y + 1.68, 4.6, 0.5, d, 11.5, False, "8A5A00")
+                circle_txt(sl, x + 0.35, y + 0.75, 0.85, str(j + 1), size=26)
+                tb(sl, x + 1.45, y + 0.4, 4.3, 1.55, a, 28, True, NAVY, anchor=MSO_ANCHOR.MIDDLE)
         elif k == "flywheel":
             rect(sl, 0.7, 1.65, 5.5, 2.9, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
             tb(sl, 0.95, 1.8, 5.0, 0.4, "為什麼輸入拿不到", 15, True, NAVY)
