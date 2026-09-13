@@ -6,7 +6,7 @@ S = []
 
 S.append(dict(kind="cover", title="訴願智審臺", sub="承辦人的 AI 審卷夥伴",
     tag="2026 新北市 AI 智慧城市黑客松 ｜ 法制局組",
-    claim="比對交給 AI，證據留給眼睛，判斷留給承辦人。",
+    claim="比對交給 AI，證據原文可查，判斷留給承辦人。",
     team="WISXXXX 親友見面會　｜　Kevin ／ Roy",
     url="Live Demo　http://100.20.156.38/"))
 
