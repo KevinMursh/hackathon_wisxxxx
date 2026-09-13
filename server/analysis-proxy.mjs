@@ -7,7 +7,7 @@ import http from "node:http";
 
 const TARGET = process.env.ANALYSIS_URL || "http://127.0.0.1:8100";
 const PATHS = [
-  /^\/api\/cases\/[^/]+\/(analyze|reanalyze|analysis|objection|chat)$/,
+  /^\/api\/cases\/[^/]+\/(analyze|reanalyze|analysis|objection|chat|chat\/import)$/,
   /^\/api\/cases\/[^/]+\/proposals\/[^/]+(\/(confirm|cancel|preview))?$/,   // 助手提案：GET／confirm／cancel／preview
   /^\/api\/jobs\/an_[^/]+(\/events)?$/,   // 分析 job 以 an_ 開頭，不會撞到歸戶 job_
   /^\/api\/lawlib(\/sync)?$/,

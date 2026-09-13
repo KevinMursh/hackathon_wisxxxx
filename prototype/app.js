@@ -1214,7 +1214,14 @@ function renderHist() {
 async function histLoadLive() {
   CHAT_HIST.length = 0;
   const wait = asstAdd("a", `<span class="sysnote">載入本案對話紀錄…</span>`);
-  try { const r = await Api.chatLog(S.c.caseId); wait.remove(); (r.messages || []).forEach((m) => CHAT_HIST.push(m)); renderHist(); }
+  try {
+    let r = await Api.chatLog(S.c.caseId);
+    if (!(r.messages || []).length) {  // 改版前留在這台瀏覽器的紀錄 → 補進後端，之後所有電腦都看得到
+      let old = []; try { old = JSON.parse(sessionStorage.getItem(histKey()) || "[]"); } catch {}
+      if (old.length) { r = await Api.importChat(S.c.caseId, old); toast(`已把本機保存的 ${r.imported} 則對話併入本案共用紀錄`); }
+    }
+    wait.remove(); (r.messages || []).forEach((m) => CHAT_HIST.push(m)); renderHist();
+  }
   catch (e) { wait.innerHTML = `<span class="sysnote">對話紀錄載入失敗：${esc(e.message || e.code)}</span>`; }
 }
 /* 建議句由本案狀態＋目前分頁即時產生（規則，零模型呼叫）；正式版可再加一次便宜的模型呼叫補充 */

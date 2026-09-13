@@ -511,6 +511,21 @@ def get_chat(case_id: str):
     return {"caseId": case_id, "messages": _chat_load(case_id)}
 
 
+class ChatImport(BaseModel):
+    messages: list[dict]
+
+
+@app.post("/api/cases/{case_id}/chat/import")
+def import_chat(case_id: str, body: ChatImport):
+    """前端把改版前留在瀏覽器 sessionStorage 的對話一次補進後端（只在後端為空時）。"""
+    cur = _chat_load(case_id)
+    if cur:
+        return {"caseId": case_id, "messages": cur, "imported": 0}
+    msgs = [{"at": _now(), "role": "user" if m.get("role") == "user" else "assistant", "text": (m.get("text") or "")[:4000], "kind": m.get("kind") or ("system" if str(m.get("text", "")).startswith("（") else None)} for m in body.messages[:200] if m.get("text")]
+    _chat_save(case_id, msgs)
+    return {"caseId": case_id, "messages": msgs, "imported": len(msgs)}
+
+
 @app.delete("/api/cases/{case_id}/chat")
 def clear_chat(case_id: str):
     _chat_save(case_id, [])
