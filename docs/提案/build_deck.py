@@ -256,7 +256,7 @@ def h_slide(i, s):
     if k in ("cover", "end"):
         top = "" if k == "cover" else 'style="top:230px"'
         h3s = "" if k == "cover" else ' style="font-size:72px"'
-        inner = f'<div class="band"></div><div class="blob"></div><div class="in" {top}><div class="ctag">{s["tag"]}</div><h3{h3s}>{s["title"]}</h3><div class="sub">{s["sub"]}</div><div class="claim">{s["claim"]}</div></div>'
+        inner = f'<div class="band"></div><div class="blob"></div><div class="in" {top}><div class="ctag">{s["tag"]}</div><h3{h3s}>{s["title"]}</h3>{f'<div class="sub">{s["sub"]}</div>' if s.get("sub") else ""}{f'<div class="claim">{s["claim"]}</div>' if s.get("claim") else ""}</div>'
         if k == "cover":
             inner += f'<div class="team">{s["team"]}</div><div class="ctag" style="position:absolute;left:96px;bottom:60px;letter-spacing:.05em;color:#9FB0C8">{s["url"]}</div>'
         return f'<div class="slide cover">{inner}</div>'
@@ -426,8 +426,8 @@ def build_pptx(png):
             top = 1.3 if k == "cover" else 2.3
             tb(sl, 1.0, top, 11, 0.4, s["tag"], 12, True, GOLD)
             tb(sl, 1.0, top + 0.45, 11.5, 1.4, s["title"], 66 if k == "cover" else 54, True, "FFFFFF")
-            tb(sl, 1.0, top + 1.85, 11.5, 0.6, s["sub"], 21, False, "C9D6E6")
-            rect(sl, 1.0, top + 2.6, 0.05, 0.75, AMBER); tb(sl, 1.15, top + 2.55, 10, 0.9, s["claim"], 17, False, "E6EDF5")
+            if s.get("sub"): tb(sl, 1.0, top + 1.85, 11.5, 0.6, s["sub"], 21, False, "C9D6E6")
+            if s.get("claim"): rect(sl, 1.0, top + 2.6, 0.05, 0.75, AMBER); tb(sl, 1.15, top + 2.55, 10, 0.9, s["claim"], 17, False, "E6EDF5")
             if k == "cover":
                 tb(sl, 1.0, 5.95, 10, 0.4, s["team"], 15, True, "E6EDF5"); tb(sl, 1.0, 6.5, 10, 0.4, s["url"], 12, False, "9FB0C8")
             continue
