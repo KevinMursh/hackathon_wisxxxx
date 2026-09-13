@@ -1219,14 +1219,19 @@ function histKey() { return "ssz.chat." + (S.c?.caseId || S.c?.id || ""); }
 function histLoad() { CHAT_HIST.length = 0; try { (JSON.parse(sessionStorage.getItem(histKey()) || "[]")).forEach((h) => CHAT_HIST.push(h)); } catch {} }
 function histSave() { try { sessionStorage.setItem(histKey(), JSON.stringify(CHAT_HIST.slice(-20))); } catch {} }
 function isLiveCase() { const c = S.c; return !!(c && c.live && c.caseId && !c.analysisPending); }
+let CHAT_BUSY = false;
 async function asstSendLive(q) {
-  const c = S.c, tab = +($(".tab.on")?.dataset.t || 0);
-  const wait = asstAdd("a", `<span class="typing">查詢中…</span>`);
+  const c = S.c, tab = +($(".tab.on")?.dataset.t || 0), t0 = Date.now();
+  if (CHAT_BUSY) return asstAdd("a", `<span class="sysnote">上一則還在處理中，請稍候。</span>`);
+  CHAT_BUSY = true; $("#asstSend").disabled = true; $("#asstSend").textContent = "處理中…";
+  const wait = asstAdd("a", `<span class="typing">AI 查詢中…（一般 5–10 秒；提案含法條查核約 10–20 秒）</span>`);
   try {
     const res = await Api.chat(c.caseId, { message: q, tab, readonly: S.status !== "承辦中", history: CHAT_HIST.slice(-6) });
+    console.info("[chat]", res.kind, Date.now() - t0, "ms", res.usage, res.tool_calls?.map((t) => t.name));
     wait.remove(); CHAT_HIST.push({ role: "user", text: q }, { role: "assistant", text: res.text || "" }); histSave();
-    renderServerReply(res);
-  } catch (e) { wait.remove(); asstAdd("a", `助手暫時無法回應：${esc(e.message || e.code)}<span class="src">${esc(e.code || "")}</span>`); }
+    try { renderServerReply(res); } catch (e) { console.error("[chat] render failed", e, res); asstAdd("a", `回覆已收到但畫面無法呈現：${esc(e.message)}<span class="src">${esc((res.text || "").slice(0, 300))}</span>`); }
+  } catch (e) { console.error("[chat] failed", e); wait.remove(); asstAdd("a", `助手暫時無法回應：${esc(e.message || e.code)}<span class="src">${esc(e.code || "")}　${Math.round((Date.now() - t0) / 1000)} 秒後放棄；可直接重送同一句</span>`); }
+  finally { CHAT_BUSY = false; $("#asstSend").disabled = false; $("#asstSend").textContent = "送出"; }
 }
 /* 後端回覆 → 畫面；answer／clarify／refuse 是文字卡，proposal 走 renderProposal（同一套元件） */
 function renderServerReply(res) {

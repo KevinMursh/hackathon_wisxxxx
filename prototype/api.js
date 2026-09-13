@@ -20,8 +20,10 @@ class ApiError extends Error {
 
 async function req(path, opts = {}) {
   let res;
-  try { res = await fetch(API_BASE + path, opts); }
-  catch (e) { throw new ApiError("NETWORK", `連不到後端（${API_BASE}）。請確認服務是否運行、你的 IP 是否在允許清單內。`, 0); }
+  const ctl = opts.timeoutMs ? new AbortController() : null, tm = ctl ? setTimeout(() => ctl.abort(), opts.timeoutMs) : null;
+  try { res = await fetch(API_BASE + path, ctl ? { ...opts, signal: ctl.signal } : opts); }
+  catch (e) { if (e.name === "AbortError") throw new ApiError("TIMEOUT", `後端超過 ${Math.round(opts.timeoutMs / 1000)} 秒未回應，請再試一次`, 0); throw new ApiError("NETWORK", `連不到後端（${API_BASE}）。請確認服務是否運行、你的 IP 是否在允許清單內。`, 0); }
+  finally { if (tm) clearTimeout(tm); }
   const ct = res.headers.get("content-type") || "";
   const body = ct.includes("json") ? await res.json().catch(() => ({})) : {};
   if (!res.ok) throw new ApiError(body.code || `HTTP_${res.status}`, body.message || res.statusText, res.status);
@@ -68,7 +70,7 @@ const Api = {
   analysis: (caseId) => req(`/cases/${encodeURIComponent(caseId)}/analysis`),
   objection: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/objection`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
   /* ---- 助手：plans/助手API-契約與實作清單.md ---- */
-  chat: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  chat: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), timeoutMs: 90000 }),
   proposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}`),
   confirmProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/confirm`, { method: "POST" }),
   previewProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/preview`, { method: "POST" }),
