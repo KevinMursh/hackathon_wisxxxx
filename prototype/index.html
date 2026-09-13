@@ -59,7 +59,7 @@
   .srct.訴願人 { color:var(--accent); border-color:var(--accent); } .srct.原處分機關 { color:var(--amber); border-color:var(--amber); }
   .srct.第三方 { color:var(--green); border-color:var(--green); } .srct.本局 { color:var(--seal); border-color:var(--seal); }
   .srct.未知 { color:var(--muted); border-color:var(--line); }
-  .item.err .t { color:var(--seal); } .item.dup .t, .item.box .t { color:var(--muted); }
+  .item.err .t { color:var(--seal); } .item.dup .t, .item.contr .t { color:var(--muted); }
   .tag.err { color:var(--seal); border-color:var(--seal); }
 
   /* ---------- 頂部列 ---------- */
@@ -144,7 +144,7 @@
   .bar { height:2px; background:var(--surface-3); margin-top:6px; overflow:hidden; } .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .5s linear; }
 
   /* ---------- 3. 結果 ---------- */
-  .work { display:grid; grid-template-columns:var(--leftw, 36%) 6px minmax(0, 1fr); align-items:start; height:calc(100vh - 52px); }
+  .work { display:grid; grid-template-columns:var(--leftw, 36%) 6px minmax(0, 1fr); align-items:start; height:calc(100vh - 54px); }
   .work.fullleft { grid-template-columns:minmax(0,1fr) 0 0; }
   .work.fullleft .panel, .work.fullleft .handle { display:none; }
   @media (max-width:960px) { .work { grid-template-columns:minmax(0,1fr) !important; height:auto; } .handle { display:none; } .doc-pane { max-height:460px; } }
@@ -182,12 +182,12 @@
   mark.hit-seal { background:var(--seal-soft); color:var(--seal); border-bottom-color:var(--seal); font-weight:600; }
   .doc-img { position:relative; padding:12px; cursor:grab; user-select:none; width:max-content; } .doc-img.drag { cursor:grabbing; }
   .doc-img .imgwrap { position:relative; width:var(--imgw); } .doc-img .imgwrap img { width:100%; display:block; }
-  .box { position:absolute; border:2px solid var(--accent); background:rgba(31,78,121,.08); cursor:pointer; }
-  .box:hover, .box.hit { box-shadow:0 0 0 3px rgba(46,109,164,.35); }
-  .box.hit { border-color:var(--seal); background:rgba(166,43,31,.12); animation:pulse 1.2s ease-out 2; }
+  .imgwrap .box { position:absolute; border:2px solid var(--accent); background:rgba(31,78,121,.08); cursor:pointer; }
+  .imgwrap .box:hover, .imgwrap .box.hit { box-shadow:0 0 0 3px rgba(46,109,164,.35); }
+  .imgwrap .box.hit { border-color:var(--seal); background:rgba(166,43,31,.12); animation:pulse 1.2s ease-out 2; }
   @keyframes pulse { 0% { box-shadow:0 0 0 0 rgba(166,43,31,.5);} 100% { box-shadow:0 0 0 14px rgba(166,43,31,0);} }
-  .box .lb { position:absolute; left:-2px; top:100%; margin-top:3px; background:var(--accent); color:#fff; font-size:10.5px; padding:1px 6px; white-space:nowrap; display:none; z-index:2; }
-  .box:hover .lb, .box.hit .lb { display:block; } .box.hit .lb { background:var(--seal); }
+  .imgwrap .box .lb { position:absolute; left:-2px; top:100%; margin-top:3px; background:var(--accent); color:#fff; font-size:10.5px; padding:1px 6px; white-space:nowrap; display:none; z-index:2; }
+  .imgwrap .box:hover .lb, .imgwrap .box.hit .lb { display:block; } .imgwrap .box.hit .lb { background:var(--seal); }
   .doc-pdf { width:100%; height:100%; border:none; min-height:560px; }
   .doc-video { padding:14px; } .doc-video video { width:100%; background:#000; display:block; } .cues { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .doc-missing { padding:24px; font-size:12.5px; color:var(--ink-3); }

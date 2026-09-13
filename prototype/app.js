@@ -521,7 +521,7 @@ function renderDocs() {
   const groups = SRC_ORDER.map((src) => [src, c.docs.filter((d) => (d.src || "原處分機關") === src)]).filter(([, l]) => l.length);
   const GNOTE = { "第三方": "獨立證據", "本局": "受理機關", "未知": "內容無從判定提出方" };
   $("#docList").innerHTML = groups.map(([src, list]) => `<div class="grp" data-g="${src}"><span class="tri">▾</span><span class="srct ${src}" style="margin:0">${src}</span><span>${GNOTE[src] || ""}</span><span class="n">${list.length}</span></div><div class="items">${list.map((d) => {
-    const bad = d.err ? "err" : d.dup ? "dup" : d.container ? "box" : d.pending ? "pend" : d.staged ? "staged" : "";
+    const bad = d.err ? "err" : d.dup ? "dup" : d.container ? "contr" : d.pending ? "pend" : d.staged ? "staged" : "";
     const meta = d.partOf ? `第 ${d.fromPage}–${d.toPage} 頁・${d.partOf.n}/${d.partOf.total}`
       : d.duration ? `${d.duration}s・影片`
       : `${d.pages || 1} 頁・${KIND[d.kind] || ""}`;
