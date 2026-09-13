@@ -469,7 +469,7 @@
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="上傳卷宗檔案">
         <span class="mk">＋</span>
         <span><b>拖曳整包卷宗至此，或點選選擇多個檔案</b><span>PDF・JPG・PNG・MP4　檔名不需整理，系統看內容辨識</span></span>
-        <input type="file" id="file" multiple accept=".pdf,.jpg,.jpeg,.png,.mp4,.mov,.doc,.docx" hidden>
+        <input type="file" id="file" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.heic,.tif,.tiff,.mp4,.mov,.m4v,.avi,.doc,.docx,.odt,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip" hidden>
       </div>
       <div class="files" id="fileList"></div>
       <div class="upload-bar">
@@ -503,7 +503,7 @@
       <div class="pane-head">
         <div><span class="eyebrow">卷宗瀏覽器</span><span class="note" id="docCount" style="margin-left:8px"></span></div>
         <div class="doc-tools" id="docTools"></div>
-        <div class="doc-tools"><button class="btn" id="addBtn" style="font-size:11px;padding:3px 9px" title="補充上傳卷證；只辨識新檔">＋ 補件</button><button class="ghost-btn" id="addDemo" style="display:none">載入示範補件包</button><input type="file" id="addFile" multiple accept=".pdf,.jpg,.jpeg,.png,.mp4,.mov" hidden><button class="ghost-btn" id="listToggle">收合清單</button><button class="ghost-btn" id="fullLeft">展開卷宗</button></div>
+        <div class="doc-tools"><button class="btn" id="addBtn" style="font-size:11px;padding:3px 9px" title="補充上傳卷證；只辨識新檔">＋ 補件</button><button class="ghost-btn" id="addDemo" style="display:none">載入示範補件包</button><input type="file" id="addFile" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.heic,.tif,.tiff,.mp4,.mov,.m4v,.avi,.doc,.docx,.odt,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip" hidden><button class="ghost-btn" id="listToggle">收合清單</button><button class="ghost-btn" id="fullLeft">展開卷宗</button></div>
       </div>
       <div class="doclist" id="docList"></div>
       <div class="curdoc" id="curDoc"><span class="eyebrow">目前</span><b id="curDocName">—</b><span class="note">▾ 展開清單</span></div>
@@ -586,7 +586,7 @@
   <div class="mbody" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="field"><label>訴願審議委員會結論（決定書 PDF）<b>＊必填</b></label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost-btn" id="pickFinal">選擇檔案</button><button class="ghost-btn" id="useRealFinal">使用 case02 真實決定書（demo）</button><input type="file" id="finalFile" accept=".pdf" hidden></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost-btn" id="pickFinal">選擇檔案</button><input type="file" id="finalFile" accept=".pdf" hidden></div>
         <div class="note" id="finalName" style="margin-top:4px">尚未上傳</div></div>
       <div class="field"><label>結論</label><select id="finalVerdict"><option>訴願駁回</option><option>訴願不受理</option><option>原處分撤銷</option><option>原處分撤銷，發回另為適法之處分</option></select></div>
       <div class="field"><label>決定日期</label><input type="text" id="finalDate" placeholder="114-12-11"></div>
