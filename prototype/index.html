@@ -386,7 +386,7 @@
   .asst-welcome b { color:var(--ink); } .asst-welcome .ex { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; } .asst-welcome .ex button { font-size:11.5px; padding:3px 10px; border-radius:14px; }
   .asst-welcome .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; } .asst-welcome .two > div { border-top:2px solid var(--line-strong); padding-top:6px; } .asst-welcome .two > div:last-child { border-top-color:var(--accent); } @media (max-width:520px) { .asst-welcome .two { grid-template-columns:1fr; } }
   .asst-hint { display:flex; justify-content:space-between; padding:4px 14px 8px; font-size:10.5px; color:var(--ink-3); } .asst-hint #asstState { font-family:var(--mono); letter-spacing:.04em; }
-  .msg { position:relative; max-width:88%; padding:9px 13px; line-height:1.75; border-radius:10px; font-size:13px; }
+  .msg { position:relative; flex:none; max-width:88%; padding:9px 13px; line-height:1.75; border-radius:10px; font-size:13px; }   /* flex:none：對話區是 column flex，卡片有 overflow:hidden 會被壓成一條線 */
   .msg.u { align-self:flex-end; background:var(--accent); color:var(--on-accent); border-bottom-right-radius:3px; } .msg.u .src { color:rgba(255,255,255,.75); }
   .msg.a { align-self:flex-start; background:var(--surface); border:1px solid var(--line); border-bottom-left-radius:3px; }
   .msg.a::before { content:"AI"; position:absolute; left:-2px; top:-9px; font-family:var(--mono); font-size:9px; letter-spacing:.06em; color:var(--accent); background:var(--bg); padding:0 4px; } .msg.a.card::before { content:none; }
