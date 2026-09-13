@@ -138,7 +138,7 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .ba .ar{text-align:center;color:#D98E04;font-size:52px;font-weight:900}
 .pipe7{display:flex;gap:10px}
 .pipe7 .c{flex:1;border:2px solid #DDE3EA;border-radius:12px;padding:16px 8px;text-align:center}
-.pipe7 .c b{display:block;font-size:20px;color:#16304F}.pipe7 .c i{display:inline-block;font-style:normal;margin-top:8px;background:#FFF2D6;color:#B36F00;font-weight:700;border-radius:6px;padding:2px 8px;font-size:14.5px;white-space:nowrap}
+.pipe7 .c b{display:block;font-size:21px;color:#16304F;padding:10px 0}.pipe7 .c i{display:inline-block;font-style:normal;margin-top:8px;background:#FFF2D6;color:#B36F00;font-weight:700;border-radius:6px;padding:2px 8px;font-size:14.5px;white-space:nowrap}
 .pipe7 .c.code{border-color:#2E7D32;background:#F2F8F3}.pipe7 .c.code i{background:#E0F0E2;color:#2E7D32}
 .gate{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
 .gate .g{background:#F4F6F9;border-radius:16px;padding:26px 22px;text-align:center;min-height:330px}
@@ -166,6 +166,14 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .pil .c i{width:52px;height:52px;border-radius:50%;background:#16304F;color:#fff;font-style:normal;font-weight:900;font-size:24px;display:flex;align-items:center;justify-content:center}
 .pil .c b{display:block;font-size:26px;color:#16304F;margin-bottom:8px}.pil .c p{margin:0;font-size:18px;color:#334;line-height:1.5}
 .pil .c.big{align-items:center;min-height:235px;grid-template-columns:72px 1fr}.pil .c.big i{width:72px;height:72px;font-size:34px}.pil .c.big b{font-size:34px;margin:0;white-space:nowrap}
+.pil .c.big small{display:block;font-size:20px;color:#8A5A00;font-weight:500;margin-top:8px}
+.wf{display:grid;grid-template-columns:150px repeat(5,1fr);gap:12px 14px;align-items:center;margin-top:8px}
+.wf .h{font-size:16px;letter-spacing:.1em;color:#8A93A0;font-weight:700;text-align:center;padding-bottom:6px;border-bottom:2px solid #E6EAF0}
+.wf .rl{font-size:22px;font-weight:700;color:#16304F}
+.wf .cell{height:120px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700}
+.wf .man{background:#F4F6F9;color:#8A93A0}.wf .ai{background:#16304F;color:#fff}.wf .hu{background:#D98E04;color:#16304F}
+.subtitle{font-size:22px;color:#8A5A00;margin:-18px 0 22px;font-weight:500}
+.cover .team{position:absolute;left:96px;bottom:104px;font-size:20px;color:#E6EDF5;font-weight:700}
 .pil .c em{display:block;font-style:normal;font-size:15px;color:#8A5A00;margin-top:10px;border-left:3px solid #D98E04;padding-left:10px}
 .fw{display:grid;grid-template-columns:1fr 1.3fr;gap:30px;align-items:start}
 .fw .why{background:#F4F6F9;border-radius:14px;padding:20px 22px}
@@ -222,7 +230,7 @@ def h_slide(i, s):
         h3s = "" if k == "cover" else ' style="font-size:72px"'
         inner = f'<div class="band"></div><div class="blob"></div><div class="in" {top}><div class="ctag">{s["tag"]}</div><h3{h3s}>{s["title"]}</h3><div class="sub">{s["sub"]}</div><div class="claim">{s["claim"]}</div></div>'
         if k == "cover":
-            inner += f'<div class="ctag" style="position:absolute;left:96px;bottom:60px;letter-spacing:.05em;color:#9FB0C8">{s["url"]}</div>'
+            inner += f'<div class="team">{s["team"]}</div><div class="ctag" style="position:absolute;left:96px;bottom:60px;letter-spacing:.05em;color:#9FB0C8">{s["url"]}</div>'
         return f'<div class="slide cover">{inner}</div>'
     b = ""
     if k == "pain":
@@ -233,6 +241,12 @@ def h_slide(i, s):
         y = 20 + len(s["rows"]) * 38
         b = (f'<div class="vs"><div class="pan no"><h4>❌ {s["no"][0]}</h4><p>{s["no"][1]}</p><svg viewBox="0 0 400 150"><rect x="20" y="30" width="360" height="90" rx="12" fill="#DDE3EA"/><text x="200" y="85" text-anchor="middle" font-size="26" fill="#5B6573" font-weight="700">駁回</text><text x="200" y="140" text-anchor="middle" font-size="14" fill="#8A93A0">黑盒</text></svg></div>'
              f'<div class="pan yes"><h4>✅ {s["yes"][0]}</h4><p>{s["yes"][1]}</p><svg viewBox="0 0 400 150"><g font-size="14" fill="#fff">{rows}<rect x="20" y="{y}" width="360" height="30" rx="6" fill="#D98E04"/><text x="32" y="{y+20}" fill="#16304F" font-weight="700">{s["act"]}</text></g></svg></div></div>')
+    elif k == "wf":
+        cls = {"人工": "man", "AI": "ai", "承辦人": "hu"}
+        b = f'<div class="subtitle">{s["subtitle"]}</div><div class="wf"><div></div>' + "".join(f'<div class="h">{c}</div>' for c in s["cols"])
+        for lab, cells in s["rows"]:
+            b += f'<div class="rl">{lab}</div>' + "".join(f'<div class="cell {cls[c]}">{c}</div>' for c in cells)
+        b += f'</div><div class="note">{s["foot"]}</div>'
     elif k == "flow":
         b = '<div class="flow5">' + "".join(f'<div class="c"><div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="#16304F" stroke-width="4">{ICONS[ic]}</svg></div><b>{a}</b><span>{c}</span></div>' for a, c, ic in s["steps"]) + f'</div><div class="note">{s["foot"]}</div>'
     elif k == "four":
@@ -240,7 +254,7 @@ def h_slide(i, s):
     elif k == "ba":
         b = f'<div class="ba"><div class="box mess">{"<br>".join(s["before"])}</div><div class="ar">→</div><div class="box neat">{"<br>".join(s["after"])}</div></div><div class="chips" style="margin-top:22px">' + "".join(f'<div class="chip">{a}<small>{c}</small></div>' for a, c in s["chips"]) + '</div>' + (f'<div class="note">{s["foot"]}</div>' if s.get("foot") else '')
     elif k == "pipe":
-        b = '<div class="pipe7">' + "".join(f'<div class="c{" code" if g else ""}"><b>{a}</b><i>{c}</i></div>' for a, c, g in s["steps"]) + '</div>'
+        b = '<div class="pipe7">' + "".join(f'<div class="c{" code" if g else ""}"><b>{a}</b>{f"<i>{c}</i>" if c else ""}</div>' for a, c, g in s["steps"]) + '</div>'
         b += f'<div style="display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;margin-top:44px"><div class="bignum">{s["big"][0]}<small>{s["big"][1]}</small></div><div class="big">{s["text"]}<br><b style="color:#2E7D32">{s["green"]}</b></div></div>'
     elif k == "arch":
         b = f'<div style="margin-top:-8px;transform:scale(.95);transform-origin:top left">{arch_html()}</div>' + (f'<div style="position:absolute;right:72px;top:64px;font-size:16px;color:#8A93A0">{s["foot"]}</div>' if s.get("foot") else '')
@@ -253,7 +267,7 @@ def h_slide(i, s):
     elif k == "board":
         b = '<div class="board">' + "".join(f'<div class="it"><span class="d {st}"></span>{a}<small>{c}</small></div>' for a, c, st in s["items"]) + f'</div><div class="note">{s["foot"]}</div>'
     elif k == "pillars":
-        b = '<div class="pil">' + "".join(f'<div class="c big"><i>{j}</i><div><b>{a}</b></div></div>' for j, a in enumerate(s["items"], 1)) + '</div>'
+        b = '<div class="pil">' + "".join(f'<div class="c big"><i>{j}</i><div><b>{a}</b>{f"<small>{c}</small>" if c else ""}</div></div>' for j, (a, c) in enumerate(s["items"], 1)) + '</div>'
     elif k == "flywheel":
         n_ = len(s["loop"]); cx, cy, R = 370, 245, 140; nodes = ""
         for j, (a, c) in enumerate(s["loop"]):
@@ -354,7 +368,7 @@ def build_pptx(png):
             tb(sl, 1.0, top + 1.85, 11.5, 0.6, s["sub"], 21, False, "C9D6E6")
             rect(sl, 1.0, top + 2.6, 0.05, 0.75, AMBER); tb(sl, 1.15, top + 2.55, 10, 0.9, s["claim"], 17, False, "E6EDF5")
             if k == "cover":
-                tb(sl, 1.0, 6.5, 10, 0.4, s["url"], 12, False, "9FB0C8")
+                tb(sl, 1.0, 5.95, 10, 0.4, s["team"], 15, True, "E6EDF5"); tb(sl, 1.0, 6.5, 10, 0.4, s["url"], 12, False, "9FB0C8")
             continue
         frame(sl, i, n, s)
         if k == "pain":
@@ -377,6 +391,19 @@ def build_pptx(png):
                 rect(sl, 7.15, 3.85 + j * 0.62, 5.2, 0.5, "24466F", shape=MSO_SHAPE.ROUNDED_RECTANGLE); tb(sl, 7.25, 3.85 + j * 0.62, 5.0, 0.5, r, 12.5, False, "FFFFFF", anchor=MSO_ANCHOR.MIDDLE)
             y = 3.85 + len(s["rows"]) * 0.62
             rect(sl, 7.15, y, 5.2, 0.5, AMBER, shape=MSO_SHAPE.ROUNDED_RECTANGLE); tb(sl, 7.25, y, 5.0, 0.5, s["act"], 12.5, True, NAVY, anchor=MSO_ANCHOR.MIDDLE)
+        elif k == "wf":
+            tb(sl, 0.7, 1.32, 8, 0.4, s["subtitle"], 15, False, "8A5A00")
+            colw, x0 = 2.05, 2.35
+            for j, c in enumerate(s["cols"]):
+                tb(sl, x0 + j * (colw + 0.12), 1.95, colw, 0.4, c, 12.5, True, "8A93A0", PP_ALIGN.CENTER); rect(sl, x0 + j * (colw + 0.12), 2.35, colw, 0.02, "E6EAF0")
+            fills = {"人工": (LIGHT, "8A93A0"), "AI": (NAVY, "FFFFFF"), "承辦人": (AMBER, NAVY)}
+            for r, (lab, cells) in enumerate(s["rows"]):
+                y = 2.55 + r * 1.55
+                tb(sl, 0.7, y, 1.6, 1.3, lab, 18, True, NAVY, anchor=MSO_ANCHOR.MIDDLE)
+                for j, c in enumerate(cells):
+                    f, col = fills[c]; x = x0 + j * (colw + 0.12)
+                    rect(sl, x, y, colw, 1.3, f, shape=MSO_SHAPE.ROUNDED_RECTANGLE); tb(sl, x, y, colw, 1.3, c, 20, True, col, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
+            note(sl, s["foot"], 6.0)
         elif k == "flow":
             for j, (a, c, _) in enumerate(s["steps"]):
                 x = 0.7 + j * 2.42
@@ -402,8 +429,9 @@ def build_pptx(png):
             for j, (a, c, g) in enumerate(s["steps"]):
                 x = 0.7 + j * 1.71
                 rect(sl, x, 1.7, 1.62, 1.35, "F2F8F3" if g else "FFFFFF", GREEN if g else LINE, MSO_SHAPE.ROUNDED_RECTANGLE, 1.5)
-                tb(sl, x, 1.82, 1.62, 0.5, a, 14.5, True, NAVY, PP_ALIGN.CENTER)
-                rect(sl, x + 0.2, 2.42, 1.22, 0.4, "E0F0E2" if g else "FFF2D6", shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3); tb(sl, x + 0.2, 2.42, 1.22, 0.4, c, 11, True, GREEN if g else "B36F00", PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
+                tb(sl, x, 1.7, 1.62, 1.35, a, 15, True, NAVY, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
+                if c:
+                    rect(sl, x + 0.2, 2.42, 1.22, 0.4, "E0F0E2" if g else "FFF2D6", shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3); tb(sl, x + 0.2, 2.42, 1.22, 0.4, c, 11, True, GREEN if g else "B36F00", PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
             tb(sl, 0.7, 3.5, 2.3, 1.6, s["big"][0], 96, True, NAVY, anchor=MSO_ANCHOR.MIDDLE); tb(sl, 3.0, 4.35, 2.8, 0.6, s["big"][1], 18, False, "5B6573")
             tb(sl, 6.0, 3.6, 6.6, 1.0, s["text"], 18, False, "334455"); tb(sl, 6.0, 4.7, 6.6, 0.8, s["green"], 18, True, GREEN)
         elif k == "arch":
@@ -446,11 +474,14 @@ def build_pptx(png):
                 rect(sl, x, y + 0.62, 5.85, 0.01, "E6EAF0")
             note(sl, s["foot"])
         elif k == "pillars":
-            for j, a in enumerate(s["items"]):
+            for j, (a, c) in enumerate(s["items"]):
                 x, y = 0.7 + (j % 2) * 6.05, 1.65 + (j // 2) * 2.55
                 rect(sl, x, y, 5.9, 2.35, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
                 circle_txt(sl, x + 0.35, y + 0.75, 0.85, str(j + 1), size=26)
-                tb(sl, x + 1.45, y + 0.4, 4.3, 1.55, a, 28, True, NAVY, anchor=MSO_ANCHOR.MIDDLE)
+                if c:
+                    tb(sl, x + 1.45, y + 0.55, 4.3, 0.8, a, 26, True, NAVY, anchor=MSO_ANCHOR.MIDDLE); tb(sl, x + 1.45, y + 1.35, 4.3, 0.5, c, 14, False, "8A5A00")
+                else:
+                    tb(sl, x + 1.45, y + 0.4, 4.3, 1.55, a, 26, True, NAVY, anchor=MSO_ANCHOR.MIDDLE)
         elif k == "flywheel":
             rect(sl, 0.7, 1.65, 5.5, 2.9, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
             tb(sl, 0.95, 1.8, 5.0, 0.4, s.get("why_title","為什麼只能自己累積"), 15, True, NAVY)
