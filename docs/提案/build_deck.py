@@ -141,7 +141,7 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .pipe7 .c b{display:block;font-size:21px;color:#16304F;padding:10px 0}.pipe7 .c i{display:inline-block;font-style:normal;margin-top:8px;background:#FFF2D6;color:#B36F00;font-weight:700;border-radius:6px;padding:2px 8px;font-size:14.5px;white-space:nowrap}
 .pipe7 .c.code{border-color:#2E7D32;background:#F2F8F3}.pipe7 .c.code i{background:#E0F0E2;color:#2E7D32}
 .st7{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
-.st7 .c{border:2px solid #DDE3EA;border-radius:12px;padding:18px 14px;min-height:300px;position:relative;background:#fff}
+.st7 .c{border:2px solid #DDE3EA;border-radius:12px;padding:22px 14px;min-height:250px;position:relative;background:#fff}
 .st7 .c.code{border-color:#2E7D32;background:#F2F8F3}
 .st7 .c i{display:flex;width:30px;height:30px;border-radius:50%;background:#16304F;color:#fff;font-style:normal;font-weight:700;font-size:15px;align-items:center;justify-content:center;margin-bottom:10px}
 .st7 .c.code i{background:#2E7D32}
@@ -163,6 +163,20 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .data svg{width:100%;height:auto}
 .data .ins{font-size:30px;color:#16304F;font-weight:700;line-height:1.4}
 .data .ins small{display:block;font-size:20px;color:#5B6573;font-weight:400;margin-top:14px}
+.ev{display:grid;grid-template-columns:240px 1fr 280px;gap:18px;align-items:start}
+.ev .dz{display:flex;flex-direction:column;gap:10px}
+.ev .dz .d{background:#F4F6F9;border-radius:10px;padding:12px 14px}
+.ev .dz .d b{display:block;font-size:17px;color:#16304F;margin-bottom:3px}.ev .dz .d span{font-size:13.5px;color:#334;line-height:1.4}
+.ev table{border-collapse:separate;border-spacing:0;width:100%;font-size:15px;border-radius:10px;overflow:hidden}
+.ev th{background:#16304F;color:#fff;padding:10px 10px;text-align:center;font-weight:600;font-size:15px}
+.ev td{border-bottom:1px solid #E6EAF0;padding:11px 6px;text-align:center;vertical-align:middle}
+.ev td:first-child{font-weight:700;color:#16304F;text-align:left;white-space:nowrap;background:#F7F9FB}
+.ev tr:last-child td{color:#2E7D32;font-weight:700}
+.ev .hl{background:#FFF8EA;border-left:6px solid #D98E04;border-radius:0 12px 12px 0;padding:16px 18px}
+.ev .hl b{display:block;font-size:17px;color:#16304F;margin-bottom:10px}
+.ev .hl p{margin:0 0 8px;font-size:13.5px;color:#334;line-height:1.45;padding-left:14px;position:relative}
+.ev .hl p:before{content:"";position:absolute;left:0;top:.55em;width:6px;height:6px;border-radius:50%;background:#D98E04}
+.ev-foot{position:absolute;left:72px;right:72px;bottom:56px;font-size:13.5px;color:#8A93A0}
 .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
 .cases .c{border:2px solid #DDE3EA;border-radius:16px;padding:24px 22px;min-height:360px}
 .cases .c .lab{font-family:"Menlo",monospace;font-size:14px;color:#D98E04;letter-spacing:.1em}
@@ -268,14 +282,18 @@ def h_slide(i, s):
     elif k == "ba":
         b = f'<div class="ba"><div class="box mess">{"<br>".join(s["before"])}</div><div class="ar">→</div><div class="box neat">{"<br>".join(s["after"])}</div></div><div class="chips" style="margin-top:22px">' + "".join(f'<div class="chip">{a}<small>{c}</small></div>' for a, c in s["chips"]) + '</div>' + (f'<div class="note">{s["foot"]}</div>' if s.get("foot") else '')
     elif k == "pipe":
-        b = '<div class="st7">' + "".join(f'<div class="c{" code" if j == 2 else ""}"><i>{j}</i><b>{a}</b><div class="o">{o}</div><div class="src">{src}</div></div>' for j, (a, o, src) in enumerate(s["steps"], 1)) + '</div>'
-        b += '<div class="props">' + "".join(f'<div class="p"><b>{a}</b><span>{c}</span></div>' for a, c in s["props"]) + '</div>'
+        b = '<div class="st7">' + "".join(f'<div class="c"><i>{j}</i><b>{a}</b><div class="o">{o}</div><div class="src">{src}</div></div>' for j, (a, o, src) in enumerate(s["steps"], 1)) + '</div>'
     elif k == "arch":
         b = f'<div style="margin-top:-8px;transform:scale(.95);transform-origin:top left">{arch_html()}</div>' + (f'<div style="position:absolute;right:72px;top:64px;font-size:16px;color:#8A93A0">{s["foot"]}</div>' if s.get("foot") else '')
     elif k == "gate":
         b = '<div class="gate">' + "".join(f'<div class="g"><div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3">{GATE_ICONS[ic]}</svg></div><b>{a}</b><span>{c}</span></div>' for a, c, ic in s["items"]) + '</div>'
     elif k == "data":
         b = f'<div class="data">{donut_svg(s["donut"])}<div class="ins">{s["ins"]}<small>{s["sub"]}</small><div class="chips" style="margin-top:26px">' + "".join(f'<div class="chip" style="font-size:18px">{a}<small>{c}</small></div>' for a, c in s["chips"]) + '</div></div></div>'
+    elif k == "eval":
+        dz = "".join(f'<div class="d"><b>{a}</b><span>{c}</span></div>' for a, c in s["design"])
+        tbl = "<table><tr>" + "".join(f"<th>{h}</th>" for h in s["head"]) + "</tr>" + "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in s["rows"]) + "</table>"
+        hl = f'<div class="hl"><b>{s["hl_title"]}</b>' + "".join(f"<p>{x}</p>" for x in s["hl"]) + "</div>"
+        b = f'<div class="ev"><div class="dz">{dz}</div><div>{tbl}</div>{hl}</div><div class="ev-foot">{s["foot"]}</div>'
     elif k == "cases":
         b = '<div class="cases">' + "".join(f'<div class="c"><div class="lab">{a}</div><h4>{c}</h4><div class="ans">{d}</div><p>{e}</p></div>' for a, c, d, e in s["cases"]) + f'</div><div class="note">{s["foot"]}</div>'
     elif k == "board":
@@ -369,6 +387,35 @@ def note(sl, text, y=6.15):
     rect(sl, 0.7, y, 11.93, 0.62, "FFF8EA"); rect(sl, 0.7, y, 0.07, 0.62, AMBER)
     tb(sl, 0.9, y + 0.02, 11.6, 0.6, text, 13.5, False, "334455", anchor=MSO_ANCHOR.MIDDLE)
 
+def bullets(sl, x, y, w, h, items, size=16, color=INK, space=6):
+    box = sl.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h)); tf = box.text_frame; tf.word_wrap = True
+    for i, it in enumerate(items):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph(); p.space_after = Pt(space)
+        r0 = p.add_run(); r0.text = "●  "; r0.font.size = Pt(max(size - 5, 6)); r0.font.name = FONT; r0.font.color.rgb = rgb(AMBER)
+        r = p.add_run(); r.text = it; r.font.size = Pt(size); r.font.name = FONT; r.font.color.rgb = rgb(color)
+    return box
+
+def table(sl, x, y, w, head, rows, col_w=None, size=11.5, row_h=0.42):
+    nr, nc = len(rows) + 1, len(head)
+    t = sl.shapes.add_table(nr, nc, Inches(x), Inches(y), Inches(w), Inches(row_h * nr)).table
+    if col_w:
+        for j, cw in enumerate(col_w): t.columns[j].width = Inches(cw)
+    for j, h in enumerate(head):
+        c = t.cell(0, j); c.text = h; c.fill.solid(); c.fill.fore_color.rgb = rgb(NAVY)
+        for p in c.text_frame.paragraphs:
+            p.alignment = PP_ALIGN.CENTER
+            for r in p.runs: r.font.size = Pt(size); r.font.bold = True; r.font.name = FONT; r.font.color.rgb = rgb("FFFFFF")
+    for i, row in enumerate(rows, 1):
+        for j, v in enumerate(row):
+            c = t.cell(i, j); c.text = v; c.fill.solid(); c.fill.fore_color.rgb = rgb("F7F9FB" if j == 0 else "FFFFFF")
+            c.margin_top = c.margin_bottom = Inches(0.04)
+            for p in c.text_frame.paragraphs:
+                p.alignment = PP_ALIGN.LEFT if j == 0 else PP_ALIGN.CENTER
+                for r in p.runs:
+                    r.font.size = Pt(size); r.font.name = FONT; r.font.color.rgb = rgb(NAVY if j == 0 else INK); r.font.bold = (j == 0)
+                    if i == len(rows) and j > 0: r.font.color.rgb = rgb(GREEN); r.font.bold = True
+    return t
+
 def build_pptx(png):
     prs = Presentation(); prs.slide_width = Inches(13.333); prs.slide_height = Inches(7.5)
     blank = prs.slide_layouts[6]; n = len(S)
@@ -441,17 +488,13 @@ def build_pptx(png):
             if s.get("foot"): note(sl, s["foot"], 6.2)
         elif k == "pipe":
             for j, (a, o, src) in enumerate(s["steps"]):
-                x = 0.7 + j * 1.71; g = (j == 1)
-                rect(sl, x, 1.6, 1.62, 3.3, "F2F8F3" if g else "FFFFFF", GREEN if g else LINE, MSO_SHAPE.ROUNDED_RECTANGLE, 1.5)
-                circle_txt(sl, x + 0.12, 1.72, 0.32, str(j + 1), GREEN if g else NAVY, 11)
+                x = 0.7 + j * 1.71
+                rect(sl, x, 1.6, 1.62, 3.4, "FFFFFF", LINE, MSO_SHAPE.ROUNDED_RECTANGLE, 1.5)
+                circle_txt(sl, x + 0.12, 1.72, 0.32, str(j + 1), NAVY, 11)
                 tb(sl, x + 0.08, 2.1, 1.48, 0.45, a, 13.5, True, NAVY)
                 tb(sl, x + 0.08, 2.55, 1.48, 0.8, o, 11, False, INK)
                 rect(sl, x + 0.12, 3.6, 1.38, 0.01, "E6EAF0")
                 tb(sl, x + 0.08, 3.68, 1.48, 1.1, "依據 " + src, 10, False, "8A93A0")
-            for j, (a, c) in enumerate(s["props"]):
-                x = 0.7 + j * 4.03
-                rect(sl, x, 5.25, 3.85, 1.35, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
-                tb(sl, x + 0.2, 5.3, 1.5, 1.25, a, 18, True, NAVY, anchor=MSO_ANCHOR.MIDDLE); tb(sl, x + 1.7, 5.3, 2.0, 1.25, c, 11.5, False, "334455", anchor=MSO_ANCHOR.MIDDLE)
         elif k == "arch":
             sl.shapes.add_picture(png, Inches(0.95), Inches(1.55), width=Inches(11.4))
             if s.get("foot"): tb(sl, 8.6, 0.42, 4.0, 0.3, s["foot"], 11, False, "8A93A0", PP_ALIGN.RIGHT)
@@ -476,6 +519,16 @@ def build_pptx(png):
             for j, (a, c) in enumerate(s["chips"]):
                 x = 5.3 + j * 2.45
                 rect(sl, x, 4.4, 2.3, 1.0, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE); tb(sl, x + 0.12, 4.43, 2.1, 0.5, a, 14, True, NAVY); tb(sl, x + 0.12, 4.9, 2.1, 0.4, c, 10.5, False, "5B6573")
+        elif k == "eval":
+            for j, (a, c) in enumerate(s["design"]):
+                y = 1.6 + j * 1.05
+                rect(sl, 0.7, y, 2.7, 0.95, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+                tb(sl, 0.85, y + 0.05, 2.5, 0.35, a, 12.5, True, NAVY); tb(sl, 0.85, y + 0.38, 2.5, 0.55, c, 9.5, False, "334455")
+            table(sl, 3.6, 1.6, 5.9, s["head"], [list(r) for r in s["rows"]], [1.1, 1.5, 1.8, 1.5], 10.5, 0.5)
+            rect(sl, 9.75, 1.6, 2.9, 4.2, "FFF8EA", shape=MSO_SHAPE.ROUNDED_RECTANGLE); rect(sl, 9.75, 1.6, 0.07, 4.2, AMBER)
+            tb(sl, 9.95, 1.7, 2.6, 0.6, s["hl_title"], 12.5, True, NAVY)
+            bullets(sl, 9.95, 2.35, 2.6, 3.4, s["hl"], 10, "334455", 6)
+            tb(sl, 0.7, 6.3, 11.9, 0.5, s["foot"], 9.5, False, "8A93A0")
         elif k == "cases":
             for j, (a, c, d, e) in enumerate(s["cases"]):
                 x = 0.7 + j * 4.03
