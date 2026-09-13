@@ -606,9 +606,11 @@ function openLiveDoc(d, view, tools, head) {
             return `<h4>第 ${pno} 頁</h4><pre style="white-space:pre-wrap;font:12.5px/1.9 var(--mono);margin:0 0 14px">${body}</pre>`;
           }).join("")
         : `<p class="note">這份文件沒有文字層（掃描件／照片），請切換「頁面影像」檢視。</p>`}</div>`;
+      mountCanvas(view, d);
       if (hl) { $("#liveHit")?.scrollIntoView({ block: "center", behavior: "smooth" }); S.hl = null; }
     } catch (e) {
       view.innerHTML = `<div class="doc-body">${head}<p class="note" style="color:var(--seal)">讀取文字失敗：${esc(e.code || "")} ${esc(e.message || "")}</p></div>`;
+      mountCanvas(view, d);
     }
   };
 
@@ -617,6 +619,7 @@ function openLiveDoc(d, view, tools, head) {
     tools.innerHTML = `<button class="ghost-btn" data-z="-">－</button><button class="ghost-btn" data-z="+">＋</button><button class="ghost-btn" data-z="0">重設</button>` + tools.innerHTML;
     view.innerHTML = `<div style="padding:10px 12px 0">${head}</div>` + urls.map((u, i) =>
       `<div class="doc-img"><div class="imgwrap"><img src="${u}" alt="${esc(d.title)} 第 ${i + 1} 張" loading="lazy"></div></div>`).join("");
+    mountCanvas(view, d);
     const fit = () => $$(".doc-img", view).forEach((el) => el.style.setProperty("--imgw", Math.round((view.clientWidth - 24) * S.zoom) + "px"));
     fit();
     $$("#docTools button[data-z]").forEach((b) => b.addEventListener("click", () => {
@@ -635,6 +638,7 @@ function openLiveDoc(d, view, tools, head) {
     tools.innerHTML = `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">新分頁開啟</a>`;
     view.innerHTML = `<div class="doc-video">${head}<video id="vid" controls preload="metadata" src="${d.file}"></video>
       <p class="note" style="margin-top:8px">${d.duration ? `時長 ${d.duration} 秒；` : ""}分類時取 ${d.pageImageUrls?.length || 3} 幀判定類型。</p></div>`;
+    mountCanvas(view, d);
     return;
   }
   if (!modes.length) {
@@ -647,13 +651,10 @@ function openLiveDoc(d, view, tools, head) {
     tools.innerHTML = modes.map(([k, label]) => `<button class="ghost-btn ${m === k ? "on" : ""}" data-m="${k}">${label}</button>`).join("")
       + (d.file ? `<a class="ghost-btn" href="${d.downloadUrl || d.file}" style="text-decoration:none">下載</a>` : "")
 ;
-    if (m === "pdf") view.innerHTML = pdfFrame();
+    if (m === "pdf") { view.innerHTML = pdfFrame(); mountCanvas(view, d); }
     else if (m === "img") paintImages();
     else paintText();
     $$("#docTools button[data-m]").forEach((b) => b.addEventListener("click", () => { S.docMode[d.id] = b.dataset.m; S.zoom = 1; paint(); }));
-    // 放大鈕疊在預覽區右上角（屬於這份文件，不屬於整個瀏覽器表頭）
-    view.insertAdjacentHTML("beforeend", `<button class="doc-full" title="全螢幕檢視（Esc 關閉）">⤢ 放大</button>`);
-    $(".doc-full", view)?.addEventListener("click", () => openViewer(d));
   };
   paint();
 }
@@ -664,6 +665,24 @@ function closeDoc() {
   $("#curDocName").textContent = "未選取文件"; $("#docTools").innerHTML = "";
   $("#docView").innerHTML = `<div class="doc-empty" style="min-height:0;padding:10px"><span class="note">未選取文件——點選清單中的文件即可檢視；再點一次可取消選取</span></div>`;
 }
+/* 放大鈕要貼在「文件白框」右上角且不隨內容捲動：
+   把渲染好的內容搬進 .doc-canvas（唯一捲動層），meta 提到外層固定，
+   按鈕與 canvas 平行放在 .doc-canvas-wrap（不捲）上。 */
+function mountCanvas(view, d) {
+  if (view.querySelector(".doc-canvas-wrap")) return;
+  const wrap = document.createElement("div"); wrap.className = "doc-canvas-wrap";
+  const canvas = document.createElement("div"); canvas.className = "doc-canvas";
+  while (view.firstChild) canvas.appendChild(view.firstChild);
+  wrap.appendChild(canvas);
+  view.appendChild(wrap);
+  const meta = canvas.querySelector(".doc-meta");
+  if (meta) view.insertBefore(meta, wrap);                 // meta 固定在上方，捲動時仍看得到是哪份文件
+  if (d && (d.file || d.html || d.pageImageUrls?.length)) {
+    wrap.insertAdjacentHTML("beforeend", `<button class="doc-full" title="全螢幕檢視（Esc 關閉）">⤢ 放大</button>`);
+    wrap.querySelector(".doc-full").addEventListener("click", () => openViewer(d));
+  }
+}
+
 /* 全螢幕檢視：把目前文件用同一組模式（PDF／文字／影像）放到置中浮層，背景暗化。 */
 async function openViewer(d) {
   const vw = $("#viewer"), body = $("#vwBody"), tools = $("#vwTools");
@@ -736,10 +755,7 @@ function openDoc(id, after) {
   } else if (d.kind === "pdf") { tools.innerHTML = `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">新分頁開啟</a>`; view.innerHTML = `<div style="padding:10px 12px 0">${head}</div><iframe class="doc-pdf" src="${d.file}#toolbar=0&view=FitH" title="${esc(d.title)}"></iframe>`; }
   else if (d.kind === "video") { view.innerHTML = `<div class="doc-video">${head}<video id="vid" controls preload="metadata" src="${d.file}"></video><div class="cues">${(d.cues || []).map((q) => `<button class="ghost-btn" data-t="${q[1]}">${q[2]}</button>`).join("")}</div><p class="note" style="margin-top:8px">來源：${esc(d.srcNote || "檢舉人行車紀錄器")}；時間戳 2025/06/27 12:40:08–19。</p></div>`; $$(".cues button", view).forEach((b) => b.addEventListener("click", () => seek(+b.dataset.t))); $("#vid").addEventListener("error", () => { view.innerHTML = missing; }); }
   else view.innerHTML = `<div class="doc-missing">${head}<b>${esc(d.stdName || d.title)}</b>　<span class="tag neutral">${d.tag}</span><br>${esc(d.note || "")}</div>`;
-  if (d.kind !== "missing" && (d.file || d.html)) {      // mock 路徑也要有放大鈕
-    view.insertAdjacentHTML("beforeend", `<button class="doc-full" title="全螢幕檢視（Esc 關閉）">⤢ 放大</button>`);
-    $(".doc-full", view)?.addEventListener("click", () => openViewer(d));
-  }
+  mountCanvas(view, d);
   if (after) after();
 }
 /** 真上傳案件的錨點：開檔並用 /text 反白 {page,start,end}；掃描件無文字則開頁圖 */
@@ -813,10 +829,13 @@ function renderExtract() {
     const due58 = p.recv !== null ? p.recv + 20 * DAY : null;
     const ext85 = p.recv !== null ? addMonths(p.recv, 5) : null;
 
-    const raw = [[p.served, servedLab, ""], [p.due, "30 日屆滿", ""]];
+    const raw = [[p.served, servedLab, ""], [p.due, "30 日屆滿", p.over ? "bad" : ""]];
     if (p.recv !== null) {
+      const late85 = !decided && now > due85;
       raw.push([p.recv, p.over ? "收文（逾期）" : "收文（訴願提起）", "pivot"],
-               [due58, "答辯期限 §58 III", ""], [due85, "應決定 §85 I", ""], [ext85, "得延長至此 §85 I 但書", "opt"]);
+               [due58, "答辯期限 §58 III", ""],
+               [due85, "應決定 §85 I", late85 ? "bad" : "ok"],      // 逾期紅、期限內綠
+               [ext85, "得延長至此 §85 I 但書", "opt"]);
       if (decided) raw.push([decided, "實際決定", "pivot"]);
     } else raw.push([p.due, "收文待補", "dim"]);
 
