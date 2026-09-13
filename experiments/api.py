@@ -156,6 +156,41 @@ def _run_objection(job: dict, emit_done: bool = True):
         _emit(job, "fatal", {"code": "OBJECTION_FAILED", "message": str(e)[:300]})
 
 
+# ---------- 助手對話紀錄（每案一份、所有人共用；runs/{case}/chat.json ＋ DDB CHAT#latest） ----------
+_chats: dict[str, list] = {}
+
+
+def _chat_load(case_id: str) -> list:
+    if case_id in _chats:
+        return _chats[case_id]
+    f = RUNS / case_id / "chat.json"
+    if f.exists():
+        return _chats.setdefault(case_id, json.loads(f.read_text(encoding="utf-8")))
+    if _ddb is not None:
+        r = _ddb.get_item(Key={"PK": f"CASE#{case_id}", "SK": "CHAT#latest"}).get("Item")
+        if r:
+            return _chats.setdefault(case_id, json.loads(r["json"]))
+    return _chats.setdefault(case_id, [])
+
+
+def _chat_save(case_id: str, msgs: list):
+    _chats[case_id] = msgs[-200:]
+    (RUNS / case_id).mkdir(parents=True, exist_ok=True)
+    (RUNS / case_id / "chat.json").write_text(json.dumps(_chats[case_id], ensure_ascii=False), encoding="utf-8")
+    if _ddb is not None:
+        try:
+            _ddb.put_item(Item={"PK": f"CASE#{case_id}", "SK": "CHAT#latest", "json": json.dumps(_chats[case_id], ensure_ascii=False), "updatedAt": _now()})
+        except Exception as e:
+            print("ddb put chat failed:", str(e)[:80])
+
+
+def _chat_append(case_id: str, *entries: dict):
+    msgs = _chat_load(case_id)
+    for e in entries:
+        msgs.append({"at": _now(), **e})
+    _chat_save(case_id, msgs)
+
+
 # ---------- 助手提案（chat 產生 → confirm 執行 → objection 逐項） ----------
 _proposals: dict[str, dict] = {}   # pid → proposal doc
 
@@ -238,6 +273,17 @@ def _build_revision(items: list[dict], replies: list[dict], prev_draft: str) -> 
     return {"instructions": ins, "overrides": ov}
 
 
+def _chat_mark(case_id: str, pid: str, state: str, replies: list):
+    """提案結果寫回對話紀錄：更新那則提案訊息的狀態，並追加一則系統摘要（模型下次不會再重列）。"""
+    msgs = _chat_load(case_id)
+    for m in msgs:
+        if m.get("proposalId") == pid:
+            m["proposalState"] = state; m["replies"] = [{"label": r.get("label"), "result": r.get("result")} for r in replies]
+    summary = "；".join(f"{r.get('label', '').split('：')[0]} {r.get('result')}" for r in replies) if replies else "承辦人取消"
+    msgs.append({"at": _now(), "role": "assistant", "kind": "system", "text": f"（提案 {pid} {'已執行' if state == 'applied' else '已取消'}：{summary}。此提案已處理完畢，後續指示請視為新的修改。）", "proposalId": pid, "proposalState": state})
+    _chat_save(case_id, msgs)
+
+
 def _run_proposal(job: dict):
     """confirm：① 爭點類 item 逐一重引證（不重產草稿）② 其餘 item 程式判定 ③ 依影響範圍從第 N 步起局部重跑，上游輸出當 context。"""
     case_id, pid = job["caseId"], job["payload"]["pid"]
@@ -281,6 +327,7 @@ def _run_proposal(job: dict):
         eff = [STEP_OF_TYPE.get(it.get("type"), 5) for it, rp in zip(items, replies) if not (it.get("type") in ("issue", "reissue") and rp["result"] == "無法採納") and not (it.get("type") == "law" and not it.get("ok"))]
         if not eff:
             p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], rerun=[]); _psave(p)
+            _chat_mark(case_id, pid, "applied", replies)
             _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": []}); return
         t_run = time.monotonic()
         text_only = all(it.get("type") == "text" for it in items)
@@ -302,6 +349,7 @@ def _run_proposal(job: dict):
             doc["output"] = fe; doc["status"]["rerunAt"] = _now(); _save(case_id, doc)
             _emit(job, "step", {"step": "s6", "status": "done"})
             p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], version=ver, rerun=["s6"], fast=True); p.pop("progress", None); _psave(p)
+            _chat_mark(case_id, pid, "applied", replies)
             print(f"[proposal] {case_id} {pid} 快路徑 段落 {changed} {time.monotonic()-t_run:.1f}s", flush=True)
             _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": ["s6"], "version": ver}); return
         start = START_OF_SCOPE[min(eff)]
@@ -327,6 +375,7 @@ def _run_proposal(job: dict):
             new_fe.setdefault("judge", {})["afterObjection"] = {"issueId": k0, "finding": v0, "version": ver}
         doc["output"] = new_fe; doc["status"]["rerunAt"] = _now(); _save(case_id, doc)
         p.update(state="applied", replies=replies, appliedAt=_now(), jobId=job["jobId"], version=ver); p.pop("progress", None); _psave(p)
+        _chat_mark(case_id, pid, "applied", replies)
         print(f"[proposal] {case_id} {pid} 重跑 {steps} {time.monotonic()-t_run:.1f}s", flush=True)
         _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": steps, "version": ver})
     except Exception as e:
@@ -434,7 +483,8 @@ def post_chat(case_id: str, body: ChatIn):
     if not _lock.acquire(timeout=3):  # 與分析 job 共用 1 RPS；分析／重跑進行中不排隊卡住，直接告知
         return {"kind": "refuse", "text": "本案分析或修改正在進行中，請稍候再問。", "sources": [], "cite_offer": None, "proposal": None, "tool_calls": [], "intent": assistant.classify_intent(body.message), "usage": {"input": 0, "output": 0, "ms": 0}, "busy": True}
     try:
-        res = assistant.chat(case_id, body.message, state=state, tab=body.tab, history=body.history, readonly=body.readonly)
+        hist = body.history or [{"role": m["role"], "text": m.get("text", "")} for m in _chat_load(case_id)[-6:]]
+        res = assistant.chat(case_id, body.message, state=state, tab=body.tab, history=hist, readonly=body.readonly)
     finally:
         _lock.release()
     print(f"[chat] {case_id} {res['kind']} {res['usage']['ms']/1000:.1f}s in={res['usage']['input']} out={res['usage']['output']} tools={[c['name'] for c in res['tool_calls']]} q={body.message[:40]!r}", flush=True)
@@ -442,7 +492,23 @@ def post_chat(case_id: str, body: ChatIn):
         pid = f"pp_{uuid.uuid4().hex[:8]}"
         p = {"id": pid, "caseId": case_id, "message": body.message, "createdAt": _now(), **res["proposal"]}
         _psave(p); res["proposal"] = p
+    if not res.get("busy"):
+        _chat_append(case_id, {"role": "user", "text": body.message},
+                     {"role": "assistant", "kind": res["kind"], "text": res.get("text", ""), "sources": res.get("sources", []),
+                      "proposalId": (res.get("proposal") or {}).get("id"), "proposalSummary": (res.get("proposal") or {}).get("summary"), "proposalState": "pending" if res.get("proposal") else None})
     return res
+
+
+@app.get("/api/cases/{case_id}/chat")
+def get_chat(case_id: str):
+    """本案助手對話紀錄（所有人共用；提案卡不重播，只留摘要與狀態）。"""
+    return {"caseId": case_id, "messages": _chat_load(case_id)}
+
+
+@app.delete("/api/cases/{case_id}/chat")
+def clear_chat(case_id: str):
+    _chat_save(case_id, [])
+    return {"caseId": case_id, "messages": []}
 
 
 @app.get("/api/cases/{case_id}/proposals/{pid}")
@@ -497,6 +563,7 @@ def cancel_proposal(case_id: str, pid: str):
     if p["state"] not in ("pending",):
         raise HTTPException(409, {"code": "PROPOSAL_NOT_PENDING", "message": p["state"], "retryable": False})
     p.update(state="cancelled", cancelledAt=_now()); _psave(p)
+    _chat_mark(case_id, pid, "cancelled", [])
     return {"id": pid, "state": "cancelled"}
 
 

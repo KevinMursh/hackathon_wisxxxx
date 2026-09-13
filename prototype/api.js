@@ -94,6 +94,8 @@ const Api = {
   objection: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/objection`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
   /* ---- 助手：plans/助手API-契約與實作清單.md ---- */
   chat: (caseId, body) => req(`/cases/${encodeURIComponent(caseId)}/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), timeoutMs: 90000 }),
+  chatLog: (caseId) => req(`/cases/${encodeURIComponent(caseId)}/chat`),
+  clearChat: (caseId) => req(`/cases/${encodeURIComponent(caseId)}/chat`, { method: "DELETE" }),
   proposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}`),
   confirmProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/confirm`, { method: "POST" }),
   previewProposal: (caseId, pid) => req(`/cases/${encodeURIComponent(caseId)}/proposals/${pid}/preview`, { method: "POST" }),

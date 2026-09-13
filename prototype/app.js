@@ -1161,7 +1161,7 @@ renderLawCard();
 
 /* ---------- 案件 AI 助理（問答唯讀；修改走提案確認） ---------- */
 $("#asstBtn").addEventListener("click", asstOpen); $("#asstClose").addEventListener("click", () => $("#asst").classList.remove("on"));
-$("#asstClear").addEventListener("click", () => { CHAT_HIST.length = 0; histSave(); asstReset(); toast("已清除本案對話"); });
+$("#asstClear").addEventListener("click", async () => { if (!confirm("清除本案全部對話紀錄？（所有人看到的都會清掉；已執行的修改不受影響）")) return; if (isLiveCase()) { try { await Api.clearChat(S.c.caseId); } catch (e) { return toast(`清除失敗：${e.message || e.code}`, "err"); } } CHAT_HIST.length = 0; histSave(); asstReset(); toast("已清除本案對話紀錄"); });
 $("#asstIn").addEventListener("input", () => { const t = $("#asstIn"); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; });
 function asstOpen() { $("#asst").classList.add("on"); $("#asstIn").focus(); }
 function asstAdd(role, html) { const log = $("#asstLog"); const el = document.createElement("div"); el.className = "msg " + role; el.innerHTML = html; log.appendChild(el); log.scrollTop = log.scrollHeight; return el; }
@@ -1170,16 +1170,33 @@ function asstSay(t) { asstOpen(); asstAdd("a", esc(t)); }
 function toast(msg, kind = "ok", ms = 3200) { let box = $("#toasts"); if (!box) { box = document.createElement("div"); box.id = "toasts"; document.body.appendChild(box); } const el = document.createElement("div"); el.className = `toast ${kind}`; el.textContent = msg; box.appendChild(el); requestAnimationFrame(() => el.classList.add("in")); setTimeout(() => { el.classList.remove("in"); setTimeout(() => el.remove(), 300); }, ms); return el; }
 async function copyText(text) { try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch {} /* http 站台沒有 navigator.clipboard：退回 execCommand */ try { const ta = document.createElement("textarea"); ta.value = text; ta.style.cssText = "position:fixed;left:-9999px;top:0"; document.body.appendChild(ta); ta.focus(); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok; } catch { return false; } }
 function asstReset() {
-  $("#asstLog").innerHTML = ""; histLoad();
+  $("#asstLog").innerHTML = "";
   const ro = S.status !== "承辦中"; $("#asstState").textContent = ro ? `本案${S.status}・僅供查詢` : (isLiveCase() ? "已接後端・修改須確認" : "示範資料・修改須確認");
   $("#asstSub").textContent = ro ? "本案已送審或結案，僅能查詢；修改請先「另存為新草稿」" : "查詢卷宗、法規與分析結果；修改須經您確認才會執行";
   const w = document.createElement("div"); w.className = "asst-welcome";
   w.innerHTML = `<b>我是本案的 AI 助理。</b>回答一律附出處；任何修改都會先畫出「改完的樣子」，您按「確認執行」才會更新案件。<div class="two"><div><b>查詢</b><span class="note">　直接問</span><div class="ex"><button class="ghost-btn" data-q="送達日在哪份文件？">送達日在哪份文件？</button><button class="ghost-btn" data-q="行政罰法第 18 條第 1 項">行政罰法第 18 條第 1 項</button><button class="ghost-btn" data-q="本案判定與風險？">本案判定與風險？</button></div></div><div><b>修改</b><span class="note">　說要改什麼</span><div class="ex"><button class="ghost-btn" data-q="爭點 1 改採訴願人，因為">爭點 1 改採訴願人…</button><button class="ghost-btn" data-q="理由二精簡一點">理由二精簡一點</button><button class="ghost-btn" data-q="加引行政罰法第 18 條第 1 項">加引行政罰法 §18 I</button></div></div></div>`;
   w.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => { $("#asstIn").value = b.dataset.q; if (/因為$/.test(b.dataset.q)) $("#asstIn").focus(); else asstSend(); }));
   $("#asstLog").appendChild(w);
-  CHAT_HIST.forEach((h) => asstAdd(h.role === "user" ? "u" : "a", esc(h.text).replace(/\n/g, "<br>")));
-  if (CHAT_HIST.length) asstAdd("a", `<span class="sysnote">以上為本案先前對話（提案卡不重播）</span>`);
   asstSuggest();
+  if (isLiveCase()) histLoadLive(); else { histLoad(); renderHist(); }
+}
+/* 對話紀錄：真案存在後端（每案一份、所有人共用），重整、換電腦都在；mock 案存 sessionStorage */
+const ST = { pending: "待確認", applied: "已執行", cancelled: "已取消", failed: "失敗" };
+function renderHist() {
+  CHAT_HIST.forEach((h) => {
+    if (h.role === "user") return asstAdd("u", esc(h.text).replace(/\n/g, "<br>"));
+    if (h.kind === "system") return asstAdd("a", `<span class="sysnote">${esc(h.text)}</span>`);
+    const body = esc(h.text || "").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+    const pp = h.proposalId ? `<span class="src">修改提案 ${esc(h.proposalId)}・${ST[h.proposalState] || h.proposalState || ""}${(h.replies || []).length ? "：" + h.replies.map((r) => `${esc((r.label || "").split("：")[0])} ${esc(r.result || "")}`).join("；") : ""}</span>` : "";
+    asstAdd("a", body + pp);
+  });
+  if (CHAT_HIST.length) asstAdd("a", `<span class="sysnote">以上為本案先前對話（${CHAT_HIST.length} 則；提案卡不重播）</span>`);
+}
+async function histLoadLive() {
+  CHAT_HIST.length = 0;
+  const wait = asstAdd("a", `<span class="sysnote">載入本案對話紀錄…</span>`);
+  try { const r = await Api.chatLog(S.c.caseId); wait.remove(); (r.messages || []).forEach((m) => CHAT_HIST.push(m)); renderHist(); }
+  catch (e) { wait.innerHTML = `<span class="sysnote">對話紀錄載入失敗：${esc(e.message || e.code)}</span>`; }
 }
 /* 建議句由本案狀態＋目前分頁即時產生（規則，零模型呼叫）；正式版可再加一次便宜的模型呼叫補充 */
 function asstSuggest() {
@@ -1378,7 +1395,7 @@ $("#addDemo").addEventListener("click", () => { const sup = S.c?.supplement; if 
 const CHAT_HIST = [];   // 目前案件的對話（重整頁面自 sessionStorage 還原）
 function histKey() { return "ssz.chat." + (S.c?.caseId || S.c?.id || ""); }
 function histLoad() { CHAT_HIST.length = 0; try { (JSON.parse(sessionStorage.getItem(histKey()) || "[]")).forEach((h) => CHAT_HIST.push(h)); } catch {} }
-function histSave() { try { sessionStorage.setItem(histKey(), JSON.stringify(CHAT_HIST.slice(-20))); } catch {} }
+function histSave() { if (isLiveCase()) return; try { sessionStorage.setItem(histKey(), JSON.stringify(CHAT_HIST.slice(-20))); } catch {} }
 function isLiveCase() { const c = S.c; return !!(c && c.live && c.caseId && !c.analysisPending); }
 let CHAT_BUSY = false;
 async function asstSendLive(q) {
@@ -1389,7 +1406,7 @@ async function asstSendLive(q) {
   try {
     const res = await Api.chat(c.caseId, { message: q, tab, readonly: S.status !== "承辦中", history: CHAT_HIST.slice(-6) });
     console.info("[chat]", res.kind, Date.now() - t0, "ms", res.usage, res.tool_calls?.map((t) => t.name));
-    wait.remove(); CHAT_HIST.push({ role: "user", text: q }, { role: "assistant", text: res.text || "" }); histSave();
+    wait.remove(); CHAT_HIST.push({ role: "user", text: q }, { role: "assistant", kind: res.kind, text: res.text || "", proposalId: res.proposal?.id, proposalState: res.proposal ? "pending" : null }); histSave();
     try { renderServerReply(res); } catch (e) { console.error("[chat] render failed", e, res); asstAdd("a", `回覆已收到但畫面無法呈現：${esc(e.message)}<span class="src">${esc((res.text || "").slice(0, 300))}</span>`); }
   } catch (e) { console.error("[chat] failed", e); wait.remove(); asstAdd("a", `助手暫時無法回應：${esc(e.message || e.code)}<span class="src">${esc(e.code || "")}　${Math.round((Date.now() - t0) / 1000)} 秒後放棄；可直接重送同一句</span>`); }
   finally { CHAT_BUSY = false; $("#asstSend").disabled = false; $("#asstSend").textContent = "送出"; }

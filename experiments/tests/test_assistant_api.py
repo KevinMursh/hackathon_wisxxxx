@@ -194,3 +194,24 @@ def test_text_only_fast_path_patches_paragraph_without_rerun(client, monkeypatch
     latest = an["output"]["drafts"][d["version"]]
     from pipeline.assistant import label_paras
     assert next(pp for lab, pp in label_paras(latest["paras"]) if lab == "主文")["text"] == "訴願駁回。（快路徑改寫）"
+
+
+def test_chat_log_shared_and_clearable(client, monkeypatch):
+    c, api = client
+    from tests.conftest import FakeBedrock, text, tool
+    c.delete("/api/cases/case02/chat")
+    assert c.get("/api/cases/case02/chat").json()["messages"] == []
+    monkeypatch.setattr(api.assistant, "_converse", FakeBedrock([text("答一"), tool("propose_revision", {"summary": "主文改寫", "items": [{"type": "text", "para": "主文", "how": "標準句式"}]})]))
+    c.post("/api/cases/case02/chat", json={"message": "本案爭點有哪些"})
+    p = c.post("/api/cases/case02/chat", json={"message": "主文改為標準句式"}).json()["proposal"]
+    msgs = c.get("/api/cases/case02/chat").json()["messages"]
+    assert [m["role"] for m in msgs] == ["user", "assistant", "user", "assistant"] and msgs[1]["text"] == "答一"
+    assert msgs[3]["proposalId"] == p["id"] and msgs[3]["proposalState"] == "pending"
+    c.post(f"/api/cases/case02/proposals/{p['id']}/cancel")
+    msgs = c.get("/api/cases/case02/chat").json()["messages"]
+    assert msgs[3]["proposalState"] == "cancelled" and msgs[-1]["kind"] == "system" and "已取消" in msgs[-1]["text"]
+    # 沒帶 history 時，伺服器用自己的紀錄當上下文
+    fb = FakeBedrock([text("答二")]); monkeypatch.setattr(api.assistant, "_converse", fb)
+    c.post("/api/cases/case02/chat", json={"message": "再問一次"})
+    assert any("答一" in x["content"][0].get("text", "") for x in fb.calls[0]["messages"])
+    assert c.delete("/api/cases/case02/chat").json()["messages"] == [] and c.get("/api/cases/case02/chat").json()["messages"] == []
