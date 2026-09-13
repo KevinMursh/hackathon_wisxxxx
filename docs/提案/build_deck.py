@@ -169,9 +169,9 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .ev .dz{display:flex;flex-direction:column;gap:10px}
 .ev .dz .d{background:#F4F6F9;border-radius:10px;padding:12px 14px}
 .ev .dz .d b{display:block;font-size:17px;color:#16304F;margin-bottom:3px}.ev .dz .d span{font-size:13.5px;color:#334;line-height:1.4}
-.ev table{border-collapse:separate;border-spacing:0;width:100%;font-size:15px;border-radius:10px;overflow:hidden}
+.ev table{border-collapse:separate;border-spacing:0;width:100%;font-size:14.5px;border-radius:10px;overflow:hidden}
 .ev th{background:#16304F;color:#fff;padding:10px 10px;text-align:center;font-weight:600;font-size:15px}
-.ev td{border-bottom:1px solid #E6EAF0;padding:11px 6px;text-align:center;vertical-align:middle}
+.ev td{border-bottom:1px solid #E6EAF0;padding:9px 6px;text-align:center;vertical-align:middle}
 .ev td:first-child{font-weight:700;color:#16304F;text-align:left;white-space:nowrap;background:#F7F9FB}
 .ev tr:last-child td{color:#2E7D32;font-weight:700}
 .ev .hl{background:#FFF8EA;border-left:6px solid #D98E04;border-radius:0 12px 12px 0;padding:16px 18px}
@@ -526,7 +526,7 @@ def build_pptx(png):
                 y = 1.6 + j * 1.05
                 rect(sl, 0.7, y, 2.7, 0.95, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
                 tb(sl, 0.85, y + 0.05, 2.5, 0.35, a, 12.5, True, NAVY); tb(sl, 0.85, y + 0.38, 2.5, 0.55, c, 9.5, False, "334455")
-            table(sl, 3.6, 1.6, 5.9, s["head"], [list(r) for r in s["rows"]], [1.1, 1.5, 1.8, 1.5], 10.5, 0.5)
+            table(sl, 3.6, 1.6, 5.9, s["head"], [list(r) for r in s["rows"]], [0.9, 1.6, 1.8, 1.6], 9.5, 0.48)
             rect(sl, 9.75, 1.6, 2.9, 4.2, "FFF8EA", shape=MSO_SHAPE.ROUNDED_RECTANGLE); rect(sl, 9.75, 1.6, 0.07, 4.2, AMBER)
             tb(sl, 9.95, 1.7, 2.6, 0.6, s["hl_title"], 12.5, True, NAVY)
             bullets(sl, 9.95, 2.35, 2.6, 3.4, s["hl"], 10, "334455", 6)
