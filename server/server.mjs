@@ -287,7 +287,7 @@ app.post("/api/cases/:caseId/files", upload.array("files"), async (req, res) => 
 });
 
 /* demo：從 S3 預放的示範卷宗真跑一次（不是查表）。body {pack:"case02", messy:false} */
-const DEMO_PACKS = ["case02"];
+const DEMO_PACKS = ["case01", "case02", "case03"];   // S3 demo/{pack}/ 由 scripts/upload-demo.mjs 預放
 app.post("/api/cases/:caseId/demo", async (req, res) => {
   const { caseId } = req.params;
   const { pack = "case02", messy = false } = req.body ?? {};

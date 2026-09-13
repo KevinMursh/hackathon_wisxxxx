@@ -14,12 +14,12 @@ const BUCKET = process.env.S3_BUCKET;
 const PREFIX = (process.env.S3_PREFIX || "").replace(/^\/+|\/+$/g, "");
 if (!BUCKET) { console.error("S3_BUCKET 未設定"); process.exit(1); }
 
+const onlyDocs = (rel) => /^(01-訴願書|02-答辯書|03-卷證)\//.test(rel) && !/\/_build\//.test(rel) && !/\.DS_Store$/.test(rel);
 const PACKS = {
-  case02: {
-    root: path.resolve(here, "../../資料集/評測用（勿用於RAG）/case02-廢清法79I駁回/卷宗包"),
-    // 只收真正的卷宗檔；排除產製腳本、README 與合併檔（合併檔另行測試用，不進 demo）
-    include: (rel) => /^(01-訴願書|02-答辯書|03-卷證)\//.test(rel) && !/\/_build\//.test(rel),
-  },
+  // 只收真正的卷宗檔；排除產製腳本、README 與合併檔（合併檔另行測試用，不進 demo）
+  case02: { root: path.resolve(here, "../../資料集/評測用（勿用於RAG）/case02-廢清法79I駁回/卷宗包"), include: onlyDocs },
+  case01: { root: path.resolve(here, "../../資料集/評測用（勿用於RAG）/case01-建築法77②逾期/卷宗包"), include: onlyDocs },
+  case03: { root: path.resolve(here, "../../資料集/評測用（勿用於RAG）/case03-建築法81I撤銷/卷宗包"), include: onlyDocs },
 };
 
 const MIME = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", mp4: "video/mp4" };

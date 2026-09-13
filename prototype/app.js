@@ -104,11 +104,11 @@ $$(".case-card").forEach((el) => el.addEventListener("click", (e) => { if (!e.ta
 async function startDemo(i, messy) {
   const c = CASES[i];
   if (!c.hasDemoPack) return;
-  const card = $("#caseGrid .case-card"), go = $("#caseGrid .go");
+  const card = $(`#caseGrid .case-card[data-i="${i}"]`) || $("#caseGrid .case-card"), go = card.querySelector(".go");
   const label = go.textContent; go.textContent = messy ? "亂檔名載入中…" : "載入中…";
   try {
     const caseId = newCaseId();
-    const r = await Api.demo(caseId, { pack: "case02", messy });
+    const r = await Api.demo(caseId, { pack: c.pack || "case02", messy });
     runLive(caseId, r, { title: c.cardTitle, name: c.name, no: c.no, messy });
   } catch (e) {
     go.textContent = label;
@@ -1332,7 +1332,7 @@ const Router = {
       const cur = S.c && (S.libId === r.id || S.c.caseId === r.id || S.c.id === r.id);
       if (!cur) {
         const rec = LIB.find((x) => x.libId === r.id);
-        const mock = CASES.find((x) => x.id === r.id);
+        const mock = CASES.find((x) => x.id === r.id && !x.demoOnly);
         if (rec) openRecord(rec);
         else if (mock) runCase(structuredClone(mock), false);
         else await resumeLive(r.id);

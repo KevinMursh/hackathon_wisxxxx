@@ -50,7 +50,7 @@ const CASE_B = {
   cardDesc: "訴願書＋答辯書＋卷證 14 件（含掃描件、採證照片、影片）。訴願人否認拋棄並主張照片模糊；三方對照有兩處衝突。",
   cardTags: [tag("neutral", "廢棄物清理法"), tag("amber", "實體審查"), tag("accent", "20 頁卷宗")],
   expect: "訴願法 79I ・ 駁回", outcome: "go", subj: "廢棄物清理法", art: "79I",
-  hasDemoPack: true,          // S3 demo/case02/ 有 20 檔，可打 POST /api/cases/{id}/demo 真跑
+  hasDemoPack: true, pack: "case02",   // S3 demo/case02/ 有 20 檔，可打 POST /api/cases/{id}/demo 真跑
 
   files: [
     ["訴願書_鄭○芳_1140922.pdf", 1496, "訴願書", "appeal"],
@@ -1093,3 +1093,17 @@ CASE_B.supplement = {
   issueE: [["訴願人截圖 12:40:21：主張手部空無一物", "dc-hand"]],
   issueNote: "訴願人補提之截圖時間 12:40:21 晚於採證影片 12:40:14–19，無法反證離手瞬間；「隨即撿回」與採證照片 03 落點仍在原處不符。",
 };
+
+
+/* 首頁另外兩張示範卡：評測集 case01／case03 的卷宗包（S3 demo/case01、demo/case03，同樣真跑）。
+   只給卡片與 demo 用（demoOnly），沒有 mock 分析資料；hash 路由不會把它們當 mock 案開。 */
+CASES.push(
+  { id: "D", no: "1111091802", name: "陳○勳 ／ 違反建築法", demoOnly: true, hasDemoPack: true, pack: "case01",
+    cardTitle: "住宅擅改小吃店遭罰，遲延逾月才提訴願", subj: "違反建築法", art: "77(2)",
+    cardDesc: "訴願書＋答辯書＋卷證 8 件（含委任書、謄本、里長證明、手寫切結書）。處分 111-08-22 送達，111-09-30 收文；訴願人自述收受日與送達證書不一致，程序審查即可終結。",
+    cardTags: [tag("neutral", "建築法"), tag("seal", "程序不合"), tag("neutral", "77② 逾期")] },
+  { id: "E", no: "1143051259", name: "劉○鑫建築師事務所 ／ 違反建築法", demoOnly: true, hasDemoPack: true, pack: "case03",
+    cardTitle: "公安申報簽證遭罰，裁處權時效已過", subj: "違反建築法", art: "81(1)",
+    cardDesc: "訴願書＋答辯書＋卷證 8 件（含申報系統歷程、複查紀錄、專案小組決議）。訴願人主張 111-06-09 行為終了、三年時效於 114-06-08 屆滿，機關 114-07-04 才裁處；答辯僅稱「複查時始發現」。依職權審查時效即應撤銷。",
+    cardTags: [tag("neutral", "建築法"), tag("green", "訴願有理由"), tag("amber", "裁處權時效")] },
+);
