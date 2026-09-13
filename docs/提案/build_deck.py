@@ -65,16 +65,16 @@ def arch_html():
               + arrow(650, 150, 700, 150, "Converse・Retrieve", ly=140) + arrow(650, 288, 700, 288) + arrow(650, 396, 700, 396) + '</svg>')
     return f'''<div class="aw">
 <div class="cloud"><div class="lab"><img src="{I('AWSCloudlogo')}">AWS 競賽帳號</div></div>
-<div class="region"><div class="lab"><img src="{I('Region')}">Region us-west-2　｜　S3 不公開　｜　SG 只開 :80 給會場 IP　｜　無 access key</div></div>
+<div class="region"><div class="lab"><img src="{I('Region')}">Region us-west-2　｜　S3 不公開　｜　只開放會場 IP　｜　不放金鑰</div></div>
 <div class="client"><img src="{I('Client')}"><b>承辦人瀏覽器</b><p>工作台＋卷宗瀏覽器</p></div>
 <div class="grp" style="left:268px;top:96px;width:382px;height:344px">
   <div class="gl"><img src="{I('AmazonEC2')}">Amazon EC2　t3.large</div>
-  <div class="svc" style="left:12px;top:18px;width:356px;height:118px"><div class="h"><b>Node :80<small>前端＋文件歸戶</small></b></div><p>上傳 → 正規化 → 分類 → 逐箱推結果</p><p>單 worker 序列，Bedrock ≤ 1 RPS</p></div>
-  <div class="svc" style="left:12px;top:158px;width:356px;height:168px"><div class="h"><b>FastAPI :8100<small>分析・助手・法規庫</small></b></div><p>固定 pipeline s2 → s6，每步落地</p><p>期間／八款檢核、條號查核（程式）</p><p>助手提案 → 確認 → 局部重跑</p></div>
+  <div class="svc" style="left:12px;top:18px;width:356px;height:118px"><div class="h"><b>Node :80<small>畫面＋卷證分類</small></b></div><p>上傳 → 轉檔 → 分類 → 分批回傳結果</p><p>依序處理，遵守 Bedrock 呼叫頻率限制</p></div>
+  <div class="svc" style="left:12px;top:158px;width:356px;height:168px"><div class="h"><b>FastAPI :8100<small>分析・助手・法規庫</small></b></div><p>固定七個步驟，每步結果保存</p><p>期間、不受理事由、條號比對（程式）</p><p>修正 → 確認 → 局部重算</p></div>
 </div>
-<div class="svc" style="left:700px;top:96px;width:420px;height:108px"><div class="h"><img src="{I('AmazonBedrock')}"><b>Amazon Bedrock<small>Converse・Knowledge Base</small></b></div><p>Claude Sonnet 4.5：看文字＋圖片，回結構化 JSON</p><p>Knowledge Base：法規／判解／函釋／98 份決定書</p></div>
-<div class="svc" style="left:700px;top:236px;width:420px;height:100px"><div class="h"><img src="{I('AmazonSimpleStorageService')}"><b>Amazon S3<small>private bucket</small></b></div><p>原始卷宗・頁圖與逐頁文字・KB 語料</p></div>
-<div class="svc" style="left:700px;top:348px;width:420px;height:92px"><div class="h"><img src="{I('AmazonDynamoDB')}"><b>Amazon DynamoDB<small>單表 appeal-cases</small></b></div><p>案件・卷證・分析結果・稽核軌跡</p></div>
+<div class="svc" style="left:700px;top:96px;width:420px;height:108px"><div class="h"><img src="{I('AmazonBedrock')}"><b>Amazon Bedrock<small>Converse・Knowledge Base</small></b></div><p>Claude Sonnet 4.5：讀文字與圖片，回固定格式</p><p>知識庫：法規／判解／函釋／98 份決定書</p></div>
+<div class="svc" style="left:700px;top:236px;width:420px;height:100px"><div class="h"><img src="{I('AmazonSimpleStorageService')}"><b>Amazon S3<small>private bucket</small></b></div><p>原始卷宗・頁面圖與文字・知識庫資料</p></div>
+<div class="svc" style="left:700px;top:348px;width:420px;height:92px"><div class="h"><img src="{I('AmazonDynamoDB')}"><b>Amazon DynamoDB<small>單表 appeal-cases</small></b></div><p>案件・卷證・分析結果・修改紀錄</p></div>
 <div class="ops">
   <div class="o"><img src="{I('AWSIdentityandAccessManagement')}"><span><b>IAM Instance Profile</b>最小權限，無金鑰</span></div>
   <div class="o"><img src="{I('AWSSystemsManager')}"><span><b>Systems Manager</b>免 SSH 部署 30 秒</span></div>
@@ -137,8 +137,8 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .ba .mess{background:#F4F6F9;color:#5B6573}.ba .neat{background:#FFF8EA;color:#0F2038;border:2px solid #D98E04}
 .ba .ar{text-align:center;color:#D98E04;font-size:52px;font-weight:900}
 .pipe7{display:flex;gap:10px}
-.pipe7 .c{flex:1;border:2px solid #DDE3EA;border-radius:12px;padding:16px 12px;text-align:center}
-.pipe7 .c b{display:block;font-size:20px;color:#16304F}.pipe7 .c i{display:inline-block;font-style:normal;margin-top:8px;background:#FFF2D6;color:#B36F00;font-weight:700;border-radius:6px;padding:2px 10px;font-size:16px}
+.pipe7 .c{flex:1;border:2px solid #DDE3EA;border-radius:12px;padding:16px 8px;text-align:center}
+.pipe7 .c b{display:block;font-size:20px;color:#16304F}.pipe7 .c i{display:inline-block;font-style:normal;margin-top:8px;background:#FFF2D6;color:#B36F00;font-weight:700;border-radius:6px;padding:2px 8px;font-size:14.5px;white-space:nowrap}
 .pipe7 .c.code{border-color:#2E7D32;background:#F2F8F3}.pipe7 .c.code i{background:#E0F0E2;color:#2E7D32}
 .gate{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
 .gate .g{background:#F4F6F9;border-radius:16px;padding:26px 22px;text-align:center;min-height:330px}
@@ -165,7 +165,7 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .pil .c{background:#F4F6F9;border-radius:16px;padding:24px 26px;min-height:225px;display:grid;grid-template-columns:52px 1fr;gap:16px;align-items:start}
 .pil .c i{width:52px;height:52px;border-radius:50%;background:#16304F;color:#fff;font-style:normal;font-weight:900;font-size:24px;display:flex;align-items:center;justify-content:center}
 .pil .c b{display:block;font-size:26px;color:#16304F;margin-bottom:8px}.pil .c p{margin:0;font-size:18px;color:#334;line-height:1.5}
-.pil .c.big{align-items:center;min-height:235px;grid-template-columns:72px 1fr}.pil .c.big i{width:72px;height:72px;font-size:34px}.pil .c.big b{font-size:40px;margin:0}
+.pil .c.big{align-items:center;min-height:235px;grid-template-columns:72px 1fr}.pil .c.big i{width:72px;height:72px;font-size:34px}.pil .c.big b{font-size:34px;margin:0;white-space:nowrap}
 .pil .c em{display:block;font-style:normal;font-size:15px;color:#8A5A00;margin-top:10px;border-left:3px solid #D98E04;padding-left:10px}
 .fw{display:grid;grid-template-columns:1fr 1.3fr;gap:30px;align-items:start}
 .fw .why{background:#F4F6F9;border-radius:14px;padding:20px 22px}
