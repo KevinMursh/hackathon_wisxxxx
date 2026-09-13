@@ -140,6 +140,20 @@ h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30
 .pipe7 .c{flex:1;border:2px solid #DDE3EA;border-radius:12px;padding:16px 8px;text-align:center}
 .pipe7 .c b{display:block;font-size:21px;color:#16304F;padding:10px 0}.pipe7 .c i{display:inline-block;font-style:normal;margin-top:8px;background:#FFF2D6;color:#B36F00;font-weight:700;border-radius:6px;padding:2px 8px;font-size:14.5px;white-space:nowrap}
 .pipe7 .c.code{border-color:#2E7D32;background:#F2F8F3}.pipe7 .c.code i{background:#E0F0E2;color:#2E7D32}
+.st7{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.st7 .c{border:2px solid #DDE3EA;border-radius:12px;padding:18px 14px;min-height:300px;position:relative;background:#fff}
+.st7 .c.code{border-color:#2E7D32;background:#F2F8F3}
+.st7 .c i{display:flex;width:30px;height:30px;border-radius:50%;background:#16304F;color:#fff;font-style:normal;font-weight:700;font-size:15px;align-items:center;justify-content:center;margin-bottom:10px}
+.st7 .c.code i{background:#2E7D32}
+.st7 .c b{display:block;font-size:21px;color:#16304F;margin-bottom:12px}
+.st7 .c .o{font-size:17px;color:#0F2038;line-height:1.5;margin-bottom:12px}
+.st7 .c .src{font-size:14px;color:#8A93A0;line-height:1.45;border-top:1px solid #E6EAF0;padding-top:10px}
+.st7 .c .src:before{content:"依據　";color:#B36F00}
+.st7 .c:after{content:"";position:absolute;right:-9px;top:30px;border-left:9px solid #C5CDD8;border-top:7px solid transparent;border-bottom:7px solid transparent}
+.st7 .c:last-child:after{content:""}
+.props{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
+.props .p{background:#F4F6F9;border-radius:14px;padding:24px 24px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.props .p b{font-size:24px;color:#16304F;white-space:nowrap}.props .p span{font-size:16px;color:#334;line-height:1.45}
 .gate{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
 .gate .g{background:#F4F6F9;border-radius:16px;padding:26px 22px;text-align:center;min-height:330px}
 .gate .g .ic{width:88px;height:88px;border-radius:50%;background:#16304F;margin:0 auto 18px;display:flex;align-items:center;justify-content:center}
@@ -254,8 +268,8 @@ def h_slide(i, s):
     elif k == "ba":
         b = f'<div class="ba"><div class="box mess">{"<br>".join(s["before"])}</div><div class="ar">→</div><div class="box neat">{"<br>".join(s["after"])}</div></div><div class="chips" style="margin-top:22px">' + "".join(f'<div class="chip">{a}<small>{c}</small></div>' for a, c in s["chips"]) + '</div>' + (f'<div class="note">{s["foot"]}</div>' if s.get("foot") else '')
     elif k == "pipe":
-        b = '<div class="pipe7">' + "".join(f'<div class="c{" code" if g else ""}"><b>{a}</b>{f"<i>{c}</i>" if c else ""}</div>' for a, c, g in s["steps"]) + '</div>'
-        b += f'<div style="display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;margin-top:44px"><div class="bignum">{s["big"][0]}<small>{s["big"][1]}</small></div><div class="big">{s["text"]}<br><b style="color:#2E7D32">{s["green"]}</b></div></div>'
+        b = '<div class="st7">' + "".join(f'<div class="c{" code" if j == 2 else ""}"><i>{j}</i><b>{a}</b><div class="o">{o}</div><div class="src">{src}</div></div>' for j, (a, o, src) in enumerate(s["steps"], 1)) + '</div>'
+        b += '<div class="props">' + "".join(f'<div class="p"><b>{a}</b><span>{c}</span></div>' for a, c in s["props"]) + '</div>'
     elif k == "arch":
         b = f'<div style="margin-top:-8px;transform:scale(.95);transform-origin:top left">{arch_html()}</div>' + (f'<div style="position:absolute;right:72px;top:64px;font-size:16px;color:#8A93A0">{s["foot"]}</div>' if s.get("foot") else '')
     elif k == "gate":
@@ -426,14 +440,18 @@ def build_pptx(png):
                 rect(sl, x, 5.15, 2.85, 0.9, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE); tb(sl, x + 0.15, 5.17, 2.6, 0.5, a, 17, True, NAVY); tb(sl, x + 0.15, 5.62, 2.6, 0.4, c, 11, False, "5B6573")
             if s.get("foot"): note(sl, s["foot"], 6.2)
         elif k == "pipe":
-            for j, (a, c, g) in enumerate(s["steps"]):
-                x = 0.7 + j * 1.71
-                rect(sl, x, 1.7, 1.62, 1.35, "F2F8F3" if g else "FFFFFF", GREEN if g else LINE, MSO_SHAPE.ROUNDED_RECTANGLE, 1.5)
-                tb(sl, x, 1.7, 1.62, 1.35, a, 15, True, NAVY, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
-                if c:
-                    rect(sl, x + 0.2, 2.42, 1.22, 0.4, "E0F0E2" if g else "FFF2D6", shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3); tb(sl, x + 0.2, 2.42, 1.22, 0.4, c, 11, True, GREEN if g else "B36F00", PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
-            tb(sl, 0.7, 3.5, 2.3, 1.6, s["big"][0], 96, True, NAVY, anchor=MSO_ANCHOR.MIDDLE); tb(sl, 3.0, 4.35, 2.8, 0.6, s["big"][1], 18, False, "5B6573")
-            tb(sl, 6.0, 3.6, 6.6, 1.0, s["text"], 18, False, "334455"); tb(sl, 6.0, 4.7, 6.6, 0.8, s["green"], 18, True, GREEN)
+            for j, (a, o, src) in enumerate(s["steps"]):
+                x = 0.7 + j * 1.71; g = (j == 1)
+                rect(sl, x, 1.6, 1.62, 3.3, "F2F8F3" if g else "FFFFFF", GREEN if g else LINE, MSO_SHAPE.ROUNDED_RECTANGLE, 1.5)
+                circle_txt(sl, x + 0.12, 1.72, 0.32, str(j + 1), GREEN if g else NAVY, 11)
+                tb(sl, x + 0.08, 2.1, 1.48, 0.45, a, 13.5, True, NAVY)
+                tb(sl, x + 0.08, 2.55, 1.48, 0.8, o, 11, False, INK)
+                rect(sl, x + 0.12, 3.6, 1.38, 0.01, "E6EAF0")
+                tb(sl, x + 0.08, 3.68, 1.48, 1.1, "依據 " + src, 10, False, "8A93A0")
+            for j, (a, c) in enumerate(s["props"]):
+                x = 0.7 + j * 4.03
+                rect(sl, x, 5.25, 3.85, 1.35, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+                tb(sl, x + 0.2, 5.3, 1.5, 1.25, a, 18, True, NAVY, anchor=MSO_ANCHOR.MIDDLE); tb(sl, x + 1.7, 5.3, 2.0, 1.25, c, 11.5, False, "334455", anchor=MSO_ANCHOR.MIDDLE)
         elif k == "arch":
             sl.shapes.add_picture(png, Inches(0.95), Inches(1.55), width=Inches(11.4))
             if s.get("foot"): tb(sl, 8.6, 0.42, 4.0, 0.3, s["foot"], 11, False, "8A93A0", PP_ALIGN.RIGHT)
