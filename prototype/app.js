@@ -213,7 +213,7 @@ function runCase(c, restore) {
     S.libId = c.live ? c.caseId : existing ? existing.libId : `${c.id}-${Date.now().toString(36)}`;   // 真上傳案：網址與案件庫都用後端 caseId
   }
   S.doc = null; S.zoom = 1; S.docMode = {};
-  $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = ""; setCrumb("案件審理");
+  $("#chip").classList.add("on"); setCrumb($("#s-run").classList.contains("on") ? "分析中" : "案件審理"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = ""; setCrumb("案件審理");
   if (restore || c.analysis) { if (restore) { render(); show("s-work"); Router.set(`/case/${S.libId || c.caseId || c.id}`); } return; }
   const steps = [["文件辨識（Claude 判定）", `${c.docs.length} 個檔案 → ${c.docs.filter((d) => d.include !== false).length} 份納入・${c.docs.filter((d) => d.dup).length} 份重複・${c.docs.filter((d) => d.unknown).length} 份無法辨識`, Math.min(2600, 700 + c.docs.length * 110), "classify"], ["欄位擷取（三方對照）", `${c.fields.length} 個欄位，${c.fields.filter((f) => f.conflict).length} 處衝突`, 700], ["爭點比對（訴願書 vs 答辯書 vs 卷證）", `識別 ${c.issues.length} 個爭點`, 760], ["法規檢索與引用查核", `推薦 ${c.laws.length} 筆；查核答辯書引用 ${c.citations.length} 則${c.citations.some((x) => x.status === "amended") ? "，1 則已修正" : ""}`, 840], ["AI 判定與草稿生成", `判定：${judgePlan(c).verdict}（${judgePlan(c).art}）`, 900]];
   $("#runSub").textContent = c.live ? c.name : `${c.name}　・　案號 ${c.no}${c.uploadNote ? "　・　" + c.uploadNote : ""}`;
@@ -238,7 +238,7 @@ const LIVE_STEPS = [
 
 function runLive(caseId, job, meta = {}) {
   S.liveCase = { caseId, jobId: job.jobId, total: job.files.length }; Router.set(`/run/${caseId}`);
-  $("#chip").classList.add("on"); $("#chipName").textContent = meta.name || "新上傳案件";
+  $("#chip").classList.add("on"); setCrumb($("#s-run").classList.contains("on") ? "分析中" : "案件審理"); $("#chipName").textContent = meta.name || "新上傳案件";
   $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = ""; setCrumb("分析中");
   $("#runSub").textContent = `${meta.title || `${job.files.length} 個檔案`}　・　${caseId}${meta.messy ? "　・　亂檔名（檔名不參與判定）" : ""}`;
   $("#stepList").innerHTML = LIVE_STEPS.map(([name, kind], i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${name}</div><div class="out" id="so${i}"></div>${kind === "classify" ? `<div class="classify" id="cls0" style="flex-direction:column;gap:3px"></div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
@@ -1386,7 +1386,7 @@ async function resumeLive(caseId) {
   if (doc && doc.status.state === "done") return enterWork(caseId, doc);
   let payload;
   try { payload = await Api.listFiles(caseId); } catch (e) { $("#runSub").textContent = ""; show("s-pick"); Router.set("/"); alert(`找不到案件 ${caseId}`); return; }
-  $("#chip").classList.add("on"); $("#chipName").textContent = payload.files.find((f) => f.segments?.[0]?.party_hint)?.segments[0].party_hint || "上傳案件"; $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = "";
+  $("#chip").classList.add("on"); setCrumb($("#s-run").classList.contains("on") ? "分析中" : "案件審理"); $("#chipName").textContent = payload.files.find((f) => f.segments?.[0]?.party_hint)?.segments[0].party_hint || "上傳案件"; $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = "";
   $("#runSub").textContent = `${payload.files.length} 個檔案　・　${caseId}`;
   $("#stepList").innerHTML = LIVE_STEPS.map(([name], i) => `<div class="step ${i === 0 ? "done" : ""}" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${name}</div><div class="out" id="so${i}">${i === 0 ? `${payload.files.length} 份已辨識` : ""}</div></div><div class="ms" id="sm${i}"></div></div>`).join("");
   $("#runBar").style.width = "20%"; show("s-run");
