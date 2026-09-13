@@ -64,6 +64,27 @@ def verify_quotes(docs: list[Doc], issues: dict) -> int:
     return bad
 
 
+def sanitize_draft(draft: str) -> str:
+    """程式保證：委員姓名占位（範例決定書的真名不得進草稿）；單純撤銷（全部勝訴）不附教示。"""
+    lines = draft.splitlines()
+    out = []
+    for ln in lines:
+        s = ln.strip()
+        if re.fullmatch(r"(訴願審議委員會)?主任委員\s*\S{2,4}", s):
+            ln = "訴願審議委員會主任委員 ○○○"
+        elif re.fullmatch(r"委員\s*\S{2,4}", s):
+            ln = "委員 ○○○"
+        out.append(ln)
+    txt = "\n".join(out)
+    m = re.search(r"主文\s*\n+\s*(.+)", txt)
+    main = (m.group(1) if m else "").strip()
+    if "撤銷" in main and "另為" not in main and "不受理" not in main and "駁回" not in main:
+        txt = "\n".join(l for l in txt.splitlines() if not re.search(r"如不服本決定.{0,80}行政訴訟", l))
+    if "【待確認" not in txt:
+        txt += "\n【待確認：委員名單、決定日期】"
+    return txt
+
+
 # ---------- 主流程 ----------
 REV_HINT = "\n\n【承辦人修正意見——必須遵守；若卷證不支持，須在對應欄位說明無法採納之理由】\n"
 
@@ -230,6 +251,7 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
         print(); draft = "".join(buf)
     else:
         draft = _load(case, "s6_draft")
+    draft = sanitize_draft(draft)
     draft_cites = lawdb.check_citations(db, draft, source="草稿"); _save(case, "s6_citations", draft_cites)
     log(f"[s6] {len(draft)} 字；引用 {len(draft_cites)} 則，unknown {sum(c['status']=='unknown_law' for c in draft_cites)}")
 

@@ -136,9 +136,11 @@ def build(docs: list[Doc], fields: dict | None, period: dict | None, issues: dic
     draft_cites = draft_cites or []
     paras = build_paras(draft, docs, rt)
     m_main = re.search(r"主文\s*\n+\s*(.+)", draft)
-    m_art = re.search(r"依訴願法第\s*(\d+)\s*條第\s*(\d+)\s*項", draft)
     verdict = (m_main.group(1).strip() if m_main else "").rstrip("。")
-    art = f"{m_art.group(1)}{'I' if m_art.group(2) == '1' else 'II'}" if m_art else ""
+    tail = draft[draft.find("據上論結"):] if "據上論結" in draft else draft
+    m_k = re.search(r"訴願法第\s*77\s*條第\s*(\d+)\s*款", tail)
+    m_art = re.search(r"依訴願法第\s*(\d+)\s*條第\s*(\d+)\s*項", tail) or re.search(r"依訴願法第\s*(\d+)\s*條第\s*(\d+)\s*項", draft)
+    art = f"77 {'①②③④⑤⑥⑦⑧'[int(m_k.group(1)) - 1]}" if m_k and "不受理" in verdict else (f"{m_art.group(1)}{'I' if m_art.group(2) == '1' else 'II'}" if m_art else "")
     total = sum(dist.values()) or 1
     same = dist["駁回"] if "駁回" in verdict else dist["撤銷"] if "撤銷" in verdict else dist["不受理"]
     out["judge"] = {"verdict": verdict, "art": f"訴願法 §{art}" if art else "", "issues": [[i["title"], i["finding"]] for i in issues["issues"]],

@@ -108,3 +108,16 @@ def test_text_item_para_normalized_to_label(state):
     lab, para = next((l, p) for l, p in labeled if l.startswith("理由"))
     out = A.enrich_items("case02", [{"type": "text", "para": para["text"], "how": "精簡"}, {"type": "text", "para": lab, "how": "x"}, {"type": "text", "para": "把理由三改短", "how": "x"}], state)
     assert out[0]["para"] == lab and out[1]["para"] == lab and out[2]["para"] == "理由三"
+
+
+def test_sanitize_draft_masks_names_and_drops_teaching_on_pure_revocation():
+    from pipeline.run_all import sanitize_draft
+    d = "主文\n原處分撤銷。\n理由\n一、…\n據上論結\n本件訴願為有理由，依訴願法第81條第1項規定，決定如主文。\n訴願審議委員會主任委員 吳宗憲\n委員 陳立夫\n委員 景玉鳳\n中華民國114年○月○日\n如不服本決定，得於決定書送達之次日起2個月內向臺北高等行政法院提起行政訴訟。"
+    s = sanitize_draft(d)
+    import re
+    assert "吳宗憲" not in s and "陳立夫" not in s and len(re.findall(r"^委員 ○○○$", s, re.M)) == 2 and "主任委員 ○○○" in s
+    assert "行政訴訟" not in s and "【待確認" in s
+    d2 = d.replace("原處分撤銷。", "訴願駁回。")
+    assert "行政訴訟" in sanitize_draft(d2)
+    d3 = d.replace("原處分撤銷。", "原處分撤銷，由原處分機關於2個月內另為適法之處分。")
+    assert "行政訴訟" in sanitize_draft(d3)
