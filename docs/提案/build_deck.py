@@ -27,29 +27,30 @@ def icon_uri(name):
 
 ARCH_CSS = """
 .aw{position:relative;width:1150px;height:540px;font-family:"PingFang TC","Microsoft JhengHei",sans-serif;color:#0F2038;font-size:14px;line-height:1.35}
-.aw .cloud{position:absolute;left:236px;top:0;width:914px;height:540px;border:2px solid #232F3E;border-radius:6px;background:#fff}
-.aw .cloud .lab{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 8px;font-weight:700;font-size:14px;color:#232F3E}
-.aw .cloud .lab img{width:30px;height:30px}
-.aw .region{position:absolute;left:252px;top:44px;width:882px;height:480px;border:1.5px dashed #00A4A6;border-radius:6px;background:#FAFEFE}
-.aw .region .lab{position:absolute;left:10px;top:8px;display:flex;align-items:center;gap:6px;font-size:13px;color:#00A4A6;font-weight:700}
-.aw .region .lab img{width:22px;height:22px}
-.aw .svc{position:absolute;background:#fff;border:1.5px solid #DDE3EA;border-radius:10px;padding:14px 16px;box-shadow:0 2px 6px rgba(15,32,56,.06)}
+.aw .cloud{position:absolute;left:236px;top:0;width:914px;height:540px;border-radius:10px;background:#173B4C}
+.aw .cloud .lab{position:absolute;left:0;top:0;display:flex;align-items:center;gap:10px;padding:10px 14px;font-weight:700;font-size:15px;color:#fff}
+.aw .cloud .lab img{width:30px;height:30px;border-radius:4px}
+.aw .region{position:absolute;left:252px;top:50px;width:882px;height:476px;border:1.5px dashed #4FB8B0;border-radius:8px}
+.aw .region .lab{position:absolute;left:10px;top:8px;display:flex;align-items:center;gap:8px;font-size:13.5px;color:#7FD3CC;font-weight:600}
+.aw .region .lab img{width:24px;height:24px}
+.aw .svc{position:absolute;background:#fff;border-radius:12px;padding:14px 16px}
 .aw .svc .h{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-.aw .svc .h img{width:46px;height:46px;flex:none}
+.aw .svc .h img{width:46px;height:46px;flex:none;border-radius:6px}
 .aw .svc .h b{font-size:17px;color:#0F2038;line-height:1.2}
 .aw .svc .h small{display:block;font-weight:400;color:#5B6573;font-size:12.5px}
-.aw .svc p{margin:0;font-size:14.5px;color:#334}
-.aw .grp{position:absolute;border:1.5px solid #ED7100;border-radius:10px;background:#FFF9F3}
-.aw .grp .gl{position:absolute;left:12px;top:-14px;background:#FFF9F3;padding:0 6px;font-size:14px;font-weight:700;color:#ED7100;display:flex;align-items:center;gap:6px}
-.aw .grp .gl img{width:26px;height:26px}
+.aw .svc p{margin:0;font-size:14.5px;color:#0F2038}
+.aw .grp{position:absolute;border:2px solid #D98E04;border-radius:12px;background:#DCEBE7}
+.aw .grp .gl{position:absolute;left:14px;top:-16px;background:#FFF1D6;border-radius:6px;padding:3px 10px 3px 6px;font-size:14px;font-weight:700;color:#B36F00;display:flex;align-items:center;gap:8px}
+.aw .grp .gl img{width:26px;height:26px;border-radius:4px}
+.aw .grp .svc{border:1.5px solid #4FB8B0}
 .aw .client{position:absolute;left:0;top:190px;width:214px;text-align:center}
-.aw .client img{width:72px;height:72px}
-.aw .client b{display:block;font-size:17px;margin-top:6px}
+.aw .client img{width:78px;height:78px}
+.aw .client b{display:block;font-size:17px;margin-top:6px;color:#0F2038}
 .aw .client p{margin:6px 0 0;font-size:13.5px;color:#334}
 .aw svg.ar{position:absolute;left:0;top:0;width:1150px;height:540px;pointer-events:none}
-.aw .ops{position:absolute;left:266px;top:452px;width:854px;height:60px;display:flex;gap:14px;align-items:center}
-.aw .ops .o{display:flex;align-items:center;gap:10px;flex:1;background:#fff;border:1.5px solid #DDE3EA;border-radius:10px;padding:6px 12px;font-size:13px;color:#334;height:58px}
-.aw .ops .o img{width:36px;height:36px;flex:none}
+.aw .ops{position:absolute;left:268px;top:456px;width:852px;height:60px;display:flex;gap:14px;align-items:center}
+.aw .ops .o{display:flex;align-items:center;gap:10px;flex:1;background:#fff;border-radius:10px;padding:6px 12px;font-size:13px;color:#334;height:58px}
+.aw .ops .o img{width:36px;height:36px;flex:none;border-radius:4px}
 .aw .ops .o b{display:block;font-size:14px;color:#0F2038}
 """
 
@@ -57,17 +58,18 @@ def arch_html():
     I = icon_uri
     def arrow(x1, y1, x2, y2, label="", dash=False, ly=None):
         d = ' stroke-dasharray="6 4"' if dash else ""
-        s = f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#16304F" stroke-width="2" marker-end="url(#ah)"{d}/>'
-        if label: s += f'<text x="{(x1+x2)/2}" y="{ly}" font-size="12" fill="#5B6573" text-anchor="middle">{label}</text>'
+        col = "#16304F" if x2 <= 268 or x1 == x2 else "#C9D6D9"
+        s = f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{col}" stroke-width="2" marker-end="url(#{"ah" if (x2 <= 268 or x1 == x2) else "ahl"})"{d}/>'
+        if label: s += f'<text x="{(x1+x2)/2}" y="{ly}" font-size="12" fill="{"#5B6573" if x2 <= 268 else "#E6EDF5"}" text-anchor="middle">{label}</text>'
         return s
-    arrows = ('<svg class="ar" viewBox="0 0 1150 540"><defs><marker id="ah" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 z" fill="#16304F"/></marker></defs>'
-              + arrow(214, 262, 268, 262, "HTTP :80", ly=252) + arrow(459, 232, 459, 250, dash=True)
-              + arrow(650, 150, 700, 150, "Converse・Retrieve", ly=140) + arrow(650, 288, 700, 288) + arrow(650, 396, 700, 396) + '</svg>')
+    arrows = ('<svg class="ar" viewBox="0 0 1150 540"><defs><marker id="ah" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 z" fill="#16304F"/></marker><marker id="ahl" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 z" fill="#C9D6D9"/></marker></defs>'
+              + arrow(214, 262, 266, 262) + arrow(459, 236, 459, 254, dash=True)
+              + arrow(650, 150, 700, 150) + arrow(650, 288, 700, 288) + arrow(650, 396, 700, 396) + '</svg>')
     return f'''<div class="aw">
 <div class="cloud"><div class="lab"><img src="{I('AWSCloudlogo')}">AWS 競賽帳號</div></div>
 <div class="region"><div class="lab"><img src="{I('Region')}">Region us-west-2　｜　S3 不公開　｜　只開放會場 IP　｜　不放金鑰</div></div>
 <div class="client"><img src="{I('Client')}"><b>承辦人瀏覽器</b><p>工作台＋卷宗瀏覽器</p></div>
-<div class="grp" style="left:268px;top:96px;width:382px;height:344px">
+<div class="grp" style="left:268px;top:100px;width:382px;height:344px">
   <div class="gl"><img src="{I('AmazonEC2')}">Amazon EC2　t3.large</div>
   <div class="svc" style="left:12px;top:18px;width:356px;height:118px"><div class="h"><b>Node :80<small>畫面＋卷證分類</small></b></div><p>上傳 → 轉檔 → 分類 → 分批回傳結果</p><p>依序處理，遵守 Bedrock 呼叫頻率限制</p></div>
   <div class="svc" style="left:12px;top:158px;width:356px;height:168px"><div class="h"><b>FastAPI :8100<small>分析・助手・法規庫</small></b></div><p>固定七個步驟，每步結果保存</p><p>期間、不受理事由、條號比對（程式）</p><p>修正 → 確認 → 局部重算</p></div>
