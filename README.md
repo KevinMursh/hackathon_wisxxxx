@@ -1,112 +1,178 @@
-# 2026 新北市 AI 智慧城市黑客松 — 法制局組
+# 訴願智審臺 — 承辦人的 AI 審卷夥伴
 
-訴願案件審理作業流程之 AI 輔助應用。
+> 2026 新北市 AI 智慧城市黑客松・法制局組｜WISXXXX 親友見面會（Kevin／Roy）
+>
+> **比對交給 AI，證據留給眼睛，判斷留給承辦人。**
 
-## 目錄結構
+- 🌐 Live Demo：<http://100.20.156.38/>（Security Group 僅開放會場公告 IP 與開發者 IP）
+- 📑 提案簡報：[`docs/提案/提案簡報-訴願智審臺.pdf`](docs/提案/提案簡報-訴願智審臺.pdf)（[pptx](docs/提案/提案簡報-訴願智審臺.pptx)）
+- 🎤 6 分鐘講稿（含 Demo 腳本）：[`docs/提案/講稿-6分鐘含Demo.md`](docs/提案/講稿-6分鐘含Demo.md)
+- 📊 準確性驗證：[`docs/評測結果-三案對照標準答案.md`](docs/評測結果-三案對照標準答案.md)
 
-```
-資料集/
-├── 命題方提供/                  ← 主辦單位交付，僅供競賽使用
-│   ├── 歷史訴願決定書/           101 份（110-114 年）
-│   ├── 相關法規/                 11 部
-│   ├── 司法院釋字及行政判解/      19 篇
-│   └── 行政函釋/                 10 篇
-└── 自行蒐集/                    ← 命題方未提供，網路蒐集補充（皆為政府公開來源）
-    ├── 訴願書範例官方/            新北市法制局官網下載
-    ├── 答辯書範例官方/            行政院 appeal.ey.gov.tw
-    ├── 相關法規補充/              政府資訊公開法全文（判解有引用但法規本體原缺）
-    └── 判解函釋補充/              洗錢防制法「帳戶控制權」判準（補強判準深度）
+---
 
-docs/
-├── 【命題文件】...pdf            命題文件
-├── 黑客松競賽環境規範與限制...pdf  競賽環境規範
-├── Supported AWS Services List...xlsx  支援服務與 EC2/SageMaker 額度清單
-├── 訴願書跟答辯書/                更多官方文書範本（委任書/閱覽卷宗/言詞辯論等申請書）
-├── 提案/                        提案相關文件
-├── 資料集網路補充紀錄.md          網路補充哪些關鍵資料、為何補、判定不補的類別與理由
-└── 各領域參考資料與判決結果統計.md 各領域法源是否充足 + 101份決定書判決結果交叉統計
+## 提案大綱
 
-design_kc/     — 承辦人工作台設計稿（Design Components，五步驟：收案擷取/程序檢核/法規與案例/決定書草稿/稽核匯出）
-scenarios_kc/  — 十情境承辦人角色扮演走查、欄位核對總表、缺漏總表、卷宗類型討論
-prototype/     — 前端可互動原型（純前端展示，未串接後端模型）
-aws/           — AWS 工作坊操作手冊（Bedrock AgentCore、Kiro）
-```
+承辦人只需將訴願書、答辯書與卷證**原樣上傳**，系統以 Amazon Bedrock（Claude Sonnet 4.5）自動辨識 27 類文件並命名，再執行**固定七步驟**：讀基本資料、程式計算期間與不受理事由、整理爭點並標示依據、比對法規庫條文版本、檢索相似案例、產出決定書草稿；每項結論皆可點回原始卷證與條文。承辦人不同意時，對 AI 助理說一句話即產生修正提案，確認後只重算受影響步驟，草稿留版本可回溯，可匯出 ODF 公文。架構為一台 EC2 搭配 Bedrock、S3、DynamoDB，最小權限、不存金鑰。以三份真實決定書反推卷宗驗證，主文、條款、期間、時效全數一致。
 
-## 資料集分類與使用原則（重要）
+---
 
-`資料集/` 底下目前只有**參考/測試用**資料——命題方提供的 101 份歷史決定書＋法規/判解/函釋，以及我們自行蒐集補充的範本，用途是：
+## 簡報
 
-- 建 RAG 知識庫的原料（法規、判解、函釋、決定書全文）
-- few-shot 範例池（草稿生成、相似案例比對）
-- 開發階段的內部功能測試素材
+### 1. 封面
 
-**這批資料不等於競賽現場的 evaluation 資料集。** 屆時很可能會另外收到一批全新、held-out 的訴願案例來實測系統表現，兩者必須嚴格區分：
+![封面](docs/提案/slides/slide-1.png)
 
-| | 參考/測試用資料集（現有） | Evaluation 資料集（未來） |
+### 2. 破題：四個前提，缺一不可
+
+整合工作流、每一步透明、修正可提可查可追、數據飛輪（案件庫／法規庫）——訪談承辦人後歸納出的設計骨架。
+
+![四個前提](docs/提案/slides/slide-2.png)
+
+### 3. 流程：承辦人只做五件事
+
+上傳卷宗 → 自動分類（27 類、自動命名）→ 看分析 → 提出修正（「爭點 2 改採信訴願人」）→ 確認送審（草稿 v1／v2 可回溯）。
+示範案例：亂丟煙蒂案，20 頁卷宗加一段影片，90 秒分好類，2 分鐘出分析。
+
+![五件事](docs/提案/slides/slide-3.png)
+
+### 4. 順手做到的事：卷宗照原樣丟進來
+
+`IMG_3985.jpg`、`scan_0001.pdf`、`文件(2).pdf`、行車紀錄器 mp4、20 頁掃描全卷 → `01-訴願書_114-09-22`、`07-裁處書`、`11-送達證書`、`14-採證照片 ×3`、`19-採證影片 00:12`。日期從內容讀，不看檔名；不用改檔名、不用轉格式，分錯了點一下就改。
+
+![卷宗照原樣丟進來](docs/提案/slides/slide-4.png)
+
+### 5. 每一步透明：固定七個步驟
+
+| 步驟 | 產出 | 依據 |
 |---|---|---|
-| 位置 | `資料集/命題方提供/` + `資料集/自行蒐集/` | `資料集/評測用（勿用於RAG）/`（已建立，內含 3 案，見該資料夾 README）|
-| 用途 | 建知識庫、當 few-shot、開發期測試 | 驗收系統真實表現 |
-| 可否進 RAG／向量庫 | 可以 | **不可以**——先塞進知識庫等於讓系統「看過答案」，評測分數會失真 |
-| 可否當 few-shot 範例 | 可以 | **不可以**，理由同上 |
-| 可否用來微調 prompt/規則 | 可以（這是開發的正常流程）| 只能拿來「跑」，跑完看結果再回頭調整開發集，不能直接把 evaluation 案例的正確答案寫死進規則 |
+| 1 讀出基本資料 | 當事人、處分文號、日期 | 訴願書、處分書 |
+| 2 期間・程序 | 屆滿日、八款檢核（**程式計算，非 AI 推測**） | 送達證書 |
+| 3 整理爭點 | 爭點＋AI 認定＋依據 | 訴願書 vs 答辯書 vs 卷證 |
+| 4 找法規 | 條文＋版本狀態 | 法規庫 |
+| 5 找相似案例 | 3–5 案＋可借用段落 | 案件庫 |
+| 6 寫草稿 | 主文・事實・理由 | 相似決定書理由段 |
+| 7 承辦人修正 | 草稿 v2 | 承辦人意見，只重算受影響步驟 |
 
-**拿到 evaluation 資料集時的處理原則**：獨立建資料夾、資料夾名稱明確標示「勿用於訓練/RAG」、程式碼裡的知識庫建置腳本（ingestion script）不得掃到這個資料夾、跑分時走跟正式流程一樣的路徑（不能為了評測資料另開後門邏輯）。
+![七個步驟](docs/提案/slides/slide-5.png)
 
-## 環境需求
+### 6. AWS 架構：一台 EC2，三個 AWS 服務
 
-- Node.js 18+（Claude Agent SDK 底層 CLI runtime）
-- Python 3.10+
-- AWS CLI，設定 `hackathon` profile（黑客松發放帳號，`WSParticipantRole`）
+![AWS 架構](docs/提案/slides/slide-6.png)
 
-## Setup
-
-```bash
-pip install -r requirements.txt
-
-cp .env.example .env
-# 依實際環境填入 .env（本機開發用；EC2 部署改用 Instance Profile，見下）
+```
+瀏覽器 ──HTTP:80──► EC2 t3.large（us-west-2）
+                     ├─ Node :80      server/       畫面＋卷宗分類（上傳→轉檔→分類→分批回傳）
+                     └─ FastAPI :8100 experiments/  七步分析・AI 助理・法規庫（經 analysis-proxy 反代）
+                            │
+                            ├─ Amazon Bedrock   Claude Sonnet 4.5（Converse）＋ Knowledge Base（法規／判解／函釋／98 份決定書）
+                            ├─ Amazon S3        私有 bucket：原始卷宗、頁面圖與文字、知識庫資料
+                            └─ Amazon DynamoDB  單表 appeal-cases：案件、卷證、分析結果、修改紀錄
 ```
 
-### AWS 認證
+IAM Instance Profile 最小權限、不放金鑰；Systems Manager 免 SSH 部署約 30 秒；兩個 service 的 log 進 CloudWatch Logs。
 
-- **本機開發**：`aws configure --profile hackathon`，`.env` 裡設 `AWS_PROFILE=hackathon`
-- **EC2 部署**：不要在機器上放 access key。掛 IAM Instance Profile，附上：
-  - `bedrock:InvokeModel`
-  - `bedrock:InvokeModelWithResponseStream`
-  - `bedrock:Retrieve`（若接 Knowledge Base）
+### 7. 準確性驗證：三個案件全部與決定書一致
 
-  `.env` 在 EC2 上留空 `AWS_PROFILE`，SDK 會自動走 Instance Profile 拿暫時憑證。
+從法制局 101 份決定書挑 3 份（不受理／駁回／撤銷各一）**反推出完整卷宗**（掃描、手寫、照片、影片共 30 頁），這 3 份決定書**從知識庫與相似案例排除**，再由程式逐項比對。
 
-### 競賽環境限制（見 `docs/黑客松競賽環境規範與限制_20260722.pdf`）
+| | 建築法・逾期 | 廢清法・煙蒂 | 建築法・公安簽證 |
+|---|---|---|---|
+| 主文 | 不受理 | 駁回 | 撤銷（不另處） |
+| 條款 | §77 ② | §79 I | §81 I |
+| 期間 | 逾期 7 日 | 期間內（依送達證書） | 期間內 |
+| 關鍵爭點 | 逾期 → 採機關 | 舉證 → 採機關 | **時效 → 採訴願人** |
+| 與決定書 | 一致 | 一致 | 一致 |
 
-- Region 僅限 `us-east-1` / `us-west-2`
-- Bedrock 請求 ≤ 1 RPS，pipeline 設計必須序列化，不可平行呼叫
-- 不建議大規模模型訓練；純 prompt + RAG
-- EC2 僅一般機型（Standard/HPC 系列），無 GPU 額度
+最難的一案：裁處權時效是委員會依職權發現的，訴願人沒主張到重點；系統從卷宗算出 111-06-09 行為終了 → 114-06-08 屆滿 → 114-07-04 才裁處，逾 26 日，主文寫「原處分撤銷」且不附教示。理由段涵蓋標準答案 18／21 個論證點。
 
-### 已驗證可用的模型（2026-09-12）
+![準確性驗證](docs/提案/slides/slide-7.png)
 
-| 用途 | Model ID |
-|---|---|
-| 主力（擷取/分類/檢索/草稿） | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
-| 複雜法律推理備選 | `us.anthropic.claude-opus-4-5-20251101-v1:0` |
-| 中文 embedding | `cohere.embed-multilingual-v3` |
+### 8. 感謝聆聽
 
-## 驗證 SDK 連通
+![感謝聆聽](docs/提案/slides/slide-8.png)
+
+---
+
+## 專案結構
+
+```
+prototype/        前端（純 HTML/JS，hash router；index.html / app.js / api.js / data.js / odf.js）
+  tests/          gstack headless 驗證（助手卡片、問／改意圖、IME Enter）
+server/           Node 20：卷宗歸戶（上傳→正規化→Bedrock 分類）、S3／DynamoDB、靜態前端、analysis-proxy
+experiments/      Python：七步分析 pipeline、AI 助理、法規庫、FastAPI :8100
+  pipeline/       common（Bedrock 節流／tool-use JSON／串流／圖片）、run_all、objection、assistant、to_frontend
+  prompts/        每步一個 .md（s1–s6、assistant、system）
+  tests/          pytest：助手單元／對話／API（零 LLM）＋ LIVE 測試
+  eval/           compare_truth.py：三案對照標準答案
+deploy/           EC2 建置、node／analysis 兩套 push→S3→SSM redeploy、logs.sh
+docs/             命題文件、API 文件、提案簡報與講稿、評測結果
+plans/            各版 prototype 確認清單、API 契約、上線驗收
+資料集/           命題方提供（101 決定書／法規／判解／函釋）、自行蒐集、評測用（勿用於 RAG）
+```
+
+## 本機開發
+
+### 前端＋歸戶（Node）
 
 ```bash
-python3 -c "
-import anyio
-from claude_agent_sdk import query, ClaudeAgentOptions
-async def main():
-    async for m in query(prompt='hi', options=ClaudeAgentOptions(max_turns=1)):
-        print(m)
-anyio.run(main)
-"
+cd server && npm ci
+cp .env.example .env      # S3_BUCKET、DDB_TABLE 必填；AWS_PROFILE 本機用
+npm start                 # :8080，同時靜態提供 ../prototype
+npm test                  # 正規化 35 案，零 LLM
 ```
+
+### 分析／助理／法規庫（Python）
+
+```bash
+cd experiments
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+export AWS_PROFILE=ntpc-hackathon AWS_REGION=us-west-2
+.venv/bin/uvicorn api:app --port 8100                       # Node 端 ANALYSIS_URL 指到這裡
+.venv/bin/python -m pytest tests -q                          # 助手單元＋對話＋API，零 LLM
+LIVE=1 .venv/bin/python -m pytest tests/test_assistant_live.py -q   # 真打 Bedrock
+.venv/bin/python eval/compare_truth.py                       # 三案對照標準答案
+```
+
+### 前端 E2E（gstack headless）
+
+```bash
+prototype/tests/chat-cards.spec.sh && prototype/tests/intent.spec.sh && prototype/tests/ime.spec.sh
+```
+
+## 部署
+
+```bash
+./deploy/node/push.sh        # server/＋prototype/ → S3 → SSM 重啟 app.service
+./deploy/analysis/push.sh    # experiments/ → S3 → SSM 重啟 analysis.service
+./deploy/logs.sh             # /var/log/ntpc/app-node.log、analysis.log
+```
+
+詳見 [`deploy/README.md`](deploy/README.md)。AWS profile `ntpc-hackathon`（暫時憑證），Region `us-west-2`。
+
+## 競賽環境限制
+
+- Region 僅限 `us-east-1`／`us-west-2`；Bedrock ≤ 1 RPS，pipeline 全域鎖序列化
+- 純 prompt＋RAG，不訓練模型；EC2 一般機型、無 GPU
+- 模型：`us.anthropic.claude-sonnet-4-5-20250929-v1:0`；embedding `cohere.embed-multilingual-v3`
+
+## 資料集使用原則
+
+`資料集/命題方提供/`＋`資料集/自行蒐集/` 只做知識庫原料、few-shot、開發測試。
+**`資料集/評測用（勿用於RAG）/` 內的 3 案絕不進知識庫、不當 few-shot、不寫死規則**；知識庫建置腳本不掃該資料夾，評測走與正式流程相同路徑。
 
 ## 公開 repo 注意事項
 
-- `.env`、任何 AWS access key / credentials 檔案 **絕對不進 repo**（已在 `.gitignore`）
-- Model ID、region、套件依賴不是秘密，正常進 repo
-- 若使用 Kiro 開發，`/.kiro` 資料夾**不可**加入 `.gitignore`（競賽規範第 9 條，需展示 specs/hooks/steering）
+- `.env`、AWS access key、任何憑證檔**絕不進 repo**（已在 `.gitignore`）
+- Model ID、Region、套件依賴正常進 repo
+- S3 bucket 私有、SG 僅開白名單 IP、EC2 走 Instance Profile
+
+## 相關文件
+
+| 文件 | 內容 |
+|---|---|
+| [docs/API-文件歸戶.md](docs/API-文件歸戶.md) | 上傳／分類／歸戶 API |
+| [docs/API-分析階段.md](docs/API-分析階段.md) | 七步分析、助理、提案 API |
+| [plans/助手API-契約與實作清單.md](plans/助手API-契約與實作清單.md) | 助理 chat／proposals 契約、items schema、測試 |
+| [plans/上線驗收-2026-09-13.md](plans/上線驗收-2026-09-13.md) | 上線 15 項功能驗收、修正紀錄 |
+| [docs/提案/提案大綱.md](docs/提案/提案大綱.md) | 300 字中文／200 字英文大綱 |
