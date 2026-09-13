@@ -351,7 +351,7 @@ def preview(case_id: str, state: dict, items: list[dict], call=None) -> list[dic
             if hit: targets.append((it, hit[0], hit[1]["text"], f"補入引用 {it.get('key')}（{(it.get('text') or '')[:120]}），其餘內容維持"))
     out = []
     for it, lab, before, instr in targets[:3]:
-        after = call("preview_para", system=prompt("system") + "\n\n你只改寫承辦人指定的這一段訴願決定書文字，輸出改寫後的段落本身，不加標題、不加說明、不加引號。",
+        after = call("preview_para", system=prompt("system") + "\n\n你只改寫承辦人指定的這一段訴願決定書文字，輸出改寫後的段落本身，不加標題、不加說明、不加引號。段首若有「一、」「（一）」等編號必須原樣保留；引用的法條條號與卷證檔名不得刪改。",
                      user=f"段落（{lab}）：\n{before}\n\n指示：{instr}", case=None, max_tokens=1500).strip()
         out.append({"type": it.get("type"), "para": lab, "before": before, "after": after})
     return out
