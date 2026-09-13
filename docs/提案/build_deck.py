@@ -243,7 +243,7 @@ def h_slide(i, s):
         b = '<div class="pipe7">' + "".join(f'<div class="c{" code" if g else ""}"><b>{a}</b><i>{c}</i></div>' for a, c, g in s["steps"]) + '</div>'
         b += f'<div style="display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;margin-top:44px"><div class="bignum">{s["big"][0]}<small>{s["big"][1]}</small></div><div class="big">{s["text"]}<br><b style="color:#2E7D32">{s["green"]}</b></div></div>'
     elif k == "arch":
-        b = f'<div style="margin-top:-8px;transform:scale(.95);transform-origin:top left">{arch_html()}</div>'
+        b = f'<div style="margin-top:-8px;transform:scale(.95);transform-origin:top left">{arch_html()}</div>' + (f'<div style="position:absolute;right:72px;top:64px;font-size:16px;color:#8A93A0">{s["foot"]}</div>' if s.get("foot") else '')
     elif k == "gate":
         b = '<div class="gate">' + "".join(f'<div class="g"><div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3">{GATE_ICONS[ic]}</svg></div><b>{a}</b><span>{c}</span></div>' for a, c, ic in s["items"]) + '</div>'
     elif k == "data":
@@ -264,7 +264,7 @@ def h_slide(i, s):
             nodes += f'<text x="{lx:.0f}" y="{ly+5:.0f}" text-anchor="{anchor}" font-size="13.5" fill="#334">{c}</text>'
         ring = f'<circle cx="{cx}" cy="{cy}" r="{R}" fill="none" stroke="#D98E04" stroke-width="5" stroke-dasharray="14 10"/><path d="M{cx+R-8} {cy-22} l10 22 l-22 8" fill="none" stroke="#D98E04" stroke-width="5"/>'
         svg = f'<svg viewBox="0 0 740 470">{ring}{nodes}<text x="{cx}" y="{cy+8}" text-anchor="middle" font-size="22" font-weight="900" fill="#D98E04">越用越準</text></svg>'
-        b = f'<div class="fw"><div><div class="why"><h4>為什麼輸入拿不到</h4>' + "".join(f"<p>・{w}</p>" for w in s["why"]) + f'</div><div class="note" style="position:static;margin-top:16px;font-size:17px">{s["update"]}</div></div>{svg}</div>'
+        b = f'<div class="fw"><div><div class="why"><h4>{s.get("why_title","為什麼只能自己累積")}</h4>' + "".join(f"<p>・{w}</p>" for w in s["why"]) + f'</div><div class="note" style="position:static;margin-top:16px;font-size:17px">{s["update"]}</div></div>{svg}</div>'
     elif k == "revise":
         b = '<div class="rv">' + "".join(f'<div class="c{" hi" if j == 3 else ""}"><i>{j}</i><b>{a}</b><p>{c}</p></div>' for j, (a, c) in enumerate(s["steps"], 1)) + f'</div><div class="note">{s["helper"]}</div>'
     elif k == "done":
@@ -408,6 +408,7 @@ def build_pptx(png):
             tb(sl, 6.0, 3.6, 6.6, 1.0, s["text"], 18, False, "334455"); tb(sl, 6.0, 4.7, 6.6, 0.8, s["green"], 18, True, GREEN)
         elif k == "arch":
             sl.shapes.add_picture(png, Inches(0.95), Inches(1.55), width=Inches(11.4))
+            if s.get("foot"): tb(sl, 8.6, 0.42, 4.0, 0.3, s["foot"], 11, False, "8A93A0", PP_ALIGN.RIGHT)
         elif k == "gate":
             for j, (a, c, _) in enumerate(s["items"]):
                 x = 0.7 + j * 3.02
@@ -452,7 +453,7 @@ def build_pptx(png):
                 tb(sl, x + 1.45, y + 0.4, 4.3, 1.55, a, 28, True, NAVY, anchor=MSO_ANCHOR.MIDDLE)
         elif k == "flywheel":
             rect(sl, 0.7, 1.65, 5.5, 2.9, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
-            tb(sl, 0.95, 1.8, 5.0, 0.4, "為什麼輸入拿不到", 15, True, NAVY)
+            tb(sl, 0.95, 1.8, 5.0, 0.4, s.get("why_title","為什麼只能自己累積"), 15, True, NAVY)
             tb(sl, 0.95, 2.25, 5.0, 2.3, "\n".join("・" + w for w in s["why"]), 12, False, "334455")
             rect(sl, 0.7, 4.75, 5.5, 1.25, "FFF8EA"); rect(sl, 0.7, 4.75, 0.07, 1.25, AMBER); tb(sl, 0.9, 4.78, 5.2, 1.2, s["update"], 12, False, "334455", anchor=MSO_ANCHOR.MIDDLE)
             cx, cy, R = 9.6, 3.85, 1.55; n_ = len(s["loop"])
