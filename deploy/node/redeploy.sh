@@ -11,6 +11,8 @@ fi
 
 aws s3 cp "s3://${BUCKET}/app-node.tar.gz" /tmp/app-node.tar.gz
 mkdir -p /opt/app
+# 先停服務再換檔：舊程序在 node_modules 被抽換的幾秒內若收到請求，會因 lazy require 炸出「Cannot find module」
+systemctl stop app-node 2>/dev/null || true
 rm -rf /opt/app/server /opt/app/prototype /opt/app/deploy
 tar -xzf /tmp/app-node.tar.gz -C /opt/app
 
