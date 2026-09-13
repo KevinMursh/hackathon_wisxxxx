@@ -593,10 +593,20 @@ function openLiveDoc(d, view, tools, head) {
     try {
       if (!TEXT_CACHE.has(d.fileId)) TEXT_CACHE.set(d.fileId, await Api.fileText(S.c.caseId, d.fileId));
       const t = TEXT_CACHE.get(d.fileId);
-      const pages = (t.textPerPage || []).slice((d.fromPage || 1) - 1, d.toPage || undefined);
+      const from = d.fromPage || 1;
+      const pages = (t.textPerPage || []).slice(from - 1, d.toPage || undefined);
+      const hl = S.hl && S.hl.id === d.id ? S.hl : null;      // 由 cite 跳轉帶來的反白位置
       view.innerHTML = `<div class="doc-body">${head}${pages.length
-        ? pages.map((txt, i) => `<h4>第 ${(d.fromPage || 1) + i} 頁</h4><pre style="white-space:pre-wrap;font:12.5px/1.9 var(--mono);margin:0 0 14px">${esc(txt || "（本頁無文字）")}</pre>`).join("")
+        ? pages.map((txt, i) => {
+            const pno = from + i;
+            let body = esc(txt || "（本頁無文字）");
+            if (hl && hl.page === pno && txt) {
+              body = esc(txt.slice(0, hl.start)) + `<mark class="hit" id="liveHit">${esc(txt.slice(hl.start, hl.end))}</mark>` + esc(txt.slice(hl.end));
+            }
+            return `<h4>第 ${pno} 頁</h4><pre style="white-space:pre-wrap;font:12.5px/1.9 var(--mono);margin:0 0 14px">${body}</pre>`;
+          }).join("")
         : `<p class="note">這份文件沒有文字層（掃描件／照片），請切換「頁面影像」檢視。</p>`}</div>`;
+      if (hl) { $("#liveHit")?.scrollIntoView({ block: "center", behavior: "smooth" }); S.hl = null; }
     } catch (e) {
       view.innerHTML = `<div class="doc-body">${head}<p class="note" style="color:var(--seal)">讀取文字失敗：${esc(e.code || "")} ${esc(e.message || "")}</p></div>`;
     }
@@ -635,11 +645,13 @@ function openLiveDoc(d, view, tools, head) {
   const paint = () => {
     const m = S.docMode[d.id] || modes[0][0];
     tools.innerHTML = modes.map(([k, label]) => `<button class="ghost-btn ${m === k ? "on" : ""}" data-m="${k}">${label}</button>`).join("")
-      + (d.file ? `<a class="ghost-btn" href="${d.downloadUrl || d.file}" style="text-decoration:none">下載</a>` : "");
+      + (d.file ? `<a class="ghost-btn" href="${d.downloadUrl || d.file}" style="text-decoration:none">下載</a>` : "")
+      + `<button class="ghost-btn expand" data-full="1" title="全螢幕檢視（Esc 關閉）">⤢ 放大</button>`;
     if (m === "pdf") view.innerHTML = pdfFrame();
     else if (m === "img") paintImages();
     else paintText();
     $$("#docTools button[data-m]").forEach((b) => b.addEventListener("click", () => { S.docMode[d.id] = b.dataset.m; S.zoom = 1; paint(); }));
+    $("#docTools button[data-full]")?.addEventListener("click", () => openViewer(d));
   };
   paint();
 }
@@ -650,8 +662,45 @@ function closeDoc() {
   $("#curDocName").textContent = "未選取文件"; $("#docTools").innerHTML = "";
   $("#docView").innerHTML = `<div class="doc-empty" style="min-height:0;padding:10px"><span class="note">未選取文件——點選清單中的文件即可檢視；再點一次可取消選取</span></div>`;
 }
+/* 全螢幕檢視：把目前文件用同一組模式（PDF／文字／影像）放到置中浮層，背景暗化。 */
+async function openViewer(d) {
+  const vw = $("#viewer"), body = $("#vwBody"), tools = $("#vwTools");
+  $("#vwName").textContent = d.stdName || d.title;
+  $("#vwMeta").textContent = `${d.origName ? "原檔名 " + d.origName + "・" : ""}${d.pages || 1} 頁・${KIND[d.kind] || d.kind}`;
+  const modes = d.kind === "video" ? [] :
+    d.kind === "pdf-text" || d.kind === "office" ? [["pdf", "原始 PDF"], ["text", "擷取文字"], ["img", "頁面影像"]] :
+    d.kind === "pdf-scan" ? [["pdf", "原始 PDF"], ["img", "頁面影像"]] :
+    d.kind === "image" ? [["img", "影像"]] : [["text", "內容"]];
+  let m = S.docMode[d.id] || modes[0]?.[0] || "pdf";
+
+  const paint = async () => {
+    tools.innerHTML = modes.map(([k, l]) => `<button class="${m === k ? "on" : ""}" data-vm="${k}">${l}</button>`).join("")
+      + (d.file ? `<a href="${d.file}" target="_blank">下載</a>` : "");
+    if (d.kind === "video") body.innerHTML = `<video controls preload="metadata" src="${d.file}"></video>`;
+    else if (m === "pdf") body.innerHTML = `<iframe src="${d.file}#${d.fromPage > 1 ? `page=${d.fromPage}&` : ""}toolbar=1&view=FitH"></iframe>`;
+    else if (m === "img") body.innerHTML = (d.pageImageUrls?.length ? d.pageImageUrls : [d.file]).map((u) => `<img src="${u}" loading="lazy">`).join("");
+    else {
+      body.innerHTML = `<div class="doc-body"><p class="note">讀取文字中…</p></div>`;
+      try {
+        if (!TEXT_CACHE.has(d.fileId)) TEXT_CACHE.set(d.fileId, await Api.fileText(S.c.caseId, d.fileId));
+        const t = TEXT_CACHE.get(d.fileId), from = d.fromPage || 1;
+        body.innerHTML = `<div class="doc-body">${(t.textPerPage || []).slice(from - 1, d.toPage || undefined)
+          .map((txt, i) => `<h4>第 ${from + i} 頁</h4><pre style="white-space:pre-wrap;font:13px/1.9 var(--mono);margin:0 0 14px">${esc(txt || "（本頁無文字）")}</pre>`).join("") || "<p class=\"note\">沒有文字層</p>"}</div>`;
+      } catch (e) { body.innerHTML = `<div class="doc-body"><p class="note" style="color:var(--seal)">讀取失敗：${esc(e.message || "")}</p></div>`; }
+    }
+    $$("#vwTools button[data-vm]").forEach((b) => b.addEventListener("click", () => { m = b.dataset.vm; S.docMode[d.id] = m; paint(); }));
+  };
+  await paint();
+  vw.classList.add("on");
+}
+function closeViewer() { $("#viewer").classList.remove("on"); $("#vwBody").innerHTML = ""; }
+$("#vwClose").addEventListener("click", closeViewer);
+$("#viewer").addEventListener("click", (e) => { if (e.target.id === "viewer") closeViewer(); });   // 點暗處關閉
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#viewer").classList.contains("on")) closeViewer(); });
+
 function openDoc(id, after) {
-  const c = S.c, d = c.docs.find((x) => x.id === id); if (!d) return;
+  const c = S.c, d = findDoc(id); if (!d) return;
+  id = d.id;
   S.doc = id; S.zoom = 1; $("#tagPop").classList.remove("on"); $("#docPane").classList.remove("nodoc");
   $$("#docList .item").forEach((b) => { const on = b.dataset.doc === id; b.classList.toggle("on", on); if (on) { const g = b.closest(".items").previousElementSibling; if (g.classList.contains("closed")) { g.classList.remove("closed"); g.querySelector(".tri").textContent = "▾"; } b.scrollIntoView({ block: "nearest" }); } });
   $("#curDocName").textContent = d.stdName || d.title;
@@ -683,32 +732,29 @@ function openDoc(id, after) {
   if (after) after();
 }
 /** 真上傳案件的錨點：開檔並用 /text 反白 {page,start,end}；掃描件無文字則開頁圖 */
-async function jumpLive(docId, range, second) {
-  const d = S.c.docs.find((x) => x.id === docId); if (!d) return;
-  openDoc(docId);
-  const view = $("#docView");
-  const head = view.querySelector(".doc-meta")?.outerHTML || "";
-  if (second != null) { view.innerHTML = `<div class="doc-video">${head}<video id="vid" controls preload="metadata" src="${d.file}"></video><p class="note" style="margin-top:8px">跳至 ${second} 秒</p></div>`; seek(second); return; }
-  let t = null;
-  try { t = await Api.fileText(S.c.caseId, d.fileId); } catch (e) { /* 掃描件或影片：沒有文字層 */ }
-  if (!t || !t.textPerPage?.length) {
-    const img = d.pageImageUrls?.[0] || d.thumb;
-    view.innerHTML = `<div style="padding:10px 12px 0">${head}</div>${img ? `<div class="doc-img"><div class="imgwrap"><img src="${img}" alt="${esc(d.title)}" style="max-width:100%"></div></div>` : `<div class="doc-missing">${esc(d.stdName || d.title)}（無文字層）${d.file ? `　<a class="ghost-btn" href="${d.file}" target="_blank">開啟原檔</a>` : ""}</div>`}`;
-    return;
-  }
-  const pages = t.textPerPage.map((txt, i) => {
-    const pno = i + 1;
-    let body = esc(txt);
-    if (range && range.page === pno) body = esc(txt.slice(0, range.start)) + `<mark class="hit" id="liveHit">${esc(txt.slice(range.start, range.end))}</mark>` + esc(txt.slice(range.end));
-    return `<div class="page-txt" data-page="${pno}"><div class="note" style="margin:10px 0 4px">第 ${pno} 頁</div><pre style="white-space:pre-wrap;font:13px/1.7 var(--sans);margin:0">${body}</pre></div>`;
-  }).join("");
-  view.innerHTML = `<div class="doc-body">${head}${pages}</div>`;
-  $("#docTools").innerHTML = d.file ? `<a class="ghost-btn" href="${d.file}" target="_blank" style="text-decoration:none">原檔</a>` : "";
-  $("#liveHit")?.scrollIntoView({ block: "center", behavior: "smooth" });
+/* 分析階段的 refs 用 fileId，但卷宗清單一段一列、id 是 segId（fileId#n）。
+   兩種 id 都要能解析，否則 cite 跳轉會靜默失敗（找不到文件就 return）。 */
+function findDoc(id) {
+  if (!S.c?.docs) return null;
+  return S.c.docs.find((x) => x.id === id)
+      || S.c.docs.find((x) => x.fileId === id)          // fileId → 該檔第一段
+      || null;
 }
-function bindMarks() { $$("#docView mark[data-ref]").forEach((m) => m.addEventListener("click", () => { $$("#docView mark").forEach((x) => x.classList.remove("hit", "hit-seal")); m.classList.add("hit"); })); }
-function hitBox(ref) { $$("#docView .box").forEach((b) => b.classList.toggle("hit", b.dataset.ref === ref)); const b = $(`#docView .box[data-ref="${ref}"]`); if (b) b.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" }); }
-function seek(t) { const v = $("#vid"); if (!v) return; const go = () => { v.currentTime = t; v.pause(); }; if (v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true }); }
+
+/* 從右側 cite 跳到卷宗：不要自己畫內容——那會覆蓋掉 openLiveDoc 的工具列，
+   導致「直接點檔案」與「點 cite 跳過來」看到的東西不一致（少了 原始PDF／擷取文字／頁面影像／下載）。
+   改成：記下要反白的位置 → 交給 openDoc 正常渲染 → paintText 套用反白並捲到定位。 */
+async function jumpLive(docId, range, second) {
+  const d = findDoc(docId); if (!d) return;
+  S.hl = range ? { id: d.id, ...range } : null;
+  if (range) S.docMode[d.id] = "text";           // 文字錨點才強制切到擷取文字
+  openDoc(d.id);
+  if (second != null) {
+    const go = () => { const v = $("#vid"); if (v) { v.currentTime = second; v.pause(); } };
+    setTimeout(go, 300);
+  }
+}
+
 function jumpTo(ref) {
   const r = S.c.refs[ref]; if (!r) return; const [docId, kind] = r;
   if (kind === "text" || (kind === "doc" && S.c.live)) return jumpLive(docId, kind === "text" ? r[2] : null);
@@ -829,12 +875,12 @@ function renderIssues() {
   $("#p1").innerHTML = `<div class="sec"><div class="sec-head"><h3>雙方癥結點</h3><span class="note">訴願人主張 ／ 機關答辯 ／ 卷證顯示 ／ AI 認定與依據　不同意可在右下角問答助手說明要修改之處</span></div>
     ${c.issues.map((it, i) => { const ai = it.stance || "open"; const cur = S.stances[it.id] || ai; const obj = S.objections.find((o) => o.issueId === it.id && o.result !== "reject"); return `
       <div class="issue" id="iss-${it.id}"><div class="issue-head"><span class="n">爭點 ${i + 1}</span><h3>${esc(it.title)}</h3>
-        ${obj ? `<span class="ailab obj">修正後：${stN[cur]}</span><span class="note">原 AI 認定：${stN[ai]}</span>` : `<span class="ailab">AI 認定：${stN[ai]}</span>`}
+        ${obj ? `<span class="ailab obj v-${cur}">修正後：${stN[cur]}</span><span class="note">原 AI 認定：${stN[ai]}</span>` : `<span class="ailab v-${ai}">AI 認定：${stN[ai]}</span>`}
 </div>
-        <div class="issue-grid"><div><div class="lab">訴願人主張</div>${J(it.a[1], esc(it.a[0]))}</div><div><div class="lab">機關答辯</div>${J(it.d[1], esc(it.d[0]))}</div><div><div class="lab">卷證顯示</div><div class="ev">${it.e.map((e) => e[1] ? `<span class="tag accent jump" data-jump="${e[1]}">${esc(e[0])}<span class="srct ${srcOf(e[1])}">${srcOf(e[1])}</span></span>` : `<span class="tag neutral">${esc(e[0])}</span>`).join("")}</div></div></div>
+        <div class="issue-grid"><div class="col-a"><div class="lab a">訴願人主張</div>${J(it.a[1], esc(it.a[0]))}</div><div class="col-d"><div class="lab d">機關答辯</div>${J(it.d[1], esc(it.d[0]))}</div><div class="col-e"><div class="lab e">卷證顯示</div><div class="ev">${it.e.map((e) => e[1] ? `<span class="tag accent jump" data-jump="${e[1]}">${esc(e[0])}<span class="srct ${srcOf(e[1])}">${srcOf(e[1])}</span></span>` : `<span class="tag neutral">${esc(e[0])}</span>`).join("")}</div></div></div>
         <div class="basis"><b>依據</b>${esc(it.ai || "")}</div>
         <div class="issue-foot"><span class="lab" style="font-size:10.5px;color:var(--ink-3)">法律素材</span>${it.law.map((l) => `<span>${esc(l)}</span>`).join("")}</div>
-        <div class="lead"><span class="ai">→ 結論：${esc(verdictOf(obj && obj.plan ? obj.plan : c.judge))}</span><span class="note">採機關 → ${esc(verdictOf(it.lead.agency[0]))}　採訴願人 → ${esc(verdictOf(it.lead.appellant[0]))}</span></div></div>`; }).join("")}</div>
+        <div class="lead"><span class="ai v-${obj && obj.plan ? cur : ai}">→ 結論：${esc(verdictOf(obj && obj.plan ? obj.plan : c.judge))}</span><span class="note">採機關 → ${esc(verdictOf(it.lead.agency[0]))}　採訴願人 → ${esc(verdictOf(it.lead.appellant[0]))}</span></div></div>`; }).join("")}</div>
     <p class="foot-note">爭點由三方對照之衝突列與答辯書逐點回應段落配對產生；AI 認定僅附一句依據，不附信心度。承辦人的修正透過右下角問答助手提出：AI 先提案、承辦人確認後才重新產生，並逐項回覆採納／部分採納／無法採納。</p>`;
 }
 
