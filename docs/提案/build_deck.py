@@ -295,7 +295,7 @@ def h_slide(i, s):
         dz = "".join(f'<div class="d"><b>{a}</b><span>{c}</span></div>' for a, c in s["design"])
         tbl = "<table><tr>" + "".join(f"<th>{h}</th>" for h in s["head"]) + "</tr>" + "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in s["rows"]) + "</table>"
         hl = f'<div class="hl"><b>{s["hl_title"]}</b>' + "".join(f"<p>{x}</p>" for x in s["hl"]) + "</div>"
-        b = f'<div class="ev"><div class="dz">{dz}</div><div>{tbl}</div>{hl}</div><div class="ev-foot">{s["foot"]}</div>'
+        b = f'<div class="ev"><div class="dz">{dz}</div><div>{tbl}</div>{hl}</div>{f'<div class="ev-foot">{s["foot"]}</div>' if s.get("foot") else ""}'
     elif k == "cases":
         b = '<div class="cases">' + "".join(f'<div class="c"><div class="lab">{a}</div><h4>{c}</h4><div class="ans">{d}</div><p>{e}</p></div>' for a, c, d, e in s["cases"]) + f'</div><div class="note">{s["foot"]}</div>'
     elif k == "board":
@@ -530,7 +530,7 @@ def build_pptx(png):
             rect(sl, 9.75, 1.6, 2.9, 4.2, "FFF8EA", shape=MSO_SHAPE.ROUNDED_RECTANGLE); rect(sl, 9.75, 1.6, 0.07, 4.2, AMBER)
             tb(sl, 9.95, 1.7, 2.6, 0.6, s["hl_title"], 12.5, True, NAVY)
             bullets(sl, 9.95, 2.35, 2.6, 3.4, s["hl"], 10, "334455", 6)
-            tb(sl, 0.7, 6.3, 11.9, 0.5, s["foot"], 9.5, False, "8A93A0")
+            if s.get("foot"): tb(sl, 0.7, 6.3, 11.9, 0.5, s["foot"], 9.5, False, "8A93A0")
         elif k == "cases":
             for j, (a, c, d, e) in enumerate(s["cases"]):
                 x = 0.7 + j * 4.03
