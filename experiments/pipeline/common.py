@@ -102,19 +102,24 @@ def call_json(step: str, schema: Type[T], *, system: str, user: str, case: str |
     tool = {"tools": [{"toolSpec": {"name": step, "description": schema.__doc__ or step, "inputSchema": {"json": schema.model_json_schema()}}}],
             "toolChoice": {"tool": {"name": step}}}
     t = time.monotonic(); usage = {"inputTokens": 0, "outputTokens": 0}; last_err = None
-    for attempt in range(2):
+    for attempt in range(3):
         u = user if not last_err else user + f"\n\n【上次輸出未通過 schema 驗證，請修正並完整填寫所有必填欄位】\n{last_err}"
         sys_blocks, msgs = _build(system, u, images, cache)
         r = _converse(modelId=MODEL_ID, system=sys_blocks, messages=msgs,
                       inferenceConfig={"maxTokens": max_tokens, "temperature": 0.1}, toolConfig=tool)
         for k in usage:
             usage[k] += r["usage"][k]
-        raw = next(c["toolUse"]["input"] for c in r["output"]["message"]["content"] if "toolUse" in c)
+        if r.get("stopReason") == "max_tokens":  # 大卷宗（30 頁）欄位表會超過 4k 輸出：被截斷的 JSON 一定缺欄位，直接加大再試
+            print(f"[{step}] 輸出達 maxTokens={max_tokens} 被截斷，加大重試", file=sys.stderr)
+            max_tokens = min(max_tokens * 2, 32000); last_err = "輸出過長被截斷，請精簡各欄位文字但保留全部必填欄位"; continue
+        raw = next((c["toolUse"]["input"] for c in r["output"]["message"]["content"] if "toolUse" in c), None)
+        if raw is None:
+            last_err = "未呼叫工具輸出 JSON"; continue
         try:
             obj = schema.model_validate(raw); break
         except ValidationError as e:
             last_err = str(e)[:1500]
-            if attempt == 1:
+            if attempt == 2:
                 raise
     _save(case, step, obj.model_dump(), {"model": MODEL_ID, "latency_s": round(time.monotonic() - t, 1),
                                           "input_tokens": usage["inputTokens"], "output_tokens": usage["outputTokens"], "retried": bool(last_err)})

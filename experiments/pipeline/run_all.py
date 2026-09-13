@@ -98,7 +98,7 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
     d2 = for_step(docs, "s2")
     if "s2" in todo:
         fields = call_json("s2_fields", Fields, case=case, system=SYS + "\n\n" + prompt("s2_fields"),
-                           user=prompt_block(d2) + _img_note(d2), images=_imgs(d2) if images else []).model_dump()
+                           user=prompt_block(d2) + _img_note(d2), images=_imgs(d2) if images else [], max_tokens=8192).model_dump()
     else:
         fields = _load(case, "s2_fields")
     if ov.get("served"):  # 承辦人更正送達日：期間與程序重算，三方對照該列註記
@@ -120,7 +120,7 @@ def run(case: str, start="s2", images=True, api: str | None = None, docs: list[D
         issues = call_json("s3_issues", Issues, case=case, system=SYS + "\n\n" + prompt("s3_issues"),
                            user=prompt_block(docs) + "\n\n已擷取欄位：\n" + json.dumps({k: fields[k] for k in ("appellant_claims", "agency_replies", "violation_fact", "law_basis")}, ensure_ascii=False)
                                 + "\n\n程序檢核：\n" + json.dumps(period, ensure_ascii=False) + _rev_block(revision, "s3") + _img_note(docs),
-                           images=_imgs(docs) if images else []).model_dump()
+                           images=_imgs(docs) if images else [], max_tokens=8192).model_dump()
         bad = verify_quotes(docs, issues); _save(case, "s3_issues", issues)
     else:
         issues = _load(case, "s3_issues"); bad = sum(not q.get("verified", True) for i in issues["issues"] for q in i["evidence"])
