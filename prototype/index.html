@@ -233,15 +233,26 @@
   .period-edit > div { padding:12px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
   .period-edit label { display:block; font-size:11.5px; color:var(--ink-3); margin-bottom:4px; } .period-edit .val { font-family:var(--mono); font-size:15px; padding:4px 0; }
   .period-edit .src { font-size:11px; color:var(--ink-3); margin-top:4px; } .period-edit .warnsrc { color:var(--seal); }
-  .timeline { padding:20px 18px 16px; overflow-x:auto; } .tl-track { position:relative; min-width:520px; height:2px; background:var(--line-strong); margin:30px 58px 0; }
-  .tl-fill { position:absolute; top:0; height:2px; background:var(--accent); }          /* 已用期間：合規，不用警示色 */
-  .tl-fill.over { background:var(--seal); }                                             /* 超出屆滿的部分才紅 */
+  /* 單軸時間軸：所有節點同一時間尺度；§14 與 §85 兩個區間用上下括號表示（兩者在時間上重疊，
+     §85 從收文起算、而 §14 到屆滿才結束，畫成兩條會誤解成先後接續） */
+  .timeline { padding:14px 18px 16px; overflow-x:auto; }
+  .tl-track { position:relative; min-width:560px; height:2px; background:var(--line-strong); margin:58px 62px 0; }
   .tl-pt { position:absolute; top:0; transform:translateX(-50%); text-align:center; }
-  .tl-pivot { position:absolute; top:-9px; width:2px; height:20px; background:var(--ink-3); }   /* 收文＝樞紐 */
-  .tl-cap { font-size:10.5px; color:var(--ink-3); margin:0 58px 2px; display:flex; justify-content:space-between; }
-  .tl-pt.dim .dot { border-style:dashed; background:var(--surface); }
   .tl-pt .dot { width:9px; height:9px; background:var(--surface); border:2px solid var(--line-strong); margin:-4px auto 0; border-radius:50%; }
-  .tl-pt.key .dot { border-color:var(--accent); background:var(--accent); } .tl-pt.bad .dot { border-color:var(--seal); background:var(--seal); }
+  .tl-pt.pivot .dot { width:13px; height:13px; margin:-6px auto 0; border-width:3px; border-color:var(--ink-2); background:var(--ink-2); }
+  .tl-pt.dim .dot { border-style:dashed; background:var(--surface); }
+  /* 區間括號：上＝§14 訴願人、下＝§85 本局 */
+  .tl-span { position:absolute; height:16px; border:2px solid var(--green); }
+  .tl-span.up { top:-30px; border-bottom:none; }
+  .tl-span.dn { top:16px; border-top:none; }
+  .tl-span.bad { border-color:var(--seal); }
+  .tl-span .cap { position:absolute; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:10.5px; padding:0 6px; background:var(--surface); color:var(--ink-2); }
+  .tl-span.up .cap { top:-8px; } .tl-span.dn .cap { bottom:-8px; }
+  .tl-span .res { position:absolute; right:6px; font-size:10.5px; font-weight:600; }
+  .tl-span.up .res { top:-16px; } .tl-span.dn .res { bottom:-16px; }
+  .tl-span.bad .res { color:var(--seal); } .tl-span .res { color:var(--green); }
+  .tl-now { position:absolute; top:-34px; height:56px; border-left:1px dashed var(--ink-3); }
+  .tl-now span { position:absolute; top:-14px; left:4px; font-size:10.5px; color:var(--ink-3); white-space:nowrap; }
   .tl-pt .lab { font-size:11px; color:var(--ink-3); margin-top:7px; white-space:nowrap; } .tl-pt .d { font-size:11.5px; font-family:var(--mono); color:var(--ink-2); white-space:nowrap; }
   .tl-pt.bad .d, .tl-pt.bad .lab { color:var(--seal); font-weight:600; } .tl-pt .up { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); white-space:nowrap; }
   .tl-note { margin-top:62px; font-size:12.5px; color:var(--ink-2); border-top:1px solid var(--line); padding-top:12px; } .tl-note b { font-family:var(--mono); }

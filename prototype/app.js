@@ -743,69 +743,73 @@ function renderExtract() {
   const ICON = { pass: "☑", fail: "☒", na: "－", warn: "☐" }, STN = { pass: "通過", fail: "未通過", na: "不適用", warn: "待核" };
   const checklist = items.map((x) => { const r = CHK_REF[x.art] || [null, ""]; const src = r[0] && S.c.refs[r[0]] ? J(r[0], r[1] + " ↗") : (r[1] || ""); return `<div class="ck ${x.st}"><span class="ckbox">${ICON[x.st]}</span><span class="ckart num">${x.art}</span><span class="ckname">${x.name}</span><span class="ckst">${STN[x.st]}</span><span class="cknote">${esc(x.note)}</span><span class="cksrc">${src}</span></div>`; }).join("");
   const verdict = over ? { kind: "stop", big: "程序不合 → 應為不受理", text: `第 2 款未通過：依送達證書 ${S.served} 起算，法定期間至 ${toMg(p.due)} 屆滿，收文日 ${S.recv} 已逾期 ${p.days} 日。程序審查於此終結，毋庸進入實體審查。` } : n("fail") ? { kind: "stop", big: "程序不合 → 應為不受理", text: "有款次未通過，毋庸進入實體審查。" } : n("warn") ? { kind: "go", big: "待核", text: `有 ${n("warn")} 款待核，請補件或向原處分機關確認後再行判定。` } : { kind: "go", big: "程序合法 → 進入實體審查", text: `八款皆通過或不適用。實體爭點見「爭點」分頁（共 ${c.issues.length} 個）。` };
-  /* 時間軸：兩段各自一條、各用自己的尺度（§14 是 30 日、§85 是 3＋2 個月，同軸等比會把前段壓扁）。
-     顏色語意：已用期間＝強調色（合規），剩餘＝灰，**只有超出屆滿的部分才是紅色**。
-     標籤保持中性——「送達是否合法」是 §77② 的爭點，不在時間軸上預設結論。 */
   const ap = c.period.appealSays, due85 = p && p.recv !== null ? addMonths(p.recv, 3) : null;
-  const mkTrack = (anchors, fillTo, overFrom) => {
-    const a = anchors.filter((x) => x[0] != null).sort((x, y) => x[0] - y[0]);
-    if (!a.length) return "";
-    const min = a[0][0], max = a[a.length - 1][0], span = Math.max(1, max - min), pts = [];
-    a.forEach(([t, lab, cl], i) => {
-      let pos = Math.round((t - min) / span * 100);
-      if (i > 0 && pos - pts[pts.length - 1].pos < 17) pos = Math.min(100, pts[pts.length - 1].pos + 17);
-      pts.push({ d: toMg(t), lab, pos, cls: cl || "" });
-    });
-    const at = (t) => { const f = pts.find((x) => x.d === toMg(t)); return f ? f.pos : null; };
-    const fill = fillTo != null ? at(fillTo) : null, ov = overFrom != null ? at(overFrom) : null;
-    return `<div class="tl-track">
-      ${fill != null ? `<div class="tl-fill" style="width:${ov != null ? ov : fill}%"></div>` : ""}
-      ${ov != null && fill != null && fill > ov ? `<div class="tl-fill over" style="left:${ov}%;width:${fill - ov}%"></div>` : ""}
-      ${pts.map((x) => `<div class="tl-pt ${x.cls}" style="left:${x.pos}%"><div class="up"><div class="d">${x.d}</div></div><div class="dot"></div><div class="lab">${esc(x.lab)}</div></div>`).join("")}
-    </div>`;
-  };
-
+  /* 單軸時間軸：所有節點共用一個時間尺度，§14 與 §85 兩個區間以上下括號表示。
+     兩者在時間上是**重疊**的（§85 從收文起算，而 §14 到屆滿才結束），畫成上下兩條會被讀成先後接續。
+     收文日是樞紐：同時是一段的終點、另一段的起點。 */
   let tl = "";
   if (p) {
-    const method = c.period.servedMethod || "";                     // 寄存／公示／本人（分析階段若有帶）
+    const method = c.period.servedMethod || "";
     const servedLab = method.includes("寄存") ? "寄存生效（起算基準）" : method ? `處分送達（${method}）` : "處分送達";
-    // 第一段：訴願人 §14
-    const a1 = [[p.served, servedLab, "key"], [p.due, "30 日屆滿", p.over ? "key" : ""]];
-    if (p.recv !== null) a1.push([p.recv, p.over ? "收文（逾期）" : "收文（訴願提起）", p.over ? "bad" : "key"]);
-    else a1.push([p.due, "收文待補", "dim"]);
-    const t1 = mkTrack(a1, p.recv !== null ? p.recv : null, p.over ? p.due : null);
+    const now = Date.now();
+    const decided = c.final?.at ? isoT(c.final.at) : null;
+    const due58 = p.recv !== null ? p.recv + 20 * DAY : null;
+    const ext85 = p.recv !== null ? addMonths(p.recv, 5) : null;
 
-    // 第二段：本局 §85 I（＋§58 III 機關答辯期限、延長上限）
-    let t2 = "";
+    const raw = [[p.served, servedLab, ""], [p.due, "30 日屆滿", ""]];
     if (p.recv !== null) {
-      const due58 = p.recv + 20 * DAY, ext85 = addMonths(p.recv, 5), now = Date.now();
-      const a2 = [[p.recv, "收文（起算）", "key"], [due58, "機關答辯期限 §58 III", ""], [due85, "應決定 §85 I", "key"], [ext85, "延長上限（＋2 月）", ""]];
-      const decided = c.final?.at ? isoT(c.final.at) : null;
-      if (decided) a2.push([decided, "實際決定", "key"]);
-      else if (now >= p.recv && now <= ext85 + 30 * DAY) a2.push([now, "今天", "dim"]);
-      t2 = mkTrack(a2, decided || Math.min(now, ext85), due85 && !decided && now > due85 ? due85 : null);
+      raw.push([p.recv, p.over ? "收文（逾期）" : "收文（訴願提起）", "pivot"],
+               [due58, "答辯期限 §58 III", ""], [due85, "應決定 §85 I", ""], [ext85, "延長上限 ＋2 月", ""]);
+      if (decided) raw.push([decided, "實際決定", "pivot"]);
+    } else raw.push([p.due, "收文待補", "dim"]);
+
+    const a = raw.filter((x) => x[0] != null).sort((x, y) => x[0] - y[0]);
+    const min = a[0][0], max = a[a.length - 1][0], span = Math.max(1, max - min);
+    const pos = (t) => Math.max(0, Math.min(100, ((t - min) / span) * 100));
+    const laid = [];
+    a.forEach(([t, lab, cl], i) => {                        // 節點過近時推開，避免標籤互疊
+      let x = pos(t);
+      if (i > 0 && x - laid[laid.length - 1].x < 15) x = Math.min(100, laid[laid.length - 1].x + 15);
+      laid.push({ t, lab, cl, x });
+    });
+    const xOf = (t) => { const f = laid.find((z) => z.t === t); return f ? f.x : pos(t); };
+
+    const a14 = xOf(p.served), b14 = xOf(p.due);
+    const span14 = `<div class="tl-span up ${p.over ? "bad" : ""}" style="left:${a14}%;width:${Math.max(6, b14 - a14)}%">
+      <span class="cap">§14 訴願人 30 日</span>
+      <span class="res">${p.recv === null ? "收文待補" : p.over ? `逾期 ${p.days} 日` : `未逾期・餘 ${p.left} 日`}</span></div>`;
+
+    let span85 = "";
+    if (p.recv !== null) {
+      const over85 = !decided && now > due85;
+      const end = decided || (over85 ? ext85 : due85);
+      const a85 = xOf(p.recv), b85 = xOf(end);
+      span85 = `<div class="tl-span dn ${over85 ? "bad" : ""}" style="left:${a85}%;width:${Math.max(6, b85 - a85)}%">
+        <span class="cap">§85 I 本局 3 個月${over85 ? "（＋延長 2 月）" : ""}</span>
+        <span class="res">${decided ? `歷時 ${Math.round((decided - p.recv) / DAY)} 日`
+          : over85 ? `已逾 ${Math.round((now - due85) / DAY)} 日` : `尚餘 ${Math.round((due85 - now) / DAY)} 日`}</span></div>`;
     }
+    const nowMark = now >= min && now <= max ? `<div class="tl-now" style="left:${pos(now)}%"><span>今天</span></div>` : "";
+
+    const track = `<div class="tl-track">${span14}${span85}${nowMark}${laid.map((z) =>
+      `<div class="tl-pt ${z.cl}" style="left:${z.x}%"><div class="up"><div class="d">${toMg(z.t)}</div></div><div class="dot"></div><div class="lab">${esc(z.lab)}</div></div>`).join("")}</div>`;
 
     const note1 = `起算日 <b>${toMg(p.start)}</b>（送達之次日）＋ 30 日 ＝ 屆滿日 <b>${toMg(p.due)}</b>。${
       p.recv === null ? "<b>收文日待補</b>——無法判斷 §14 是否逾期，亦無法起算 §85 審理期限。"
       : p.over ? `實際收文日 <b>${toMg(p.recv)}</b>，<span style="color:var(--seal);font-weight:600">逾法定不變期間 ${p.days} 日</span>（§77②）。`
                : `實際收文日 <b>${toMg(p.recv)}</b>，<span style="color:var(--green);font-weight:600">未逾期，於屆滿前 ${p.left} 日提起</span>。`}
       在途期間未扣除（訴願人住居所在本市・§16）。`;
-    const note2 = p.recv === null ? "" : (() => {
-      const decided = c.final?.at ? isoT(c.final.at) : null;
-      if (decided) return `<br>本局自收文 <b>${toMg(p.recv)}</b> 起，於 <b>${toMg(decided)}</b> 作成決定，歷時 ${Math.round((decided - p.recv) / DAY)} 日。`;
-      const hist = !c.live && due85 && Date.now() - due85 > 180 * DAY;   // 歷史示範案件：已逾期是必然，講清楚免得誤解
-      const histNote = hist ? `；<span class="note">本案為 ${toMg(p.recv).slice(0, 3)} 年歷史示範案例，逾審理期限為必然</span>` : "";
-      return `<br>本局應於 <b>${toMg(due85)}</b> 前作成決定（§85 I），${due85Status(due85)}${histNote}。`;
-    })();
+    const note2 = p.recv === null ? "" : decided
+      ? `<br>本局自收文 <b>${toMg(p.recv)}</b> 起，於 <b>${toMg(decided)}</b> 作成決定，歷時 ${Math.round((decided - p.recv) / DAY)} 日。`
+      : `<br>本局應於 <b>${toMg(due85)}</b> 前作成決定（§85 I），${due85Status(due85)}${
+          now - due85 > 180 * DAY ? `；<span class="note">卷內收文日為 ${toMg(p.recv)}，本案卷宗為歷史案例</span>` : ""}。`;
 
-    tl = `<div class="tl-cap"><span>§14　訴願人提起期間（30 日）</span><span>已用 ${p.recv !== null ? Math.round((p.recv - p.served) / DAY) : "—"} 日</span></div>${t1}
-      ${t2 ? `<div class="tl-cap" style="margin-top:34px"><span>§85 I　本局審理期限（3 個月，得延長 2 個月）</span><span>收文日為兩段樞紐</span></div>${t2}` : ""}
-      <div class="tl-note">${note1}${note2}</div>`;
+    tl = `${track}<div class="tl-note">${note1}${note2}</div>`;
   }
+
   $("#p0").innerHTML = `
     <div class="sec"><div class="sec-head"><h3>案件分類</h3><span class="note">分類模型輸出</span></div><div class="box2 clsgrid">${cls}</div></div>
-    <div class="sec"><div class="sec-head"><h3>期間計算</h3><span class="note">上排＝<b>訴願人</b>提起是否逾 30 日（§14）；下排＝<b>本局</b>應於何時前作成決定（§85 I）。依卷附送達證書與收文戳自動計算</span></div><div class="box2"><div class="period-edit">
+    <div class="sec"><div class="sec-head"><h3>期間計算</h3><span class="note">同一條時間軸：<b>上方括號</b>＝訴願人提起期間（§14，30 日）、<b>下方括號</b>＝本局審理期限（§85 I，3 個月）。兩者自收文日起重疊</span></div><div class="box2"><div class="period-edit">
       <div><label>送達日（卷證）</label><div class="val">${esc(S.served || "—")}</div><div class="src">${c.period.servedRef ? SJ(c.period.servedRef, "來源：送達證書 ↗") : "來源：訴願書自述／待補"}${ap && ap !== S.served ? `<span class="warnsrc">　⚠ 訴願書自述 ${ap}（發文日），已採卷證</span>` : ""}</div></div>
       <div><label>機關收文日</label><div class="val">${esc(S.recv || "—")}</div><div class="src">${c.period.recvRef ? J(c.period.recvRef, "來源：收文戳 ↗") : "來源：待補"}</div></div>
       <div><label>30 日期間屆滿</label><div class="val">${p ? toMg(p.due) : "—"}</div><div class="src">起算 ${p ? toMg(p.start) : "—"}（送達次日）</div></div>
