@@ -1,0 +1,388 @@
+<title>訴願智審臺 簡報精簡稿</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --paper:#F3F5F8;--card:#FFFFFF;--ink:#16243A;--muted:#5E6B7E;--line:#D9DFE8;
+  --navy:#16304F;--navy-2:#24466F;--amber:#D98E04;--amber-soft:#FFF3DA;--ok:#2E7D32;--warn:#B3261E;
+  --slide-bg:#FFFFFF;--slide-ink:#0F2038;--slide-muted:#5B6573;--slide-soft:#F4F6F9;--slide-line:#DDE3EA;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0F1622;--card:#182233;--ink:#E8EDF5;--muted:#9AA7BA;--line:#2A3648;--amber-soft:#3A2D12;--navy-2:#2F5486;
+}}
+:root[data-theme="dark"]{
+  --paper:#0F1622;--card:#182233;--ink:#E8EDF5;--muted:#9AA7BA;--line:#2A3648;--amber-soft:#3A2D12;--navy-2:#2F5486;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:15px;line-height:1.6;padding-block:40px 80px;padding-inline:clamp(16px,4vw,56px)}
+.mono{font-family:"IBM Plex Mono","Menlo",monospace}
+h1,h2,h3{text-wrap:balance;margin:0}
+.wrap{max-width:1180px;margin:0 auto}
+
+/* ---------- 開頭：一張圖講原則 ---------- */
+.hero{display:grid;grid-template-columns:1fr 1.35fr;gap:40px;align-items:center;margin-bottom:56px}
+.hero h1{font-size:clamp(30px,4vw,44px);font-weight:900;color:var(--navy);line-height:1.15;letter-spacing:.01em}
+[data-theme="dark"] .hero h1,:root:not([data-theme="light"]) .hero h1{color:var(--ink)}
+.hero p{font-size:17px;color:var(--muted);max-width:32em;margin:14px 0 0}
+.kpi{display:flex;gap:28px;margin-top:22px}
+.kpi b{display:block;font-size:34px;color:var(--amber);line-height:1;font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--muted)}
+.anatomy{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center}
+.anatomy svg{width:100%;height:auto;display:block}
+.anatomy .cap{text-align:center;font-size:13px;color:var(--muted);margin-top:8px}
+.anatomy .arrow{font-size:34px;color:var(--amber);font-weight:900}
+
+/* ---------- 每頁提案 ---------- */
+.row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:28px;align-items:start;padding-block:34px;border-top:1px solid var(--line)}
+.row .num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--amber);letter-spacing:.14em;font-weight:500}
+.row h2{font-size:22px;font-weight:700;margin:4px 0 12px;color:var(--ink)}
+.row .say{font-size:15px;color:var(--ink);margin:0 0 16px}
+.tags{display:flex;flex-direction:column;gap:10px}
+.tag{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:start;font-size:14px}
+.tag i{font-style:normal;font-weight:700;font-size:12px;letter-spacing:.08em;padding:2px 0;text-align:center;border-radius:4px}
+.tag.keep i{background:#E6F3E8;color:var(--ok)}.tag.cut i{background:#FBE9E7;color:var(--warn)}.tag.one i{background:var(--amber-soft);color:#8A5A00}
+[data-theme="dark"] .tag.keep i,:root:not([data-theme="light"]) .tag.keep i{background:#183524;color:#8FD3A0}
+[data-theme="dark"] .tag.cut i,:root:not([data-theme="light"]) .tag.cut i{background:#3B1E1B;color:#F2A29A}
+
+/* ---------- 投影片模型（1280×720 縮放） ---------- */
+.frame{width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:10px;box-shadow:0 8px 28px rgba(15,32,56,.14);background:var(--slide-bg)}
+.slide{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:top left;background:var(--slide-bg);color:var(--slide-ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;padding:52px 72px 0}
+.slide:before{content:"";position:absolute;left:0;top:0;width:100%;height:8px;background:linear-gradient(90deg,#16304F 0 78%,#D98E04 78% 100%)}
+.slide .sec{font-family:"IBM Plex Mono",monospace;font-size:14px;letter-spacing:.16em;color:#D98E04;font-weight:500}
+.slide h3{font-size:40px;font-weight:900;color:#16304F;line-height:1.25;margin:6px 0 30px;letter-spacing:.01em}
+.slide .ft{position:absolute;left:72px;right:72px;bottom:22px;font-size:13px;color:#8A93A0;display:flex;justify-content:space-between;border-top:1px solid #E6EAF0;padding-top:8px}
+.slide .big{font-size:26px;color:#334;line-height:1.55;max-width:26em}
+.slide .bignum{font-size:120px;font-weight:900;color:#16304F;line-height:1;font-variant-numeric:tabular-nums}
+.slide .bignum small{font-size:28px;color:#5B6573;font-weight:500;margin-left:10px}
+.slide .chips{display:flex;gap:14px;flex-wrap:wrap}
+.slide .chip{background:#F4F6F9;border-radius:10px;padding:14px 20px;font-size:22px;color:#16304F;font-weight:700}
+.slide .chip small{display:block;font-size:15px;color:#5B6573;font-weight:400;margin-top:4px}
+.slide .note{position:absolute;left:72px;right:72px;bottom:64px;background:#FFF8EA;border-left:6px solid #D98E04;padding:12px 18px;font-size:20px;color:#334;border-radius:0 8px 8px 0}
+/* 封面 */
+.slide.cover{background:#16304F;color:#fff;padding:0}
+.slide.cover:before{display:none}
+.slide.cover .band{position:absolute;left:0;top:0;width:10px;height:100%;background:#D98E04}
+.slide.cover .blob{position:absolute;right:-160px;top:-180px;width:560px;height:560px;border-radius:50%;background:#1E3F68}
+.slide.cover .in{position:absolute;left:96px;top:150px;right:96px}
+.slide.cover .ctag{font-size:16px;letter-spacing:.22em;color:#F2B544;font-weight:700}
+.slide.cover h3{color:#fff;font-size:88px;margin:18px 0 6px}
+.slide.cover .sub{font-size:28px;color:#C9D6E6}
+.slide.cover .claim{margin-top:30px;font-size:24px;color:#E6EDF5;border-left:4px solid #D98E04;padding-left:18px;max-width:30em}
+.slide.cover .stats{position:absolute;left:96px;right:96px;bottom:70px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.slide.cover .st{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:18px 22px}
+.slide.cover .st b{display:block;font-size:44px;color:#F2B544;line-height:1.1}.slide.cover .st span{font-size:16px;color:#C9D6E6}
+/* 痛點→設計 */
+.p2{display:grid;grid-template-columns:1fr 70px 1.25fr;gap:16px 0;align-items:center}
+.p2 .hd{font-size:15px;letter-spacing:.12em;color:#8A93A0;font-weight:700;border-bottom:2px solid #E6EAF0;padding-bottom:6px}
+.p2 .l{display:flex;gap:14px;align-items:center;font-size:26px;font-weight:700;color:#16304F;padding:16px 0}
+.p2 .l i{flex:none;width:44px;height:44px;border-radius:50%;background:#16304F;color:#fff;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:20px}
+.p2 .ar{text-align:center;color:#D98E04;font-size:38px;font-weight:900}
+.p2 .r{background:#FFF8EA;border-left:6px solid #D98E04;border-radius:0 12px 12px 0;padding:16px 20px;font-size:23px;color:#0F2038;line-height:1.4}
+.p2 .r small{display:block;font-size:16px;color:#5B6573;margin-top:4px}
+/* 定位 兩面板 */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:28px;height:470px}
+.vs .pan{border-radius:16px;padding:28px 32px;position:relative;display:flex;flex-direction:column}
+.vs .no{background:#F4F6F9;color:#5B6573}.vs .yes{background:#16304F;color:#fff}
+.vs .pan h4{margin:0 0 8px;font-size:30px}.vs .pan p{margin:0;font-size:20px;line-height:1.5}
+.vs svg{width:100%;height:auto;margin-top:auto}
+/* 流程 */
+.flow5{display:grid;grid-template-columns:repeat(5,1fr);gap:22px;margin-top:10px}
+.flow5 .c{text-align:center}
+.flow5 .c .ic{width:120px;height:120px;border-radius:30px;background:#F4F6F9;margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
+.flow5 .c .ic svg{width:64px;height:64px}
+.flow5 .c b{display:block;font-size:26px;color:#16304F}.flow5 .c span{font-size:18px;color:#5B6573}
+/* 四項 ✓ */
+.four{display:grid;grid-template-columns:1fr 1fr;gap:20px 36px}
+.four .it{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:start;background:#F4F6F9;border-radius:14px;padding:20px 22px}
+.four .it .ck{width:56px;height:56px;border-radius:50%;background:#2E7D32;color:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900}
+.four .it b{display:block;font-size:24px;color:#16304F}.four .it span{font-size:18px;color:#334}.four .it em{display:block;font-style:normal;font-size:15px;color:#8A5A00;margin-top:6px}
+/* 歸戶 before/after */
+.ba{display:grid;grid-template-columns:1fr 80px 1fr;gap:0;align-items:center}
+.ba .box{border-radius:14px;padding:22px 26px;height:330px;font-family:"IBM Plex Mono",monospace;font-size:20px;line-height:1.7}
+.ba .mess{background:#F4F6F9;color:#5B6573}.ba .neat{background:#FFF8EA;color:#0F2038;border:2px solid #D98E04}
+.ba .ar{text-align:center;color:#D98E04;font-size:52px;font-weight:900}
+.ba .neat s{text-decoration:none;color:#8A5A00}
+/* pipeline chips */
+.pipe7{display:flex;gap:10px}
+.pipe7 .c{flex:1;border:2px solid #DDE3EA;border-radius:12px;padding:16px 12px;text-align:center}
+.pipe7 .c b{display:block;font-size:20px;color:#16304F}.pipe7 .c i{display:inline-block;font-style:normal;margin-top:8px;background:#FFF2D6;color:#B36F00;font-weight:700;border-radius:6px;padding:2px 10px;font-size:16px}
+.pipe7 .c.code{border-color:#2E7D32;background:#F2F8F3}.pipe7 .c.code i{background:#E0F0E2;color:#2E7D32}
+/* 四道閘門 */
+.gate{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+.gate .g{background:#F4F6F9;border-radius:16px;padding:26px 22px;text-align:center;min-height:330px}
+.gate .g .ic{width:88px;height:88px;border-radius:50%;background:#16304F;margin:0 auto 18px;display:flex;align-items:center;justify-content:center}
+.gate .g .ic svg{width:48px;height:48px}
+.gate .g b{display:block;font-size:22px;color:#16304F;margin-bottom:8px}.gate .g span{font-size:18px;color:#334;line-height:1.5}
+/* 資料 donut */
+.data{display:grid;grid-template-columns:420px 1fr;gap:40px;align-items:center}
+.data svg{width:100%;height:auto}
+.data .ins{font-size:30px;color:#16304F;font-weight:700;line-height:1.4}
+.data .ins small{display:block;font-size:20px;color:#5B6573;font-weight:400;margin-top:14px}
+/* 三案 */
+.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.cases .c{border:2px solid #DDE3EA;border-radius:16px;padding:24px 22px;min-height:360px}
+.cases .c .lab{font-family:"IBM Plex Mono",monospace;font-size:14px;color:#D98E04;letter-spacing:.1em}
+.cases .c h4{margin:6px 0 14px;font-size:26px;color:#16304F}
+.cases .c .ans{display:inline-block;background:#16304F;color:#fff;border-radius:8px;padding:6px 14px;font-size:20px;font-weight:700;margin-bottom:14px}
+.cases .c p{margin:0;font-size:18px;color:#334;line-height:1.5}
+/* 狀態板 */
+.board{display:grid;grid-template-columns:1fr 1fr;gap:12px 40px}
+.board .it{display:flex;align-items:center;gap:14px;font-size:24px;color:#16304F;padding:10px 0;border-bottom:1px solid #E6EAF0}
+.board .d{width:18px;height:18px;border-radius:50%;flex:none}
+.board .on{background:#2E7D32}.board .half{background:linear-gradient(90deg,#D98E04 50%,#E6EAF0 50%)}.board .off{background:#C5CDD8}
+.board small{margin-left:auto;font-size:16px;color:#5B6573}
+/* 評分 */
+.score4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.score4 .c{background:#F4F6F9;border-radius:16px;padding:26px 22px;min-height:330px}
+.score4 .c b{display:block;font-size:64px;color:#16304F;line-height:1;font-variant-numeric:tabular-nums}
+.score4 .c h4{margin:10px 0 12px;font-size:24px;color:#16304F}.score4 .c p{margin:0;font-size:18px;color:#334;line-height:1.5}
+.score4 .bar{height:8px;background:#E6EAF0;border-radius:4px;margin-top:18px;overflow:hidden}.score4 .bar i{display:block;height:100%;background:#D98E04}
+.arch img{width:100%;border-radius:8px;display:block}
+
+@media (max-width:900px){.hero{grid-template-columns:1fr}.row{grid-template-columns:1fr}.anatomy{grid-template-columns:1fr}.anatomy .arrow{text-align:center}}
+</style>
+
+<div class="wrap">
+<section class="hero">
+  <div>
+    <h1>每一頁只講一件事，字砍一半，圖放大。</h1>
+    <p>現在的 15 頁是「講稿寫在投影片上」：評審在 6 分鐘裡看不完，也不會聽你唸。精簡的原則只有三條——一頁一句話、一頁一張大圖、細節退到備註。下面每一頁都畫好了「改完長什麼樣」，你看過對了，我再重產 PDF 和 PPT。</p>
+    <div class="kpi"><div><b>15 → 14</b><span>頁數</span></div><div><b>−55%</b><span>每頁字數</span></div><div><b>1</b><span>每頁訊息</span></div></div>
+  </div>
+  <div class="anatomy">
+    <div>
+      <svg viewBox="0 0 320 180" aria-label="現在：滿版文字">
+        <rect width="320" height="180" rx="8" fill="#F4F6F9"/><rect x="0" y="0" width="320" height="4" fill="#16304F"/>
+        <rect x="20" y="18" width="180" height="12" rx="3" fill="#16304F"/>
+        <g fill="#B9C2CF">
+          <rect x="20" y="42" width="280" height="6" rx="3"/><rect x="20" y="54" width="270" height="6" rx="3"/><rect x="20" y="66" width="285" height="6" rx="3"/><rect x="20" y="78" width="250" height="6" rx="3"/>
+          <rect x="20" y="96" width="280" height="6" rx="3"/><rect x="20" y="108" width="275" height="6" rx="3"/><rect x="20" y="120" width="260" height="6" rx="3"/><rect x="20" y="132" width="285" height="6" rx="3"/><rect x="20" y="144" width="240" height="6" rx="3"/><rect x="20" y="156" width="270" height="6" rx="3"/>
+        </g>
+      </svg>
+      <div class="cap">現在：一頁 8–12 行字，評審讀不完</div>
+    </div>
+    <div class="arrow">→</div>
+    <div>
+      <svg viewBox="0 0 320 180" aria-label="改後：一句話一張圖">
+        <rect width="320" height="180" rx="8" fill="#F4F6F9"/><rect x="0" y="0" width="320" height="4" fill="#16304F"/>
+        <rect x="20" y="18" width="220" height="14" rx="3" fill="#16304F"/>
+        <rect x="20" y="48" width="280" height="96" rx="8" fill="#FFF3DA" stroke="#D98E04" stroke-width="2"/>
+        <circle cx="70" cy="96" r="22" fill="#16304F"/><rect x="110" y="84" width="150" height="24" rx="4" fill="#D98E04"/>
+        <rect x="20" y="156" width="200" height="6" rx="3" fill="#B9C2CF"/>
+      </svg>
+      <div class="cap">改後：一句主張、一張大圖、一行補充</div>
+    </div>
+  </div>
+</section>
+
+<!-- 1 封面 -->
+<section class="row">
+  <div class="frame"><div class="slide cover"><div class="band"></div><div class="blob"></div>
+    <div class="in"><div class="ctag">2026 新北市 AI 智慧城市黑客松 ｜ 法制局組</div><h3>訴願智審臺</h3><div class="sub">承辦人的 AI 審卷助手</div>
+    <div class="claim">AI 把例行比對做完、把證據攤開；決定，留給承辦人。</div></div>
+    <div class="stats"><div class="st"><b>1,566</b><span>件／年　新北訴願案量</span></div><div class="st"><b>2 分鐘</b><span>上傳卷宗 → 五分頁分析</span></div><div class="st"><b>100%</b><span>結論可點回卷證原句</span></div></div>
+  </div></div>
+  <div><div class="num">01 ／ 封面</div><h2>一句話讓評審記住我們</h2><p class="say">副標從「審理作業流程之 AI 輔助應用」改成人話；四張數據卡減成三張，只留評審聽得懂的數字。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>AI 攤證據，人做決定</span></div><div class="tag keep"><i>留</i><span>案量、2 分鐘、可溯源</span></div><div class="tag cut"><i>刪</i><span>「3×30 頁評測」「≤1 RPS」——評審此刻聽不懂</span></div></div></div>
+</section>
+
+<!-- 2 痛點→設計 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">01 ／ 破題</div><h3>法制局的三個困難，對應三個設計</h3>
+    <div class="p2"><div class="hd">困難（命題文件）</div><div></div><div class="hd">我們的設計</div>
+      <div class="l"><i>1</i>同類案子一件件手寫</div><div class="ar">→</div><div class="r">固定五步驟自動產出<small>期間、八款不受理用程式算，不靠模型猜</small></div>
+      <div class="l"><i>2</i>函釋更新靠人翻</div><div class="ar">→</div><div class="r">法規庫三時點比對＋一鍵同步<small>查無的條號標「未收錄」，不放行</small></div>
+      <div class="l"><i>3</i>沒有標準工具</div><div class="ar">→</div><div class="r">承辦人工作台＋助手<small>自然語言 → 提案卡 → 確認才改</small></div>
+    </div>
+    <div class="ft"><span>訴願智審臺</span><span>2 / 14</span></div></div></div>
+  <div><div class="num">02 ／ 破題</div><h2>三行對照，一眼看完</h2><p class="say">原本每格 60–80 字，改成「困難 8 字 → 設計 12 字＋一行補充」。去掉中間「現況」欄——它只是把困難再講一次。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>三個困難，三個設計</span></div><div class="tag keep"><i>留</i><span>對應關係、編號、琥珀色設計卡</span></div><div class="tag cut"><i>刪</i><span>「現況」欄；案量數字（封面已講）</span></div></div></div>
+</section>
+
+<!-- 3 定位 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">02 ／ 定位</div><h3>輔助，不是取代</h3>
+    <div class="vs">
+      <div class="pan no"><h4>❌ AI 直接給答案</h4><p>「本案應駁回。」——承辦人只能信或不信。</p>
+        <svg viewBox="0 0 400 150"><rect x="20" y="30" width="360" height="90" rx="12" fill="#DDE3EA"/><text x="200" y="85" text-anchor="middle" font-size="26" fill="#5B6573" font-weight="700">駁回</text><text x="200" y="140" text-anchor="middle" font-size="14" fill="#8A93A0">黑盒</text></svg></div>
+      <div class="pan yes"><h4>✅ AI 攤開證據</h4><p>每個爭點附「依據一句＋卷證原句」，承辦人點回去看，決定自己下。</p>
+        <svg viewBox="0 0 400 150"><g font-size="14" fill="#fff"><rect x="20" y="20" width="360" height="30" rx="6" fill="#24466F"/><text x="32" y="40">爭點 1　採機關　→ 送達證書 p.2「本人簽收」</text><rect x="20" y="58" width="360" height="30" rx="6" fill="#24466F"/><text x="32" y="78">爭點 2　採訴願人 → 影片 00:14「未見拋擲」</text><rect x="20" y="96" width="360" height="30" rx="6" fill="#D98E04"/><text x="32" y="116" fill="#16304F" font-weight="700">承辦人：確認／修改 → 才寫進草稿</text></g></svg></div>
+    </div>
+    <div class="ft"><span>訴願智審臺</span><span>3 / 14</span></div></div></div>
+  <div><div class="num">03 ／ 定位</div><h2>用一張對比圖取代五條文字</h2><p class="say">這頁是給法制局長官看的：他們最怕「AI 替政府做決定」。左邊黑盒、右邊攤開證據，不用唸就懂。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>AI 攤證據，決定留給人</span></div><div class="tag keep"><i>留</i><span>錨點（原句／頁圖／影片秒數）這個賣點</span></div><div class="tag cut"><i>刪</i><span>「7 個唯讀工具」「稽核軌跡」——移到助手那頁或備註</span></div></div></div>
+</section>
+
+<!-- 4 流程 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">03 ／ 流程</div><h3>承辦人只做五件事</h3>
+    <div class="flow5">
+      <div class="c"><div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="#16304F" stroke-width="4"><path d="M32 44V16M20 28l12-12 12 12"/><rect x="10" y="44" width="44" height="10" rx="3"/></svg></div><b>丟卷宗</b><span>掃描、照片、影片都行</span></div>
+      <div class="c"><div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="#16304F" stroke-width="4"><rect x="10" y="10" width="44" height="44" rx="6"/><path d="M18 24h28M18 34h28M18 44h16"/></svg></div><b>自動歸戶</b><span>27 類・自動命名</span></div>
+      <div class="c"><div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="#16304F" stroke-width="4"><rect x="8" y="12" width="48" height="40" rx="5"/><path d="M8 24h48M20 12v12M36 12v12"/></svg></div><b>看五分頁</b><span>欄位・爭點・法規・案例・草稿</span></div>
+      <div class="c"><div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="#16304F" stroke-width="4"><path d="M10 14h44v30H26l-10 8v-8h-6z"/><path d="M22 26h20M22 34h12"/></svg></div><b>跟助手講</b><span>「爭點 2 改採訴願人」</span></div>
+      <div class="c"><div class="ic"><svg viewBox="0 0 64 64" fill="none" stroke="#16304F" stroke-width="4"><path d="M14 34l12 12 24-26"/></svg></div><b>確認送審</b><span>草稿 v1／v2 可回溯</span></div>
+    </div>
+    <div class="note">示範：case02 亂丟煙蒂，20 頁卷宗＋影片 — 90 秒歸戶、2 分鐘出五分頁</div>
+    <div class="ft"><span>訴願智審臺</span><span>4 / 14</span></div></div></div>
+  <div><div class="num">04 ／ 流程</div><h2>五個圖示，一個動詞一個名詞</h2><p class="say">流程頁的字是最該砍的：每步只留「動作＋一行」，細節在 demo 裡示範。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>五步，2 分鐘</span></div><div class="tag keep"><i>留</i><span>示範案件那行（接 demo）</span></div><div class="tag cut"><i>刪</i><span>SSE、標準檔名範例、鎖定規則等實作細節</span></div></div></div>
+</section>
+
+<!-- 5 四大功能 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">04 ／ 主題契合</div><h3>命題要的四件事，都做了，而且查得到證據</h3>
+    <div class="four">
+      <div class="it"><div class="ck">✓</div><div><b>案件資訊擷取與分類</b><span>訴願人、處分、理由、期間、案型</span><em>每個欄位點回卷證原句</em></div></div>
+      <div class="it"><div class="ck">✓</div><div><b>法規推薦＋最新修正狀態</b><span>KB 語意檢索 → 程式查核條號</span><em>查無 → 標「未收錄」，不放行</em></div></div>
+      <div class="it"><div class="ck">✓</div><div><b>相似案例 3–5 件</b><span>101 份決定書，排除本案</span><em>指出「可借用哪一段理由」</em></div></div>
+      <div class="it"><div class="ck">✓</div><div><b>決定書草稿</b><span>主文・事實・理由・教示</span><em>主文由程式選模板，不由模型決定</em></div></div>
+    </div>
+    <div class="ft"><span>訴願智審臺</span><span>5 / 14</span></div></div></div>
+  <div><div class="num">05 ／ 主題契合</div><h2>表格變四張打勾卡</h2><p class="say">評審手上有命題文件，他要的是「四項都有」的確認感。每項只留功能名、做法一行、防幻覺一行。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>四項全做，有證據</span></div><div class="tag keep"><i>留</i><span>每項一句「怎麼證明沒幻覺」</span></div><div class="tag cut"><i>刪</i><span>citations.status、sims[].borrow 這類欄位名</span></div></div></div>
+</section>
+
+<!-- 6 歸戶 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">05 ／ 技術</div><h3>卷宗不會是乾淨的 PDF——系統看內容，不看檔名</h3>
+    <div class="ba">
+      <div class="box mess">IMG_3985.jpg<br>scan_0001.pdf<br>文件(2).pdf<br>DASHCAM_0627.mp4<br>IMG_3988(1).jpg<br>掃描全卷.pdf（20 頁）<br>…</div>
+      <div class="ar">→</div>
+      <div class="box neat"><s>01-</s>訴願書_114-09-22<br><s>07-</s>裁處書_114-09-16<br><s>11-</s>送達證書_114-09-18<br><s>14-</s>採證照片 ×3<br><s>19-</s>採證影片 00:12<br><s>—</s> 重複檔 1 份（已標）</div>
+    </div>
+    <div class="chips" style="margin-top:22px"><div class="chip">27 類<small>文件類型</small></div><div class="chip">20 / 20<small>亂檔名全對</small></div><div class="chip">90 秒<small>20 檔含影片</small></div><div class="chip">手寫・掃描・影片<small>都能辨識</small></div></div>
+    <div class="ft"><span>訴願智審臺</span><span>6 / 14</span></div></div></div>
+  <div><div class="num">06 ／ 歸戶</div><h2>Before／After 一張圖</h2><p class="say">左邊一堆亂檔名、右邊整齊的卷宗清單，比十條技術要點有說服力。數字留三個。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>亂檔名進、標準卷宗出</span></div><div class="tag keep"><i>留</i><span>27 類、20/20、90 秒</span></div><div class="tag cut"><i>刪</i><span>HEIC、sha256、裝箱上限、nature／timing 推導</span></div></div></div>
+</section>
+
+<!-- 7 pipeline -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">05 ／ 技術</div><h3>固定七步，不是放任 AI 自由發揮</h3>
+    <div class="pipe7">
+      <div class="c"><b>欄位擷取</b><i>模型 1 次</i></div>
+      <div class="c code"><b>期間・程序</b><i>程式 0 次</i></div>
+      <div class="c"><b>爭點</b><i>模型 1 次</i></div>
+      <div class="c"><b>法規</b><i>檢索＋1 次</i></div>
+      <div class="c"><b>相似案例</b><i>檢索＋1 次</i></div>
+      <div class="c"><b>草稿</b><i>模型 1 次</i></div>
+      <div class="c"><b>修改重跑</b><i>只跑受影響步</i></div>
+    </div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;margin-top:44px">
+      <div class="bignum">6<small>次模型呼叫・約 2 分鐘</small></div>
+      <div class="big">呼叫次數固定、每步結果落地——所以能在 1 RPS 限制下跑，能單步重跑，能做評測。<br><b style="color:#2E7D32">綠色那步是程式算的</b>：30 日期間、八款不受理，不交給模型猜。</div>
+    </div>
+    <div class="ft"><span>訴願智審臺</span><span>7 / 14</span></div></div></div>
+  <div><div class="num">07 ／ pipeline</div><h2>七個名字＋一個大數字</h2><p class="say">卡片內文全部拿掉，只留步驟名和呼叫次數；「程式算」的那步用綠色標出來，這是最想讓評審記住的設計決定。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>6 次呼叫、程序用程式算</span></div><div class="tag keep"><i>留</i><span>固定 pipeline vs 自由 agent 的對比</span></div><div class="tag cut"><i>刪</i><span>每步做什麼的細節（口頭補）</span></div></div></div>
+</section>
+
+<!-- 8 架構 -->
+<section class="row">
+  <div class="frame"><div class="slide arch"><div class="sec">06 ／ AWS 架構</div><h3>一台 EC2，三個 AWS 服務，全在允許清單內</h3>
+    <img src="assets/aws-architecture.png" alt="AWS 架構圖" style="width:1136px;margin-top:-10px;filter:none">
+    <div class="ft"><span>訴願智審臺</span><span>8 / 14</span></div></div></div>
+  <div><div class="num">08 ／ 架構</div><h2>圖不動，框裡的字砍掉三分之二</h2><p class="say">官方圖示已經很好認，每個框只留「服務名＋一行用途」。你截圖問的 FastAPI 那段細節（pipeline、助手工具、lawsync）全部拿掉，只寫「分析・助手・法規庫」。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>EC2 ＋ Bedrock ＋ S3 ＋ DynamoDB</span></div><div class="tag keep"><i>留</i><span>Region 標語（無 public、SG 白名單、無 key）——評審會問資安</span></div><div class="tag cut"><i>刪</i><span>每個框的第 2–5 行；底列「正式版」虛線框</span></div></div></div>
+</section>
+
+<!-- 9 四道閘門 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">07 ／ 可信度</div><h3>AI 最常犯的四種錯，各有一道閘門</h3>
+    <div class="gate">
+      <div class="g"><div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3"><path d="M10 8h20l8 8v24H10z"/><path d="M16 24h16M16 32h10"/></svg></div><b>捏造條號</b><span>11 部法規逐條字典查核；查無就標「未收錄」</span></div>
+      <div class="g"><div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3"><path d="M8 12h32v24H8z"/><path d="M14 20h20M14 28h12"/><circle cx="36" cy="34" r="6" fill="#D98E04" stroke="none"/></svg></div><b>引句不符卷證</b><span>每句引文回查原文；查不到列入未驗證清單</span></div>
+      <div class="g"><div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3"><circle cx="24" cy="24" r="16"/><path d="M24 12v12l8 6"/></svg></div><b>引到過期法規</b><span>行為時／裁處時／決定時三時點比對，修正過就提示</span></div>
+      <div class="g"><div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3"><rect x="8" y="10" width="32" height="28" rx="3"/><path d="M8 20h32M16 10v10"/></svg></div><b>誤判程序結論</b><span>不受理／駁回／撤銷由程式選模板，模型只寫理由</span></div>
+    </div>
+    <div class="ft"><span>訴願智審臺</span><span>9 / 14</span></div></div></div>
+  <div><div class="num">09 ／ 可信度</div><h2>表格變四個圖示</h2><p class="say">「落地位置」那欄（s4／s6 程式層、judge → drafts.tmpl）是給工程師看的，評審不需要。每道閘門一句話。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>四種錯、四道閘</span></div><div class="tag keep"><i>留</i><span>三時點、程式選模板</span></div><div class="tag cut"><i>刪</i><span>「落地位置」欄、實測 12 部 2 部新修正等數據</span></div></div></div>
+</section>
+
+<!-- 10 資料 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">08 ／ 資料應用</div><h3>先把 101 份決定書讀完，才決定系統怎麼設計</h3>
+    <div class="data">
+      <svg viewBox="0 0 300 300" aria-label="101 份決定書結果分布">
+        <circle cx="150" cy="150" r="110" fill="none" stroke="#E6EAF0" stroke-width="44"/>
+        <circle cx="150" cy="150" r="110" fill="none" stroke="#16304F" stroke-width="44" stroke-dasharray="477 691" transform="rotate(-90 150 150)"/>
+        <circle cx="150" cy="150" r="110" fill="none" stroke="#D98E04" stroke-width="44" stroke-dasharray="103 691" stroke-dashoffset="-477" transform="rotate(-90 150 150)"/>
+        <circle cx="150" cy="150" r="110" fill="none" stroke="#2E7D32" stroke-width="44" stroke-dasharray="103 691" stroke-dashoffset="-580" transform="rotate(-90 150 150)"/>
+        <text x="150" y="142" text-anchor="middle" font-size="58" font-weight="900" fill="#16304F">69%</text>
+        <text x="150" y="172" text-anchor="middle" font-size="18" fill="#5B6573">不受理</text>
+        <text x="150" y="196" text-anchor="middle" font-size="14" fill="#8A93A0">駁回 15%・撤銷 15%</text>
+      </svg>
+      <div class="ins">七成案子連實體都不審——程序（30 日、八款）是勝負手。<small>所以期間計算做成程式，不交給模型；不受理案的草稿不寫實體。</small>
+        <div class="chips" style="margin-top:26px"><div class="chip" style="font-size:18px">法規 11 部<small>逐條字典＋KB</small></div><div class="chip" style="font-size:18px">判解 19・函釋 10<small>KB metadata</small></div><div class="chip" style="font-size:18px">自行補 3 個缺口<small>政資法・洗錢判準・空污</small></div></div>
+      </div>
+    </div>
+    <div class="ft"><span>訴願智審臺</span><span>10 / 14</span></div></div></div>
+  <div><div class="num">10 ／ 資料</div><h2>一個甜甜圈、一個發現</h2><p class="say">資料應用占 30%，最重的一項。原本兩欄十條清單，改成一張圖講「我們從資料裡發現什麼、它怎麼改變設計」。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>69% 不受理 → 程序用程式算</span></div><div class="tag keep"><i>留</i><span>三個補強缺口（一行）</span></div><div class="tag cut"><i>刪</i><span>撤銷另處 12／混合 1 等細分數字、範本來源機關</span></div></div></div>
+</section>
+
+<!-- 11 評測三案 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">08 ／ 資料應用</div><h3>答辯書和卷證拿不到——我們自己造了三案考題</h3>
+    <div class="cases">
+      <div class="c"><div class="lab">CASE 01 ／ 建築法</div><h4>訴願人遲了 7 天</h4><div class="ans">不受理</div><p>卷宗塞滿實體理由和照片當干擾；正確答案仍是程序不受理，一字實體都不能寫。</p></div>
+      <div class="c"><div class="lab">CASE 02 ／ 廢清法</div><h4>亂丟煙蒂，說沒丟</h4><div class="ans">駁回</div><p>影片 00:14 拋擲、00:19 煙蒂還在；訴願書寫的收受日和送達證書差 2 天，要以證書為準。</p></div>
+      <div class="c"><div class="lab">CASE 03 ／ 建築法</div><h4>政府遲了 26 天才罰</h4><div class="ans">撤銷</div><p>簽證不實證據很強，但三年裁處權時效已過；答辯書迴避不答，系統要自己算出來。</p></div>
+    </div>
+    <div class="note">每案 30 頁真實格式卷宗（掃描、手寫、系統截圖、影片）；對應決定書從知識庫排除，系統不能「認出答案」。</div>
+    <div class="ft"><span>訴願智審臺</span><span>11 / 14</span></div></div></div>
+  <div><div class="num">11 ／ 評測</div><h2>三張案例卡，每張一個轉折</h2><p class="say">原本先講法條為什麼拿不到，再講三案細節。改成直接秀三案：標題用人話（誰遲到了），答案用一個大標籤。「為什麼要自己造」縮成底部一行。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>三案、三種結局、三個陷阱</span></div><div class="tag keep"><i>留</i><span>與 RAG 隔離這句</span></div><div class="tag cut"><i>刪</i><span>訴願法 §58／§49／§75 條號說明（口頭）</span></div></div></div>
+</section>
+
+<!-- 12 完成度 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">09 ／ 完成度</div><h3>今天線上能做到哪裡</h3>
+    <div class="board">
+      <div class="it"><span class="d on"></span>文件歸戶<small>上線・真跑</small></div>
+      <div class="it"><span class="d on"></span>五分頁分析<small>上線・真跑</small></div>
+      <div class="it"><span class="d on"></span>助手提案 → 確認 → 局部重跑<small>上線</small></div>
+      <div class="it"><span class="d on"></span>法規庫同步<small>上線</small></div>
+      <div class="it"><span class="d on"></span>前端工作台接真 API<small>上線</small></div>
+      <div class="it"><span class="d on"></span>自動化測試 52 個<small>通過</small></div>
+      <div class="it"><span class="d half"></span>補件辨識<small>UI 完成，待接 API</small></div>
+      <div class="it"><span class="d off"></span>登入／HTTPS<small>正式版</small></div>
+    </div>
+    <div class="note">Live Demo　http://100.20.156.38/　— 所有數據都是 EC2 真跑，不是 mock</div>
+    <div class="ft"><span>訴願智審臺</span><span>12 / 14</span></div></div></div>
+  <div><div class="num">12 ／ 完成度</div><h2>綠點狀態板</h2><p class="say">表格「說明」欄整欄拿掉；一個綠點比 endpoint 清單更能傳達「做完了」。誠實留一個半、一個灰。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>六綠一半一灰，全部真跑</span></div><div class="tag keep"><i>留</i><span>Live Demo 網址</span></div><div class="tag cut"><i>刪</i><span>endpoint 名稱、反代、樣本檔名</span></div></div></div>
+</section>
+
+<!-- 13 評分 -->
+<section class="row">
+  <div class="frame"><div class="slide"><div class="sec">10 ／ 評分對照</div><h3>四個評分項目，各一句證據</h3>
+    <div class="score4">
+      <div class="c"><b>20%</b><h4>技術可行性</h4><p>允許清單內服務；1 RPS 下固定 pipeline；掃描／手寫／影片都吃。</p><div class="bar"><i style="width:50%"></i></div></div>
+      <div class="c"><b>25%</b><h4>完成度</h4><p>前後端上線，Live Demo 走完整流程；52 個測試。</p><div class="bar"><i style="width:62%"></i></div></div>
+      <div class="c"><b>30%</b><h4>資料應用性</h4><p>101 份決定書讀完再設計；三案卷宗包評測集；補三個資料缺口。</p><div class="bar"><i style="width:75%"></i></div></div>
+      <div class="c"><b>25%</b><h4>主題契合度</h4><p>四大功能逐一對應；輔助不取代；可擴到洗錢／空污。</p><div class="bar"><i style="width:62%"></i></div></div>
+    </div>
+    <div class="ft"><span>訴願智審臺</span><span>13 / 14</span></div></div></div>
+  <div><div class="num">13 ／ 評分</div><h2>四張卡直排，每張一句</h2><p class="say">維持原設計，只把每格三句砍成一句；「下一步與落地」整頁併入結尾頁三個字。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>每項有證據</span></div><div class="tag keep"><i>留</i><span>百分比大字、進度條</span></div><div class="tag cut"><i>刪</i><span>「下一步」獨立頁 → 結尾頁一行</span></div></div></div>
+</section>
+
+<!-- 14 結尾 -->
+<section class="row">
+  <div class="frame"><div class="slide cover"><div class="band"></div><div class="blob"></div>
+    <div class="in" style="top:230px"><div class="ctag">2026 新北市 AI 智慧城市黑客松 ｜ 法制局組</div><h3 style="font-size:72px">謝謝，請指教</h3><div class="sub">下一步：接補件 API・法規同步排程・擴到洗錢／空污案型</div>
+    <div class="claim" style="margin-top:36px">Live Demo　http://100.20.156.38/　　GitHub　完整原始碼＋評測集</div></div>
+  </div></div>
+  <div><div class="num">14 ／ 結尾</div><h2>結尾頁吸收「下一步」</h2><p class="say">三個下一步寫成一行副標；網址和 GitHub 放最後停留的那一頁，評審問答時看得到。</p>
+  <div class="tags"><div class="tag one"><i>一句</i><span>謝謝＋去哪看</span></div><div class="tag keep"><i>留</i><span>Demo 網址、GitHub</span></div><div class="tag cut"><i>刪</i><span>「法制局可取回的資產」等五條（口頭）</span></div></div></div>
+</section>
+</div>
+
+<script>
+(function(){
+  function fit(){document.querySelectorAll('.frame').forEach(function(f){var s=f.clientWidth/1280;var sl=f.querySelector('.slide');if(sl)sl.style.transform='scale('+s+')';});}
+  fit();window.addEventListener('resize',fit);
+})();
+</script>
