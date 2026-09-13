@@ -33,7 +33,7 @@ S.append(dict(kind="pipe", sec="04 ／ 每一步透明", title="固定七個步�
            ("寫草稿", "主文・事實・理由", "相似決定書理由段"),
            ("承辦人修正", "草稿 v2", "承辦人意見，只重算受影響步驟")]))
 
-S.append(dict(kind="arch", sec="05 ／ AWS 架構", title="一台 EC2，三個 AWS 服務", foot="全部在競賽允許清單內"))
+S.append(dict(kind="arch", sec="05 ／ AWS 架構", title="一台 EC2，三個 AWS 服務"))
 
 S.append(dict(kind="eval", sec="06 ／ 準確性驗證", title="三個案件：主文、條款、期間、時效，全部與決定書一致",
     design=[("真卷宗", "從法制局 101 份決定書挑 3 份，依決定書反推 30 頁卷宗：掃描、手寫、照片、影片"),
