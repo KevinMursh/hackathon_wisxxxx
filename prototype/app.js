@@ -976,16 +976,30 @@ function renderLawCard() { const k = lawCounts(); $("#lawCard").innerHTML = `<sp
 $("#lawCard").addEventListener("click", openLawLib); $("#lawBtn").addEventListener("click", openLawLib);
 let LAWTAB = "law";
 /* 法規庫的狀態：這個畫面與任何案件無關，所以只能陳述法規本身的事實
-   （有沒有新修正、施行了沒），不能判斷「哪一版才對」——那取決於個案的行為時與裁處時。
-   案件層級的適用版本提示在 Tab 3 法規推薦（分析輸出的 laws[].version）。 */
+   （有沒有新修正、生效了沒），不能判斷「哪一版才對」——那取決於個案的行為時與裁處時。
+   案件層級的適用版本提示在 Tab 3 法規推薦（分析輸出的 laws[].version）。
+
+   資料來源與限制（experiments/kb/sync_laws.py 解析 law.moj.gov.tw）：
+   - officialDate：頁面「修正日期」（無則「公布日期」）——12 部全有
+   - effective：頁面「最後生效日期」——**只有少數法規有**，沒有時不可假設已生效
+   - pendingArticles：整頁比對有無「尚未生效」字樣，是粗篩，可能因附註誤判
+   公布日 ≠ 施行日（中央法規標準法 §13：未特定施行日者自公布日起算至第三日生效），
+   所以只有真的抓到 effective 才寫「起施行」，否則只寫「公布」。 */
 function lawStatus(l) {
   const eff = isoT(l.effective), off = isoT(l.official || l.date);
   if (l.status === "changed") {
-    return eff && eff > Date.now()
-      ? { cls: "amended", text: `已修正・${l.effective} 施行`, note: "新版尚未生效，現行案件仍適用資料集版本" }
-      : { cls: "gap", text: `已修正・${l.official} 施行`, note: "新版已生效，跨修正日之案件依行政罰法 §5 判斷適用版本" };
+    if (eff && eff > Date.now())
+      return { cls: "amended", text: `已修正・${l.effective} 起施行`, note: "新版尚未生效，現行案件仍適用資料集版本" };
+    if (eff)
+      return { cls: "gap", text: `已修正・${l.effective} 起施行`, note: "新版已生效，跨修正日之案件依行政罰法 §5 判斷適用版本" };
+    if (l.pendingArticles)
+      return { cls: "amended", text: "已修正・部分條文尚未生效", note: "施行日未載明；依全國法規資料庫頁面標示", title: "頁面出現「尚未生效」字樣，未取得明確施行日" };
+    // 只知道公布日、不知道生效狀態：不要斷言「已生效」（/api/lawlib 目前未回 pendingArticles）
+    return { cls: "gap", text: `已修正・${l.official} 公布`, note: "施行日未載明，生效狀態請查全國法規資料庫",
+      title: "同步只取得修正公布日；公布日≠施行日（中央法規標準法 §13）" };
   }
-  if (off && Date.now() - off < 366 * DAY * 3) return { cls: "amended", text: "近期修正", note: "" };
+  if (off && Date.now() - off < 366 * DAY * 3)
+    return { cls: "amended", text: "一致・近期修正", note: "資料集即為最新版；此法近期修正過，審理舊案時注意行為時版本" };
   return { cls: "ok", text: "一致", note: "" };
 }
 
@@ -1005,7 +1019,7 @@ function renderLaw() {
   };
   $$("#s-law .rtabs button").forEach((b) => { b.classList.toggle("on", b.dataset.l === LAWTAB); b.onclick = () => { LAWTAB = b.dataset.l; renderLaw(); }; });
   const involved = (n) => LIB.filter((r) => (r.state?.docs || []).length && r.subj && n.startsWith(r.subj.replace("違反", ""))).length;
-  if (LAWTAB === "law") $("#lawTable").innerHTML = `<tr><th>法規</th><th>類型</th><th>資料集版本</th><th>官方最新修正</th><th>條數</th><th>狀態</th><th>涉案</th><th>來源</th></tr>` + laws.map((l) => `<tr><td>${esc(l.n)}</td><td>${esc(l.kind)}</td><td class="num">${esc(l.date)}</td><td class="num">${l.official ? esc(l.official) : "—"}${l.effective ? `<div class="note">${esc(l.effective)} 施行</div>` : ""}</td><td class="num">${l.arts}${l.currentArts && l.currentArts !== l.arts ? `<div class="note">現行 ${l.currentArts}</div>` : ""}</td><td>${(() => { const st = lawStatus(l); return `<span class="st ${st.cls}">${esc(st.text)}</span>${st.note ? `<div class="note">${esc(st.note)}</div>` : ""}`; })()}</td><td class="num">${l.cases ?? involved(l.n)}</td><td>${esc(l.src)}${l.official ? '<div class="note">全國法規資料庫同步</div>' : ""}</td></tr>`).join("");
+  if (LAWTAB === "law") $("#lawTable").innerHTML = `<tr><th>法規</th><th>類型</th><th>資料集版本</th><th>官方最新修正</th><th>條數</th><th>狀態</th><th>涉案</th><th>來源</th></tr>` + laws.map((l) => `<tr><td>${esc(l.n)}</td><td>${esc(l.kind)}</td><td class="num">${esc(l.date)}</td><td class="num">${l.official ? esc(l.official) : "—"}${l.effective ? `<div class="note">${esc(l.effective)} 施行</div>` : ""}</td><td class="num">${l.arts}${l.currentArts && l.currentArts !== l.arts ? `<div class="note">現行 ${l.currentArts}</div>` : ""}</td><td>${(() => { const st = lawStatus(l); return `<span class="st ${st.cls}"${st.title ? ` title="${esc(st.title)}"` : ""}>${esc(st.text)}</span>${st.note ? `<div class="note">${esc(st.note)}</div>` : ""}`; })()}</td><td class="num">${l.cases ?? involved(l.n)}</td><td>${esc(l.src)}${l.official ? '<div class="note">全國法規資料庫同步</div>' : ""}</td></tr>`).join("");
   else $("#lawTable").innerHTML = `<tr><th>函釋／判解</th><th>主題</th><th>發文日</th><th>相關法規</th><th>來源</th></tr>` + ruls.map((r) => `<tr><td>${esc(r.n)}</td><td>${esc(r.topic || "")}</td><td class="num">${esc(r.date || "—")}</td><td>${esc(r.law || "")}</td><td>${esc(r.src)}<div class="note">人工確認入庫（各部會無統一 API）</div></td></tr>`).join("");
   if (!$("#syncLog").innerHTML && sync) $("#syncLog").innerHTML = `<span class="note">最近一次同步 ${esc(sync.checkedAt)}：比對 ${sync.checked} 部，${sync.changed} 部官方已有新修正、${sync.same} 部與資料集一致（${esc(sync.source || "")}）。法規庫同時保留資料集版本與官方現行版。</span>`;
 }
