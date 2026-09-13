@@ -119,7 +119,10 @@ async function startDemo(i, messy) {
 function renderLibCard() {}
 
 $("#libBtn").addEventListener("click", openLibrary);
-$("#backBtn").addEventListener("click", () => { persist(); $("#analysisNote").style.display = "none"; $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; }); show("s-pick"); Router.set("/"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
+$("#homeBtn").addEventListener("click", (e) => { e.preventDefault(); $("#backBtn").click(); });
+/* 頂部列的位置提示：首頁不顯示；案件／法規庫／案件庫顯示所在 */
+function setCrumb(text) { const el = $("#crumb"); if (!text) { el.classList.remove("on"); el.innerHTML = ""; } else { el.classList.add("on"); el.innerHTML = text; } $$(".topnav button").forEach((b) => b.classList.toggle("on", (b.id === "lawBtn" && text === "法規庫") || (b.id === "libBtn" && text === "案件庫"))); }
+$("#backBtn").addEventListener("click", () => { setCrumb(""); persist(); $("#analysisNote").style.display = "none"; $$(".tab").forEach((b) => { b.disabled = false; b.style.opacity = ""; }); show("s-pick"); Router.set("/"); ["chip", "statusChip", "judgeChip"].forEach((id) => $("#" + id).classList.remove("on")); $("#backBtn").style.display = "none"; renderLibCard(); renderLawCard(); });
 renderLibCard();
 
 /* =========================================================
@@ -210,7 +213,7 @@ function runCase(c, restore) {
     S.libId = c.live ? c.caseId : existing ? existing.libId : `${c.id}-${Date.now().toString(36)}`;   // 真上傳案：網址與案件庫都用後端 caseId
   }
   S.doc = null; S.zoom = 1; S.docMode = {};
-  $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = "";
+  $("#chip").classList.add("on"); $("#chipName").textContent = c.name; $("#chipNo").textContent = c.live ? c.no : "案號 " + c.no; $("#backBtn").style.display = ""; setCrumb("案件審理");
   if (restore || c.analysis) { if (restore) { render(); show("s-work"); Router.set(`/case/${S.libId || c.caseId || c.id}`); } return; }
   const steps = [["文件辨識（Claude 判定）", `${c.docs.length} 個檔案 → ${c.docs.filter((d) => d.include !== false).length} 份納入・${c.docs.filter((d) => d.dup).length} 份重複・${c.docs.filter((d) => d.unknown).length} 份無法辨識`, Math.min(2600, 700 + c.docs.length * 110), "classify"], ["欄位擷取（三方對照）", `${c.fields.length} 個欄位，${c.fields.filter((f) => f.conflict).length} 處衝突`, 700], ["爭點比對（訴願書 vs 答辯書 vs 卷證）", `識別 ${c.issues.length} 個爭點`, 760], ["法規檢索與引用查核", `推薦 ${c.laws.length} 筆；查核答辯書引用 ${c.citations.length} 則${c.citations.some((x) => x.status === "amended") ? "，1 則已修正" : ""}`, 840], ["AI 判定與草稿生成", `判定：${judgePlan(c).verdict}（${judgePlan(c).art}）`, 900]];
   $("#runSub").textContent = c.live ? c.name : `${c.name}　・　案號 ${c.no}${c.uploadNote ? "　・　" + c.uploadNote : ""}`;
@@ -236,7 +239,7 @@ const LIVE_STEPS = [
 function runLive(caseId, job, meta = {}) {
   S.liveCase = { caseId, jobId: job.jobId, total: job.files.length }; Router.set(`/run/${caseId}`);
   $("#chip").classList.add("on"); $("#chipName").textContent = meta.name || "新上傳案件";
-  $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = "";
+  $("#chipNo").textContent = `暫編 ${caseId}`; $("#backBtn").style.display = ""; setCrumb("分析中");
   $("#runSub").textContent = `${meta.title || `${job.files.length} 個檔案`}　・　${caseId}${meta.messy ? "　・　亂檔名（檔名不參與判定）" : ""}`;
   $("#stepList").innerHTML = LIVE_STEPS.map(([name, kind], i) => `<div class="step" id="st${i}"><div class="idx">${i + 1}</div><div><div class="name">${name}</div><div class="out" id="so${i}"></div>${kind === "classify" ? `<div class="classify" id="cls0" style="flex-direction:column;gap:3px"></div>` : ""}</div><div class="ms" id="sm${i}"></div></div>`).join("");
   $("#runBar").style.width = "0"; show("s-run");
@@ -949,7 +952,7 @@ function openLibrary() {
   persist(); show("s-lib"); Router.set("/lib");
   const subj = [...new Set(LIB.map((r) => r.subj))], arts = [...new Set(LIB.map((r) => r.art))];
   $("#fSubj").innerHTML = '<option value="">案由：全部</option>' + subj.map((s) => `<option>${esc(s)}</option>`).join(""); $("#fArt").innerHTML = '<option value="">條款：全部</option>' + arts.map((s) => `<option>${esc(s)}</option>`).join("");
-  renderLib(); $("#backBtn").style.display = "";
+  renderLib(); $("#backBtn").style.display = ""; setCrumb("案件庫");
   $("#libClear").onclick = () => { if (!LIB.length) return; if (!confirm(`清空案件庫全部 ${LIB.length} 筆紀錄？此動作無法復原。`)) return; LIB = []; S.libId = null; saveLib(); renderLib(); renderLibCard(); };
 }
 function renderLib() {
@@ -1023,7 +1026,7 @@ function renderLaw() {
   else $("#lawTable").innerHTML = `<tr><th>函釋／判解</th><th>主題</th><th>發文日</th><th>相關法規</th><th>來源</th></tr>` + ruls.map((r) => `<tr><td>${esc(r.n)}</td><td>${esc(r.topic || "")}</td><td class="num">${esc(r.date || "—")}</td><td>${esc(r.law || "")}</td><td>${esc(r.src)}<div class="note">人工確認入庫（各部會無統一 API）</div></td></tr>`).join("");
   if (!$("#syncLog").innerHTML && sync) $("#syncLog").innerHTML = `<span class="note">最近一次同步 ${esc(sync.checkedAt)}：比對 ${sync.checked} 部，${sync.changed} 部官方已有新修正、${sync.same} 部與資料集一致（${esc(sync.source || "")}）。法規庫同時保留資料集版本與官方現行版。</span>`;
 }
-function openLawLib() { persist(); show("s-law"); Router.set("/law"); $("#backBtn").style.display = ""; renderLaw(); }
+function openLawLib() { persist(); show("s-law"); Router.set("/law"); $("#backBtn").style.display = ""; setCrumb("法規庫"); renderLaw(); }
 renderLawCard();
 
 /* ---------- 案件 AI 助理（問答唯讀；修改走提案確認） ---------- */

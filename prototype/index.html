@@ -63,10 +63,14 @@
   .tag.err { color:var(--seal); border-color:var(--seal); }
 
   /* ---------- 頂部列 ---------- */
-  .topbar { position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:12px; padding:0 20px; height:52px; background:var(--surface); border-bottom:1px solid var(--line); }
-  .brand { display:flex; align-items:baseline; gap:10px; }
-  .brand strong { font-size:15px; letter-spacing:.04em; } .brand span { font-size:11px; color:var(--ink-3); letter-spacing:.04em; }
-  .seal-mark { display:grid; place-items:center; width:26px; height:26px; flex:none; border:1.5px solid var(--seal); color:var(--seal); font-size:11px; font-weight:700; line-height:1; }
+  .topbar { position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:12px; padding:0 16px 0 12px; height:54px; background:var(--surface); border-bottom:1px solid var(--line); box-shadow:0 1px 0 rgba(20,24,31,.03); }
+  .home { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; padding:4px 8px 4px 0; border-radius:6px; transition:background .15s; }
+  .home:hover { background:var(--surface-2); } .home:hover .seal-mark { transform:rotate(-4deg); } .home::after { content:"回首頁"; font-size:10.5px; color:var(--ink-3); opacity:0; transition:opacity .15s; margin-left:2px; } .home:hover::after { opacity:1; }
+  .brand { display:flex; flex-direction:column; line-height:1.2; }
+  .brand strong { font-size:15px; letter-spacing:.06em; } .brand span { font-size:10.5px; color:var(--ink-3); letter-spacing:.06em; }
+  .crumb { display:none; align-items:center; gap:6px; font-size:12px; color:var(--ink-3); padding-left:12px; border-left:1px solid var(--line); height:24px; } .crumb.on { display:flex; } .crumb b { color:var(--ink-2); font-weight:500; }
+  .topnav { display:flex; gap:4px; } .topnav button { border:none; background:none; color:var(--ink-2); font-size:13px; padding:6px 10px; border-radius:6px; } .topnav button:hover { background:var(--surface-2); color:var(--ink); } .topnav button.on { color:var(--accent); font-weight:600; background:var(--accent-soft); }
+  .seal-mark { display:grid; place-items:center; width:28px; height:28px; flex:none; border:1.5px solid var(--seal); color:var(--seal); font-size:12px; font-weight:700; line-height:1; border-radius:4px; transition:transform .15s; }
   .topbar-spacer { flex:1; }
   .chip { display:none; align-items:center; gap:8px; padding:4px 10px; border:1px solid var(--line); background:var(--surface-2); font-size:12px; }
   .chip.on { display:flex; } .chip b { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:38vw; }
@@ -376,7 +380,7 @@
 
   @media (max-width:760px) {
     .topbar { flex-wrap:wrap; height:auto; min-height:52px; padding:6px 12px; gap:8px; }
-    .brand span, .chip .eyebrow { display:none; } .topbar-spacer { flex-basis:100%; height:0; }
+    .brand span, .chip .eyebrow, .crumb, .home::after { display:none; } .topbar-spacer { flex-basis:100%; height:0; }
     .tabpage { padding:14px 12px 90px; } .draft { padding:16px 14px 20px; } .cmp, .cite-check, .ltable, .libtable { display:block; overflow-x:auto; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
@@ -384,15 +388,14 @@
 </style>
 
 <header class="topbar">
-  <div class="seal-mark">訴</div>
-  <div class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局 ・ v11・已接後端</span></div>
-  <div class="chip" id="chip"><span class="eyebrow">承辦中</span><b id="chipName">—</b><span class="num" id="chipNo">—</span></div>
+  <a class="home" id="homeBtn" href="#/" title="回首頁（重選案件）"><span class="seal-mark">訴</span><span class="brand"><strong>訴願智審臺</strong><span>新北市政府法制局・訴願審議 AI 輔助</span></span></a>
+  <div class="crumb" id="crumb"></div>
+  <div class="chip" id="chip"><span class="eyebrow" id="chipRole">承辦中</span><b id="chipName">—</b><span class="num" id="chipNo">—</span></div>
   <div class="chip status" id="statusChip"><b id="statusText">—</b></div>
   <div class="chip judge" id="judgeChip"><span class="eyebrow">AI 判定</span><b id="judgeText">—</b></div>
   <div class="topbar-spacer"></div>
-  <button class="ghost-btn" id="lawBtn">法規庫</button>
-  <button class="ghost-btn" id="libBtn">案件庫</button>
-  <button class="ghost-btn" id="backBtn" style="display:none">重選案件</button>
+  <nav class="topnav"><button class="ghost-btn" id="lawBtn">法規庫</button><button class="ghost-btn" id="libBtn">案件庫</button></nav>
+  <button id="backBtn" hidden></button>
 </header>
 
 <!-- ======== 畫面 1：載入 ======== -->
