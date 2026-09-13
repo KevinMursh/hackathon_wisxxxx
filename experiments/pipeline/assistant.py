@@ -29,7 +29,7 @@ def classify_intent(msg: str) -> str:
 
 
 # ---------- 提案 item 查核與影響範圍 ----------
-STEP_OF = {"served": 0, "proc": 1, "issue": 2, "reissue": 2, "law": 3, "law-rm": 3, "verdict": 4, "text": 5, "frame": 5}
+STEP_OF = {"served": 0, "proc": 1, "issue": 2, "reissue": 2, "issue-new": 2, "law": 3, "law-rm": 3, "verdict": 4, "text": 5, "frame": 5}
 STEP_TAB = [0, 0, 1, 2, 3, 4]
 
 
@@ -95,6 +95,8 @@ def enrich_items(case_id: str, items: list[dict], state: dict | None) -> list[di
         elif t == "served":
             p = check_period(it.get("v"), period.get("recv"))
             it = {**it, "from": period.get("served"), "deadline": p["deadline"], "inTime": p["inTime"], "daysLeft": p.get("daysLeft")}
+        elif t == "issue-new":
+            it = {**it, "title": (it.get("title") or it.get("why") or "").strip()[:60], "n": len(issues) + 1}
         elif t == "verdict":
             it = {**it, "from": ((state or {}).get("judge") or {}).get("verdict")}
         elif t == "text":  # 模型有時把整段內容填進 para：對回段落標籤（主文／事實N／理由N）
@@ -122,7 +124,8 @@ TOOLS = [
     {"name": "propose_revision", "description": "把承辦人的修改要求整理成結構化提案（終止；系統會請承辦人確認後才執行）。", "schema": {"type": "object", "properties": {
         "summary": {"type": "string", "description": "一句話說明這次要改什麼"},
         "items": {"type": "array", "items": {"type": "object", "properties": {
-            "type": {"type": "string", "enum": ["issue", "reissue", "law", "law-rm", "served", "proc", "verdict", "text", "frame"]},
+            "type": {"type": "string", "enum": ["issue", "reissue", "issue-new", "law", "law-rm", "served", "proc", "verdict", "text", "frame"]},
+            "title": {"type": "string", "description": "issue-new：新爭點標題（一句，例：訴願人是否已於處分前改善）"},
             "id": {"type": "string", "description": "issue/reissue：爭點 id，如 I1"},
             "to": {"type": "string", "description": "issue：appellant|agency|drop；verdict：撤銷|駁回|不受理"},
             "why": {"type": "string"},

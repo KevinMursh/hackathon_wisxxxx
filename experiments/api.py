@@ -225,6 +225,8 @@ def _item_reason(it: dict) -> str:
         return {"appellant": "認定應改為採訴願人", "agency": "認定應改為採機關", "drop": "此爭點應刪除"}.get(it.get("to"), "") + (f"：{it['why']}" if it.get("why") else "")
     if t == "reissue":
         return f"納入新補件（{len(it.get('docs') or [])} 份）重新審查此爭點"
+    if t == "issue-new":
+        return f"新增爭點「{it.get('title')}」" + (f"：{it['why']}" if it.get("why") else "")
     if t in ("law", "law-rm"):
         return ("加引 " if t == "law" else "移除引用 ") + it.get("key", "") + ("" if it.get("ok", True) else f"（{it.get('msg')}；不得寫入草稿）")
     if t == "served":
@@ -256,6 +258,9 @@ def _build_revision(items: list[dict], replies: list[dict], prev_draft: str) -> 
                 ins["s6"].append(f"爭點 {it.get('n', it['id'])}（{it.get('title', '')}）認定已改為「{rp['revised_finding']}」：{rp.get('reply', '')[:200]}")
             if it.get("to") == "drop" and rp.get("result") in ("採納",):
                 ov["drop_issues"].append(it["id"])
+        elif t == "issue-new":
+            ins["s3"].append(f"承辦人新增爭點「{it.get('title')}」（{it.get('why') or '承辦人指示'}）：必須列為一個獨立爭點，依卷證作認定並附一句依據")
+            ins["s6"].append(f"理由段須就新增爭點「{it.get('title')}」獨立論述")
         elif t == "law" and it.get("ok"):
             ov["add_laws"].append({"name": it.get("key", "").split(" 第 ")[0], "article": it.get("art"), "paragraph": it.get("p") or ""})
             ins["s4"].append(reason); ins["s6"].append(f"理由中須引用 {it.get('key')}")
@@ -295,6 +300,7 @@ def _run_proposal(job: dict):
             "proc": lambda it: ("採納" if it.get("v") in ("merit", "77-2") else "部分採納", "程序判定已依指示調整，期間欄位同步更新。" if it.get("v") in ("merit", "77-2") else "已於爭點與草稿附記承辦人指定之不受理事由；程序清單各款仍依卷面。"),
             "verdict": lambda it: ("採納", f"結論改為「{it.get('to')}」，相似案例改檢索同結論案例，草稿依此重寫。"),
             "text": lambda it: ("採納", f"{it.get('para')} 已依「{it.get('how')}」改寫，其餘段落維持。"),
+            "issue-new": lambda it: ("採納", f"已新增爭點「{it.get('title')}」，重新比對卷證作認定，法規推薦、相似案例與草稿一併重產。"),
             "frame": lambda it: ("採納", f"理由已依「{it.get('angle')}」角度重寫。")}
     try:
         docs = load_any(case_id)
@@ -352,7 +358,7 @@ def _run_proposal(job: dict):
             _chat_mark(case_id, pid, "applied", replies)
             print(f"[proposal] {case_id} {pid} 快路徑 段落 {changed} {time.monotonic()-t_run:.1f}s", flush=True)
             _emit(job, "done", {"proposalId": pid, "replies": replies, "rerun": ["s6"], "version": ver}); return
-        start = START_OF_SCOPE[min(eff)]
+        start = "s3" if any(it.get("type") == "issue-new" for it in items) else START_OF_SCOPE[min(eff)]   # 新爭點要重跑 s3 讓模型建爭點
         revision = _build_revision(items, replies, prev_draft)
         steps = STEPS[STEPS.index(start):]
         p["rerun"] = steps; p["progress"] = {"phase": "rerun", "step": start, "steps": steps}; _psave(p)

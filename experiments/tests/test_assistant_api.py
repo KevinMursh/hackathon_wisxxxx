@@ -215,3 +215,20 @@ def test_chat_log_shared_and_clearable(client, monkeypatch):
     c.post("/api/cases/case02/chat", json={"message": "再問一次"})
     assert any("答一" in x["content"][0].get("text", "") for x in fb.calls[0]["messages"])
     assert c.delete("/api/cases/case02/chat").json()["messages"] == [] and c.get("/api/cases/case02/chat").json()["messages"] == []
+
+
+def test_issue_new_reruns_from_s3(client, monkeypatch):
+    c, api = client
+    from tests.conftest import FakeBedrock, tool
+    monkeypatch.setattr(api.assistant, "_converse", FakeBedrock([tool("propose_revision", {"summary": "新增爭點", "items": [{"type": "issue-new", "title": "訴願人是否已於處分前改善", "why": "現況照片顯示已拆除"}]})]))
+    monkeypatch.setattr(api.run_all, "run", _fake_run); RERUN_CALLS.clear()
+    p = c.post("/api/cases/case02/chat", json={"message": "新增爭點：訴願人是否已於處分前改善，因為現況照片顯示已拆除"}).json()["proposal"]
+    assert p["items"][0]["type"] == "issue-new" and p["items"][0]["title"] == "訴願人是否已於處分前改善" and p["scope"] == [2, 3, 4, 5]
+    c.post(f"/api/cases/case02/proposals/{p['id']}/confirm")
+    for _ in range(100):
+        d = c.get(f"/api/cases/case02/proposals/{p['id']}").json()
+        if d["state"] in ("applied", "failed"):
+            break
+        time.sleep(0.05)
+    assert d["state"] == "applied" and d["replies"][0]["result"] == "採納" and RERUN_CALLS[0]["start"] == "s3"
+    assert any("訴願人是否已於處分前改善" in s for s in RERUN_CALLS[0]["revision"]["instructions"]["s3"])
